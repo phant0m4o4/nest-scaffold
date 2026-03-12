@@ -44,7 +44,7 @@ docker compose up -d
 
 ### 3. 配置环境变量
 
-项目根目录已有 `.env` 文件，按需修改：
+复制 `.env.example` 为 `.env`，按需修改：
 
 ```env
 APP_NAME=nest-scaffold
@@ -61,6 +61,25 @@ MYSQL_PASSWORD=root_password
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
+
+# Log
+LOG_FILE_ENABLE=true
+LOG_FILE_PATH=./logs/app.log
+
+# Cache
+CACHE_REDIS_HOST=${REDIS_HOST}
+CACHE_REDIS_PORT=${REDIS_PORT}
+CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
+CACHE_REDIS_DB=0
+CACHE_TTL_SECONDS=604800 # 7 days
+CACHE_KEY_PREFIX=cache
+
+# Distributed Lock
+DISTRIBUTED_LOCK_REDIS_HOST=${REDIS_HOST}
+DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}
+DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
+DISTRIBUTED_LOCK_REDIS_DB=0
+DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
 ```
 
 ### 4. 初始化数据库
@@ -81,6 +100,26 @@ pnpm db:seed:dev
 ```bash
 pnpm start:dev
 ```
+
+### 6. 生产环境启动
+
+```bash
+# 1. 安装依赖
+pnpm install
+
+# 2. 构建
+pnpm build
+
+# 3. 按需执行数据库迁移与种子（若使用迁移）
+# pnpm db:migrate
+# pnpm db:init:prod
+# pnpm db:seed:prod
+
+# 4. 启动（需设置 NODE_ENV=production）
+NODE_ENV=production pnpm start:dist
+```
+
+> 生产环境请确保已配置好 `.env` 或环境变量（数据库、Redis、日志等），并已准备好 MySQL、Redis 等基础设施。
 
 ## 命令参考
 
