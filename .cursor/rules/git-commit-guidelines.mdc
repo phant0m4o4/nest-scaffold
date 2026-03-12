@@ -1,0 +1,242 @@
+---
+alwaysApply: true
+---
+
+# Git 提交信息规范（Commitizen 风格）
+
+## ⚠️ 强制规则 - 必须严格遵守
+
+**当生成任何 git commit message 时，必须遵循以下规则，这是不可违反的强制要求：**
+
+### 🚨 核心要求
+
+1. **提交信息必须包含 type 头部**：格式为 `type(scope): subject` 或 `type: subject`（如果 scope 为空）
+2. **type 和 scope 必须使用英文，禁止使用中文**
+3. **提交信息的 body（正文）部分必须使用中文，禁止使用英文**
+4. **提交信息的 subject（主题）和 footer（页脚）部分可以使用英文或中文**
+5. **使用 `git cz` 或 `pnpm commit` 命令进行提交**（如果项目配置了 Commitizen）
+
+### Commitizen 标准格式
+
+遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范，使用 Commitizen 风格：
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**完整格式说明：**
+
+- **Header（必需）**：`<type>(<scope>): <subject>` 或 `<type>: <subject>`
+  - `type`：**必需**，提交类型（**必须使用英文**，如 `feat`、`fix`、`docs` 等），不能省略，禁止使用中文
+  - `scope`：**推荐使用**，影响范围（可选，**必须使用英文**），如果省略则格式为 `type: subject`，禁止使用中文
+  - `subject`：**必需**，简洁描述本次提交的变更内容（不超过 50 个字符，可以使用英文或中文）
+- **Body（可选）**：详细描述变更内容和原因，**必须使用中文**
+- **Footer（可选）**：关闭 issue、BREAKING CHANGE 等（可以使用英文或中文）
+
+**⚠️ 重要**：提交信息的第一行必须包含 `type` 和 `subject`，格式为 `type(scope): subject` 或 `type: subject`。不能省略 `type` 头部。
+
+### 语言要求
+
+- **`type` 和 `scope` 必须使用英文，禁止使用中文**（遵循 Conventional Commits 标准）
+- **提交信息的 `body`（正文）部分必须使用中文**
+- 提交信息的 `subject`（主题）部分可以使用英文或中文
+- 提交信息的 `footer`（页脚）部分可以使用英文或中文
+
+### 提交类型（type）
+
+遵循 Commitizen 标准类型：
+
+- `feat`：新功能（A new feature）
+- `fix`：修复 bug（A bug fix）
+- `docs`：文档变更（Documentation only changes）
+- `style`：代码格式（不影响代码运行的变动，如空格、格式化、缺少分号等）
+- `refactor`：重构（既不是新增功能，也不是修复 bug 的代码变更）
+- `perf`：性能优化（A code change that improves performance）
+- `test`：增加测试（Adding missing tests or correcting existing tests）
+- `build`：构建系统或外部依赖的变更（Changes that affect the build system or external dependencies）
+- `ci`：CI 配置文件和脚本的变更（Changes to CI configuration files and scripts）
+- `chore`：构建过程或辅助工具的变动（Other changes that don't modify src or test files）
+- `revert`：回滚之前的提交（Reverts a previous commit）
+
+**注意**：`type` 和 `scope` **必须使用英文**，禁止使用中文。`subject` 可以使用英文或中文，但 `body` 必须使用中文。
+
+### 示例
+
+**✅ 正确示例（简单格式，无 body）：**
+
+```
+feat(user): Add user list query feature
+fix(login): Fix redirect error after login
+docs(readme): Update project installation instructions
+refactor(query): Refactor query factory implementation
+test(user): Add unit tests for user service
+```
+
+**✅ 正确示例（完整格式，带 body 和 footer）：**
+
+```
+feat(order): Add order list pagination
+
+实现了订单列表的分页查询，支持游标分页和传统分页两种方式。
+新增了分页参数验证和错误处理逻辑。
+
+Closes #123
+```
+
+```
+fix(auth): Fix token expiration issue after login
+
+修复了登录成功后 token 立即过期的问题，现在 token 有效期设置为 24 小时。
+同时优化了 token 刷新机制。
+
+BREAKING CHANGE: Token storage changed from localStorage to httpOnly cookie
+```
+
+**❌ 错误示例（body 使用英文）：**
+
+```
+feat(user): Add user list query feature
+
+Implement user list query functionality with pagination support.
+Add validation and error handling logic.
+```
+
+**❌ 错误示例（缺少 type 头部）：**
+
+```
+Add user list query feature
+修复登录跳转错误
+Update API documentation
+```
+
+**❌ 错误示例（格式不正确）：**
+
+```
+user: Add user list query feature
+Add user list query feature
+feat Add user list query feature
+```
+
+**❌ 错误示例（type 或 scope 使用中文）：**
+
+```
+功能(用户): Add user list query feature
+feat(用户管理): Add user list query feature
+修复(登录): Fix redirect error after login
+fix(登录模块): Fix redirect error after login
+```
+
+### 生成提交信息时的注意事项
+
+1. **必须包含 type 头部**：提交信息的第一行必须包含 `type`，格式为 `type(scope): subject` 或 `type: subject`，不能省略
+2. **type 和 scope 必须使用英文**：`type` 和 `scope` 必须使用英文（如 `feat`、`fix`、`user`、`login` 等），禁止使用中文
+3. **推荐使用 scope**：虽然 scope 是可选的，但建议使用以明确影响范围（必须使用英文）
+4. **Body 必须使用中文**：如果包含 body 部分，必须使用中文描述变更内容和原因
+5. **简洁明了**：subject 部分应该简洁地描述变更内容，通常不超过 50 个字符
+6. **使用动词开头**：subject 部分应该使用动词开头（英文如 "Add"、"Fix"、"Update" 等，中文如"添加"、"修复"、"更新"等）
+7. **避免使用句号**：subject 部分末尾不要使用句号
+8. **描述具体变更**：应该具体描述做了什么变更，而不是泛泛而谈
+9. **Body 格式**：如果使用 body，第一行应该空行，然后详细描述变更内容和原因（必须使用中文）
+10. **Footer 格式**：footer 用于关闭 issue（`Closes #123`）或说明 BREAKING CHANGE（可以使用英文或中文）
+11. **使用 git cz**：推荐使用 `git cz` 或 `pnpm commit` 命令进行交互式提交
+
+### 示例场景
+
+**场景 1：用户添加了新功能**
+
+- ✅ 正确（无 body）：`feat(order): Add order list pagination`
+- ✅ 正确（有 body）：`feat(order): Add order list pagination` + body（中文描述）
+- ❌ 错误（body 使用英文）：body 部分使用英文描述
+
+**场景 2：用户修复了 bug**
+
+- ✅ 正确（无 body）：`fix(login): Fix token expiration issue after login`
+- ✅ 正确（有 body）：`fix(login): Fix token expiration issue after login` + body（中文描述）
+- ❌ 错误（body 使用英文）：body 部分使用英文描述
+
+**场景 3：用户更新了文档**
+
+- ✅ 正确（无 body）：`docs(api): Update API documentation`
+- ✅ 正确（有 body）：`docs(api): Update API documentation` + body（中文描述）
+- ❌ 错误（body 使用英文）：body 部分使用英文描述
+
+### 强制执行流程
+
+**当需要生成 git commit message 时，必须按以下步骤执行：**
+
+1. **Type 头部验证**：确保第一行包含 `type`，格式为 `type(scope): subject` 或 `type: subject`
+2. **Type 和 Scope 语言验证**：确保 `type` 和 `scope` 使用英文，禁止使用中文
+3. **格式验证**：确保符合 `type(scope): subject` 或 `type: subject` 格式
+4. **Body 语言验证**：如果包含 body 部分，确保使用中文描述
+5. **Subject 和 Footer**：可以使用英文或中文，根据项目习惯选择
+
+**⚠️ 如果生成的提交信息缺少 type 头部，或 type/scope 使用中文，必须立即拒绝并重新生成正确版本。**
+
+### Body 转换规则示例
+
+如果提交信息包含 body 部分，body 必须使用中文。如果生成的 body 是英文，必须转换为中文：
+
+- `Implement user list query functionality` → `实现了用户列表查询功能`
+- `Fix login redirect error` → `修复了登录跳转错误`
+- `Update API documentation` → `更新了 API 接口文档`
+- `Refactor query factory class` → `重构了查询工厂类`
+- `Add unit tests for user service` → `添加了用户服务的单元测试`
+
+### 使用 Commitizen 工具
+
+**推荐使用 Commitizen 进行交互式提交：**
+
+```bash
+# 如果项目配置了 Commitizen
+git cz
+
+# 或使用 pnpm/npm 脚本（如果配置了）
+pnpm commit
+# 或
+npm run commit
+```
+
+**Commitizen 会引导你完成以下步骤：**
+
+1. 选择提交类型（type，**必须使用英文**）
+2. 输入影响范围（scope，可选，**必须使用英文**）
+3. 输入简短描述（subject，可以使用英文或中文）
+4. 输入详细描述（body，可选，**必须使用中文**）
+5. 输入是否包含 BREAKING CHANGE
+6. 输入关闭的 issue（可选，可以使用英文或中文）
+
+### ⚠️ 重要提醒
+
+**这是不可违反的强制要求：**
+
+- ✅ **必须**：提交信息的第一行必须包含 `type` 头部，格式为 `type(scope): subject` 或 `type: subject`
+- ✅ **必须**：`type` 和 `scope` 必须使用英文，禁止使用中文
+- ✅ **必须**：如果提交信息包含 body 部分，body 必须使用中文
+- ✅ **允许**：subject 和 footer 可以使用英文或中文
+- ✅ **推荐**：使用 `scope` 明确影响范围（必须使用英文）
+- ✅ **推荐**：使用 `git cz` 进行交互式提交
+
+**如果生成的提交信息缺少 type 头部，或 type/scope 使用中文，或 body 部分是英文，必须立即拒绝并重新生成正确版本。**
+
+### Commitizen 配置
+
+如果项目需要配置 Commitizen，可以在 `package.json` 中添加：
+
+```json
+{
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "scripts": {
+    "commit": "cz"
+  }
+}
+```
+
+**注意**：即使使用 Commitizen，生成的提交信息中的 `type` 和 `scope` 仍然**必须使用英文**，`body` 部分仍然**必须使用中文**。`subject` 和 `footer` 可以使用英文或中文。

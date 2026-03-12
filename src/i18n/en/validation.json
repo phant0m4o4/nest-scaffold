@@ -1,0 +1,10 @@
+{
+  "isNotEmpty": "Must not be empty",
+  "isString": "Must be a string",
+  "maxLength": "Must be at most {constraints.0} characters",
+  "isEnum": "Must be a valid enum value",
+  "isInt": "Must be an integer",
+  "min": "Must be at least {constraints.0}",
+  "max": "Must be at most {constraints.0}",
+  "isIn": "Must be one of the following values: {constraints.0}"
+}

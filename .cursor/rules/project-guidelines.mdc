@@ -1,0 +1,251 @@
+---
+alwaysApply: true
+---
+
+## 项目级规范（Anome Giveaway Service）
+
+本文件定义本仓库的项目特有规则与约定，优先级高于通用规范。
+
+### 使用面向对象的风格生成代码,要求代码构架必须优雅,符合设计模式规范.
+
+### 包管理与脚本
+
+- 包管理器使用 pnpm。
+- 常用脚本：
+  - 构建：`pnpm build`
+  - 本地开发：`pnpm start:dev`
+  - 单元测试：`pnpm test`
+  - 端到端测试：`pnpm run test:e2e`
+  - Lint：`pnpm lint`
+
+### 数据库与迁移
+
+- 持久化：使用 Drizzle ORM。
+- 开发表结构变更：使用 `pnpm db:push` 同步到数据库；随后必须执行：
+  - `pnpm db:init`（初始化数据库基础结构/元数据）
+  - `pnpm db:seed`（写入基础/示例数据）
+- 未获指示前，不创建迁移文件（migrations）。
+- 数据库枚举（enums）：
+  - 仅当前文件使用：就地定义。
+  - 需跨文件复用：放置于 `src/database/enums/`，且枚举键与值使用 camelCase。
+- Schema 约定与参考：
+  - 表定义放在 `src/database/schemas/` 目录，命名为 `table-name.schema.ts`。
+  - 示例参考：`@/database/schemas/demos.schema.ts`。
+- 初始化与种子：
+  - 初始化逻辑集中在 `src/database/init.ts`，通过 `pnpm db:init` 执行。
+  - 测试/演示数据写在 `src/database/seed.ts`，通过 `pnpm db:seed` 执行。
+- Schema 聚合导出：
+  - 所有表的 Schema 在 `src/database/schema.ts` 统一聚合导出，供应用各处直接引用。
+
+### 目录结构与命名
+
+- 目录与文件命名遵循 `demo/` 目录的结构与风格。
+- Repository 类命名：`TableNameRepository`（使用表名 + Repository）。
+- 接口文件放置在当前模块的 `interfaces` 目录，文件名以 `.interface.ts` 结尾，接口名使用 `IPascalCase`。
+
+### 模块化架构
+
+- 各业务模块独立组织（不再将 API 聚合到 `src/app/api`）：
+  - 每个业务域在 `src/app/<domain>` 下自包含：控制器、服务、DTO、测试等。
+  - 鉴权/JWT 使用控制器级别的 Guard：默认在控制器上启用 `JwtAuthGuard`，对外开放的接口使用 `@AuthPublic()` 显式排除。
+  - 示例（控制器级别）：
+    - `@JwtAuthGuard()` 声明在控制器类上，受保护方法无需重复标注。
+    - 对需要公开的端点使用 `@AuthPublic()` 标注以跳过 Guard。
+  - 示例参考：`@/app/demo` 的控制器、服务与 DTO 组织方式。
+
+### REST 与响应格式
+
+- 遵循 RESTful 规范（详见 `rest-api-guidelines.mdc`）。
+- 统一响应结构与状态码在 `rest-api-guidelines.mdc` 中定义，接口实现需严格遵循。
+
+### 配置与国际化
+
+- 配置使用集中式 `ConfigModule` 管理（参考 `@/configs/app.config.ts` 实现方式）：
+  - 使用 `class-transformer` + `class-validator` 描述与校验环境变量。
+  - 通过 `registerEnvAsConfig(namespace, EnvClass, mapper)` 注册并导出 `ConfigType`。
+  - 暴露统一的配置结构：
+    - `name`: 应用名称
+    - `env`: 运行环境（development/production/test）
+    - `port`: 端口（默认 3000）
+    - `ipAddress`: 监听地址（默认 127.0.0.1）
+    - `domain`: 域名（默认 localhost:3000）
+    - `baseUrl`: 基础 URL（默认 http://localhost:3000）
+  - 在 `AppModule` 中通过 `ConfigModule.forRoot({ load: [...] })` 统一加载。
+
+- 后端不使用国际化，字符串作为一种资源让前端处理。
+
+### 提交与质量
+
+- 代码必须通过 Lint 与编译检查后再提交。
+- 变更需附带必要的单元测试或端到端测试用例。
+- 严禁引入 `any`（特殊场景需在评审中说明）。
+
+## 项目级规范（Anome Giveaway Service）
+
+本文件定义本仓库的项目特有规则与约定，优先级高于通用规范。
+
+### 包管理与脚本
+
+- 包管理器使用 pnpm。
+- 常用脚本：
+  - 构建：`pnpm build`
+  - 本地开发：`pnpm start:dev`
+  - 单元测试：`pnpm test <单元测试文件名>`
+  - 端到端测试：`pnpm run test:e2e <e2e测试文件名>`
+  - Lint：`pnpm lint`
+
+### 数据库与迁移
+
+- 持久化：使用 Drizzle ORM。
+- 开发表结构变更：使用 `pnpm db:push` 同步到数据库；随后必须执行：
+  - `pnpm db:init`（初始化数据库基础结构/元数据）
+  - `pnpm db:seed`（写入基础/示例数据）
+- 未获指示前，不创建迁移文件（migrations）。
+- 数据库枚举（enums）：
+  - 仅当前文件使用：就地定义。
+  - 需跨文件复用：放置于 `src/database/enums/`，且枚举键与值使用 camelCase。
+- Schema 约定与参考：
+  - 表定义放在 `src/database/schemas/` 目录，命名为 `table-name.schema.ts`。
+  - 示例参考：`@/database/schemas/demos.schema.ts`。
+- 初始化与种子：
+  - 初始化逻辑集中在 `src/database/init.ts`，通过 `pnpm db:init` 执行。
+  - 测试/演示数据写在 `src/database/seed.ts`，通过 `pnpm db:seed` 执行。
+- Schema 聚合导出：
+  - 所有表的 Schema 在 `src/database/schema.ts` 统一聚合导出，供应用各处直接引用。
+
+### 目录结构与命名
+
+- 目录与文件命名遵循 `demo/` 目录的结构与风格。
+- Repository 类命名：`TableNameRepository`（使用表名 + Repository）。
+- 接口文件放置在当前模块的 `interfaces` 目录，文件名以 `.interface.ts` 结尾，接口名使用 `IPascalCase`。
+
+### 模块化架构
+
+- 各业务模块独立组织（不再将 API 聚合到 `src/app/api`）：
+  - 每个业务域在 `src/app/<domain>` 下自包含：控制器、服务、DTO、测试等。
+  - 鉴权/JWT 使用控制器级别的 Guard：默认在控制器上启用 `JwtAuthGuard`，对外开放的接口使用 `@AuthPublic()` 显式排除。
+  - 示例（控制器级别）：
+    - `@JwtAuthGuard()` 声明在控制器类上，受保护方法无需重复标注。
+    - 对需要公开的端点使用 `@AuthPublic()` 标注以跳过 Guard。
+  - 示例参考：`@/app/demo` 的控制器、服务与 DTO 组织方式。
+
+### REST 与响应格式
+
+- 遵循 RESTful 规范（详见 `rest-api-guidelines.mdc`）。
+- 统一响应结构与状态码在 `rest-api-guidelines.mdc` 中定义，接口实现需严格遵循。
+
+### 配置与国际化
+
+- 配置使用集中式 `ConfigModule` 管理（参考 `@/configs/app.config.ts` 实现方式）：
+  - 使用 `class-transformer` + `class-validator` 描述与校验环境变量。
+  - 通过 `registerEnvAsConfig(namespace, EnvClass, mapper)` 注册并导出 `ConfigType`。
+  - 暴露统一的配置结构：
+    - `name`: 应用名称
+    - `env`: 运行环境（development/production/test）
+    - `port`: 端口（默认 3000）
+    - `ipAddress`: 监听地址（默认 127.0.0.1）
+    - `domain`: 域名（默认 localhost:3000）
+    - `baseUrl`: 基础 URL（默认 http://localhost:3000）
+  - 在 `AppModule` 中通过 `ConfigModule.forRoot({ load: [...] })` 统一加载。
+
+- 后端不使用国际化，字符串作为一种资源让前端处理。
+
+### 提交与质量
+
+- 代码必须通过 Lint 与编译检查后再提交。
+- 变更需附带必要的单元测试或端到端测试用例。
+- 严禁引入 `any`（特殊场景需在评审中说明）。
+
+### 日志规范（Pino）
+
+- 等级与数值映射（从轻到重）：
+  - trace(10) < debug(20) < info(30) < warn(40) < error(50) < fatal(60)；silent 关闭输出。
+- 使用建议：
+  - 业务预期失败（如单次认证失败 401/403）→ info。
+  - 短时多次失败/风控命中/疑似误配 → warn（可基于同 IP/clientId 窗口计数升级）。
+  - 程序异常/依赖超时/应返回 5xx → error；服务不可用 → fatal。
+  - debug/trace 仅用于临时排障，生产限时、配合采样。
+- 结构化字段（lowerCamelCase，便于检索/聚合）：
+  - 核心：level, time, msg, event, requestId, module。
+  - 业务：userId, clientId, tenantId。
+  - 网络：ip, userAgent。
+  - HTTP：`http.method`, `http.url`, `http.statusCode`, `durationMs`。
+  - 诊断：reason, failCount, rateLimited, retryable。
+  - 错误：error（对象，包含 name/message/stack/cause，由 Pino 展开）。
+
+  消息语言与内容规范：
+  - 错误与业务日志的 `msg` 文本统一使用中文，便于本地团队排查。
+  - 结构化字段（如 `event`、`reason`）统一使用英文枚举，保持稳定可检索。
+  - `msg` 保持一句话摘要；详细上下文放到结构化字段中，避免冗长拼接。
+
+- 敏感信息与脱敏（强制）：
+  - 不记录密码、AK/SK、完整 Token、身份证/卡号明文。
+  - 通过 `redact.paths` 隐藏敏感字段；Token 仅保留前后 4 位。
+  - 建议 redact（生产）：
+
+```json
+{
+  "redact": {
+    "paths": [
+      "req.headers.authorization",
+      "req.headers.cookie",
+      "res.headers[\"set-cookie\"]",
+      "password"
+    ]
+  }
+}
+```
+
+- 开发/生产配置（与 `LoggerModule` 保持一致）：
+  - 开发：`level=debug`，启用 `pino-pretty` 彩色输出；可选文件落盘。
+  - 生产：`level=info`，结构化 JSON 输出到 stdout；可配合 `pino-roll` 按天/大小滚动落盘；隐藏敏感字段；忽略 `/health` 自动日志；统一生成并回显 `X-Request-Id`。
+- 采样与限流：
+  - 高频 info（如认证失败）做采样（如 10%）；warn/error 全量保留。
+  - 对同 IP/clientId 在时间窗口内失败计数，超阈值将 info 升级为 warn。
+- 子 Logger 与上下文：
+  - 使用 `logger.child({ module: 'auth', clientId })` 绑定上下文，统一 `requestId` 贯穿调用链。
+
+示例（分级与上下文）：
+
+```ts
+// 通过 nestjs-pino 注入 PinoLogger
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+
+export class AuthService {
+  constructor(
+    @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
+  ) {}
+
+  async verifyToken(clientId: string): Promise<boolean> {
+    const authLogger = this.logger.child({ module: 'auth', clientId });
+    authLogger.info(
+      { event: 'auth_failed', reason: 'INVALID_SIGNATURE' },
+      '认证失败：签名不合法',
+    );
+    authLogger.warn(
+      { event: 'auth_failed', reason: 'RATE_LIMITED', failCount: 6 },
+      '认证失败升级：疑似爆破，已限流',
+    );
+    try {
+      // ... 调用外部依赖
+    } catch (error) {
+      authLogger.error(
+        { error, event: 'auth_internal_error' },
+        '认证依赖异常：密钥服务调用失败',
+      );
+    }
+    return false;
+  }
+}
+```
+
+### 单元测试以及E2E测试
+
+- 测试风格参考手册: https://docs.nestjs.com/fundamentals/testing
+- 单元测试用 useMocker
+- e2e测试用 overrideProvider
+- e2e测试使用testcontainers
+- 测试依赖到ConfigService时候,不要使用覆盖环境变量的方案,而是使用mock ConfigService 的方案
+- mock 异步方法,参考使用的风格是 async()=> await Promise.resolve()
+- 单元测试的命令是 pnpm test <文件地址>
+- 集成测试的命令是 pnpm test:e2e <文件地址>

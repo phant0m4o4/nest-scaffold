@@ -1,0 +1,63 @@
+#mysql，redis，phpmyadmin 服务 用于 nestjs 项目
+services:
+  mysql:
+    container_name: ${APP_NAME}-mysql
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    #    image: mysql:5.7
+    #    platform: linux/amd64
+    #    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 'root_password'
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dev_db}
+    ports:
+      - ${MYSQL_PORT:-3306}:3306
+    networks:
+      - nestjs
+
+  phpmyadmin:
+    container_name: ${APP_NAME}-phpmyadmin
+    image: phpmyadmin
+    restart: always
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: mysql # 这里的 db-dev 是 db-dev 服务的名称
+      PMA_PORT: ${MYSQL_PORT:-3306}
+      PMA_USER: 'root'
+      PMA_PASSWORD: 'root_password'
+      UPLOAD_LIMIT: 100000000
+    depends_on:
+      - mysql
+    networks:
+      - nestjs
+
+  redis:
+    container_name: ${APP_NAME}-redis
+    image: redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password}
+    restart: always
+    ports:
+      - ${REDIS_PORT:-6379}:6379
+    networks:
+      - nestjs
+
+  phpRedisAdmin:
+    container_name: ${APP_NAME}-phpRedisAdmin
+    image: erikdubbelboer/phpredisadmin
+    restart: always
+    ports:
+      - '8081:80'
+    environment:
+      REDIS_1_HOST: redis
+      REDIS_1_PORT: ${REDIS_PORT:-6379}
+      REDIS_1_AUTH: ${REDIS_PASSWORD:-redis_password}
+    depends_on:
+      - redis
+    networks:
+      - nestjs
+
+networks:
+  nestjs:
+    driver: bridge

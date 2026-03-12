@@ -1,0 +1,10 @@
+{
+  "isNotEmpty": "不能为空",
+  "isString": "必须是字符串",
+  "maxLength": "长度不能超过 {constraints.0} 个字符",
+  "isEnum": "必须是有效的枚举值",
+  "isInt": "必须是整数",
+  "min": "最小值为 {constraints.0}",
+  "max": "最大值为 {constraints.0}",
+  "isIn": "必须是以下值之一：{constraints.0}"
+}
