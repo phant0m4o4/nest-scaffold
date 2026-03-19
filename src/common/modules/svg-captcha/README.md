@@ -85,6 +85,56 @@ export class AuthController {
 }
 ```
 
+## SVG 转 PNG（可选：sharp）
+
+本模块默认返回 **SVG 字符串**。若客户端或下游需要 **PNG**（如旧版邮件客户端、部分小程序），可在服务端用 [sharp](https://sharp.pixelplumbing.com/) 将 `result.svg` 栅格化。`sharp` 为可选依赖，需自行安装：
+
+```bash
+pnpm add sharp
+```
+
+### 示例：生成 PNG Buffer
+
+```typescript
+import sharp from 'sharp';
+
+/**
+ * 将 SvgCaptcha 返回的 SVG 转为 PNG Buffer。
+ * @param svg - `ISvgCaptchaResult.svg`
+ * @param options.density - 栅格密度（DPI），适当提高可减轻小尺寸验证码发糊
+ */
+async function svgCaptchaToPng(
+  svg: string,
+  options?: { density?: number },
+): Promise<Buffer> {
+  const density = options?.density ?? 144;
+  return await sharp(Buffer.from(svg, 'utf-8'), { density })
+    .png()
+    .toBuffer();
+}
+
+// 使用
+const result = await this._svgCaptchaService.generate({ width: 120, height: 40 });
+const pngBuffer = await svgCaptchaToPng(result.svg);
+// 例如：res.type('image/png').send(pngBuffer) 或写入对象存储
+```
+
+### 示例：固定输出宽高（与 generate 的 width/height 一致）
+
+若 `generate()` 里改了 `width`/`height`，栅格化时可用 `resize` 与之一致，避免比例偏差：
+
+```typescript
+const width = 200;
+const height = 60;
+const result = await this._svgCaptchaService.generate({ width, height });
+const pngBuffer = await sharp(Buffer.from(result.svg, 'utf-8'), { density: 144 })
+  .resize(width, height)
+  .png()
+  .toBuffer();
+```
+
+> **说明**：`sharp` 依赖本机/容器内的 libvips；Docker 部署时需保证镜像内已安装 sharp 所需运行库，详见 sharp 官方安装文档。
+
 ## 运行时配置
 
 `generate()` 方法接受可选的 `ISvgCaptchaConfig` 参数，未传入的字段使用默认值：
