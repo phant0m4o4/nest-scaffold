@@ -46,12 +46,29 @@ function isNumericString(input: string): boolean {
 }
 
 /**
+ * 从 ValidationArguments 中安全取出 IsId 装饰器传入的 options。
+ * class-validator 将 constraints 标为 any[]，需先收窄为 unknown 再校验，避免 no-unsafe-assignment。
+ */
+function getIdValidatorOptionsFromArgs(
+  args?: ValidationArguments,
+): IdValidatorOptions | undefined {
+  const constraintsUnknown: unknown = args?.constraints;
+  if (!Array.isArray(constraintsUnknown) || constraintsUnknown.length === 0) {
+    return undefined;
+  }
+  const first: unknown = constraintsUnknown[0];
+  if (first === undefined || first === null) return undefined;
+  if (typeof first !== 'object') return undefined;
+  return first as IdValidatorOptions;
+}
+
+/**
  * ID 校验器实现（内部使用，不导出）
  */
 @ValidatorConstraint({ name: 'IsIdConstraint', async: false })
 class IsIdConstraint implements ValidatorConstraintInterface {
   validate(value: unknown, args?: ValidationArguments): boolean {
-    const options: IdValidatorOptions | undefined = args?.constraints?.[0];
+    const options = getIdValidatorOptionsFromArgs(args);
     const allowLeadingZeros = options?.allowLeadingZeros ?? false;
     const trim = options?.trim ?? true;
     const allowZero = options?.allowZero ?? false;
@@ -78,7 +95,7 @@ class IsIdConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage(args?: ValidationArguments): string {
-    const options: IdValidatorOptions | undefined = args?.constraints?.[0];
+    const options = getIdValidatorOptionsFromArgs(args);
     const allowLeadingZeros = options?.allowLeadingZeros ?? false;
     const allowZero = options?.allowZero ?? false;
     const minConfig = options?.min ?? (allowZero ? 0n : DEFAULT_MIN_ID);
