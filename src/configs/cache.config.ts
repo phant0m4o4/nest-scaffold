@@ -4,37 +4,15 @@ import { Expose } from 'class-transformer';
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
 /**
- * 缓存配置（基于 Redis）
+ * 缓存配置
+ *
+ * Redis 连接由 `RedisModule` 统一管理，此处仅保留缓存本身的 TTL 与键前缀。
  *
  * .env 示例：
- * CACHE_REDIS_HOST=127.0.0.1
- * CACHE_REDIS_PORT=6379
- * CACHE_REDIS_PASSWORD=
- * CACHE_REDIS_DB=0
- * CACHE_REDIS_TTL_SECONDS=604800
- * CACHE_REDIS_KEY_PREFIX=cache
+ * CACHE_TTL_SECONDS=604800
+ * CACHE_KEY_PREFIX=cache
  */
 class EnvironmentVariables {
-  @Expose()
-  @IsString()
-  @IsOptional()
-  CACHE_REDIS_HOST?: string;
-
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  CACHE_REDIS_PORT?: number;
-
-  @Expose()
-  @IsString()
-  @IsOptional()
-  CACHE_REDIS_PASSWORD?: string;
-
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  CACHE_REDIS_DB?: number;
-
   @Expose()
   @IsInt()
   @IsOptional()
@@ -53,12 +31,6 @@ const cacheConfig = registerEnvAsConfig(
     return {
       ttlSeconds: env.CACHE_TTL_SECONDS ?? 604800, // 7 days
       keyPrefix: env.CACHE_KEY_PREFIX ?? 'cache',
-      redis: {
-        host: env.CACHE_REDIS_HOST ?? '127.0.0.1',
-        port: env.CACHE_REDIS_PORT ?? 6379,
-        password: env.CACHE_REDIS_PASSWORD ?? undefined,
-        db: env.CACHE_REDIS_DB ?? 0,
-      },
     };
   },
 );

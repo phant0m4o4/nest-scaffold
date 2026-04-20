@@ -26,7 +26,9 @@ type QueueRegisterAsyncOptions = RegisterQueueAsyncOptions &
  * 队列模块
  *
  * 封装 BullMQ + Bull Board，提供统一的队列注册入口：
- * - 根模块自动通过 ConfigService 读取 Redis 连接配置
+ * - 根模块自动通过 ConfigService 读取 `QUEUE_REDIS_*` 连接配置（独立于全局 RedisService，
+ *   BullMQ worker 使用 blocking / subscribe 命令，必须独享连接）
+ * - 如果希望复用全局 Redis 的地址，可在 .env 中引用变量：`QUEUE_REDIS_HOST=${REDIS_HOST}`
  * - 开发环境自动启用 Bull Board 仪表盘（路由可配）
  * - 通过 registerQueue / registerQueueAsync 注册业务队列，
  *   开发环境自动将队列注册到 Bull Board

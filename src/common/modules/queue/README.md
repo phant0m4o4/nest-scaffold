@@ -24,16 +24,29 @@
 
 ## 环境变量
 
-在 `.env` 中配置以下变量（均为可选，有默认值）：
+> BullMQ 的 Worker 需要 blocking / subscribe 等专用连接，必须独享 Redis 连接，不能直接共享 [`RedisModule`](../redis/README.md) 的全局 client；因此 QueueModule 的 Redis 连接参数独立声明。
+>
+> **默认复用全局 Redis 的地址**：`.env` 中使用 `${REDIS_HOST}` 等变量引用即可（框架启用了 `expandVariables`）；如果希望队列走独立 Redis 实例或独立 DB，只需要改这里的 `QUEUE_REDIS_*` 值。
+>
+> 当前连接选项面向 `single` / `sentinel` 场景；`cluster` 模式需按 BullMQ 官方文档扩展 `buildBullMqConnection`。
 
-| 变量名                  | 说明                  | 默认值      |
-| ----------------------- | --------------------- | ----------- |
-| `QUEUE_REDIS_HOST`      | Redis 主机地址        | `127.0.0.1` |
-| `QUEUE_REDIS_PORT`      | Redis 端口            | `6379`      |
-| `QUEUE_REDIS_PASSWORD`  | Redis 密码            | 无          |
-| `QUEUE_REDIS_DB`        | Redis 数据库编号      | `0`         |
-| `QUEUE_REDIS_PREFIX`    | 队列 key 前缀         | `queue`     |
-| `QUEUE_DASHBOARD_ROUTE` | Bull Board 仪表盘路由 | `/queues`   |
+| 变量名                  | 说明                                         | 默认值            |
+| ----------------------- | -------------------------------------------- | ----------------- |
+| `QUEUE_REDIS_HOST`      | BullMQ 专用 Redis 主机                       | `127.0.0.1`       |
+| `QUEUE_REDIS_PORT`      | BullMQ 专用 Redis 端口                       | `6379`            |
+| `QUEUE_REDIS_PASSWORD`  | BullMQ 专用 Redis 密码                       | 无                |
+| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB                         | `0`               |
+| `QUEUE_KEY_PREFIX`      | 队列 key 前缀                                | `queue`           |
+| `QUEUE_DASHBOARD_ROUTE` | Bull Board 仪表盘路由                        | `/queues`         |
+
+**.env 示例（复用全局 Redis 地址）：**
+
+```dotenv
+QUEUE_REDIS_HOST=${REDIS_HOST}
+QUEUE_REDIS_PORT=${REDIS_PORT}
+QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
+QUEUE_REDIS_DB=0
+```
 
 ## 使用方式
 
@@ -181,7 +194,7 @@ export class ReportProcessor extends WorkerHost { ... }
 
 ```
 QueueModule (@Module 装饰器)
-├── BullModule.forRootAsync          ← Redis 连接配置（通过 ConfigService）
+├── BullModule.forRootAsync          ← QUEUE_REDIS_* 独立连接配置（通过 ConfigService）
 ├── BullBoardModule.forRootAsync     ← 仪表盘根配置（仅开发环境）
 │
 ├── registerQueue(options)           ← 同步注册队列

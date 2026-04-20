@@ -33,28 +33,24 @@
 
 ## 环境变量
 
-在 `.env` 中配置 Redis 连接与键前缀（Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖）：
+Redis 连接相关环境变量（`REDIS_MODE` / `REDIS_HOST` / `REDIS_PORT` 等）由 [`RedisModule`](../redis/README.md) 维护。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖；本模块仅保留键前缀一项：
 
 ```env
 # 可选（有默认值）
-DISTRIBUTED_LOCK_REDIS_HOST=127.0.0.1
-DISTRIBUTED_LOCK_REDIS_PORT=6379
-DISTRIBUTED_LOCK_REDIS_PASSWORD=
-DISTRIBUTED_LOCK_REDIS_DB=0
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
 ```
 
 ## 快速开始
 
-### 1. 在 AppModule 中注册（推荐全局）
+### 1. 在 AppModule 中注册一次（全局）
+
+模块类已使用 `@Global()` 标记，**无需** `forRoot`；在根模块 `imports` 中加入 `DistributedLockModule` 一次即可，其他业务模块可直接注入 `DistributedLockService`，不必再 `import` 本模块。
 
 ```typescript
 import { DistributedLockModule } from '@/common/modules/distributed-lock/distributed-lock.module';
 
 @Module({
-  imports: [
-    DistributedLockModule.forRoot({ isGlobal: true }),
-  ],
+  imports: [DistributedLockModule],
 })
 export class AppModule {}
 ```

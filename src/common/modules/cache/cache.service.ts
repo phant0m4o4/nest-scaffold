@@ -1,7 +1,8 @@
+import { RedisService } from '@/common/modules/redis/redis.service';
+import type { RedisClient } from '@/common/modules/redis/redis.types';
 import { CacheConfigType } from '@/configs/cache.config';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Redis } from 'ioredis';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 /**
@@ -16,7 +17,7 @@ interface IBatchResult<T> {
 /**
  * 缓存服务
  *
- * 提供基于 Redis 的缓存功能，支持：
+ * 基于共享 `RedisService` 的缓存封装，支持：
  * - JSON 序列化/反序列化（支持所有 JSON 可序列化类型）
  * - TTL 管理（秒级，-1 表示永不过期）
  * - 键前缀管理（自动添加 `{keyPrefix}:` 前缀）
@@ -25,68 +26,35 @@ interface IBatchResult<T> {
  * - 原始字符串操作
  * - Lua 脚本执行
  *
+ * Redis 连接的创建与生命周期由 `RedisService` 统一负责，本服务不再自建连接。
+ *
  * @see README.md 查看完整使用示例与配置说明
  */
 @Injectable()
-export class CacheService implements OnModuleInit, OnModuleDestroy {
+export class CacheService implements OnModuleInit {
   /** 键名最大长度限制 */
   private static readonly _MAX_KEY_LENGTH = 250;
 
-  private readonly _redis: Redis;
+  private _redis!: RedisClient;
   private readonly _defaultTtlSeconds: number;
   private readonly _keyPrefix: string;
 
   constructor(
     private readonly _configService: ConfigService,
+    private readonly _redisService: RedisService,
     @InjectPinoLogger(CacheService.name) private readonly _logger: PinoLogger,
   ) {
     const cacheConfig =
       this._configService.getOrThrow<CacheConfigType>('cache');
-    const { redis, ttlSeconds, keyPrefix } = cacheConfig;
-    this._redis = new Redis(redis);
-    this._defaultTtlSeconds = ttlSeconds;
-    this._keyPrefix = keyPrefix;
+    this._defaultTtlSeconds = cacheConfig.ttlSeconds;
+    this._keyPrefix = cacheConfig.keyPrefix;
   }
 
-  async onModuleInit(): Promise<void> {
-    const isHealthy = await this.isHealthy();
-    if (!isHealthy) {
-      throw new Error('缓存 Redis 连接失败');
-    }
-    this._logger.info('缓存 Redis 连接成功');
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    try {
-      const status = this._redis.status;
-      if (
-        status === 'ready' ||
-        status === 'connect' ||
-        status === 'connecting'
-      ) {
-        await this._redis.quit();
-      } else {
-        this._redis.disconnect();
-      }
-      this._logger.info({ event: 'cache_redis_closed' }, 'Redis 连接已关闭');
-    } catch (error: unknown) {
-      const normalizedError = this._normalizeError(error);
-      this._logger.warn(
-        { event: 'cache_redis_close_warn', error: normalizedError },
-        'Redis 连接关闭时发生错误，可能已关闭',
-      );
-    }
-  }
-
-  /**
-   * 将未知错误统一转换为 Error 实例
-   * @private
-   */
-  private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-    return new Error(String(error));
+  onModuleInit(): void {
+    // RedisService 已在自身的 onModuleInit 完成连接与健康检查，
+    // 此处仅需要取回共享 client 引用即可
+    this._redis = this._redisService.getClient();
+    this._logger.info('缓存服务初始化完成');
   }
 
   /**

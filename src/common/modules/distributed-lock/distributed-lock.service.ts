@@ -1,8 +1,9 @@
+import { RedisService } from '@/common/modules/redis/redis.service';
 import { normalizeError } from '@/common/utils/normalize-error';
 import { DistributedLockConfigType } from '@/configs/distributed-lock.config';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Redis } from 'ioredis';
+import type { Cluster, Redis } from 'ioredis';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import Redlock, {
   type RedlockAbortSignal,
@@ -14,9 +15,14 @@ export type { RedlockAbortSignal };
 
 /** 使用时的默认 TTL（毫秒），未传 ttlMs 时使用 */
 const DEFAULT_TTL_MS = 30_000;
-/** Redlock 实例的默认参数（创建 Redlock 时使用，using 内可通过 options 覆盖） */
+/**
+ * Redlock 实例默认参数（using 内可通过 options 覆盖）
+ *
+ * driftFactor 采用 redlock 官方默认值 0.01（=1%），对应 Redlock 论文假设；
+ * 过小（如 0.001）会在有效期估算中低估时钟漂移，极端情况下可能导致两个持有者同时视为锁有效。
+ */
 const DEFAULT_REDLOCK_SETTINGS: Partial<RedlockSettings> = {
-  driftFactor: 0.001, // 时钟漂移系数
+  driftFactor: 0.01, // 时钟漂移系数（对齐 Redlock 官方默认）
   retryCount: 10, // 重试次数
   retryDelay: 200, // 重试间隔（毫秒）
   retryJitter: 200, // 重试抖动（毫秒）
@@ -39,20 +45,25 @@ export type DistributedLockUsingOptions = Partial<RedlockSettings> & {
 /**
  * 分布式锁服务
  *
- * 基于 Redlock 算法实现分布式锁，支持：
- * - 多 Redis 实例的容错机制
+ * 基于 Redlock 算法实现分布式锁，Redis 连接复用全局 `RedisService`，
+ * 不再自建连接（避免同一 Redis 多份连接池并存）。
+ *
+ * 注意：Redis 连接的生命周期由 `RedisService` 统一管理，本服务 **不** 调用
+ * `redlock.quit()`，以防误关共享 client。
+ *
+ * 支持：
  * - 自动重试和超时处理
  * - 锁的自动续期
  * - 死锁检测和预防
  */
 @Injectable()
-export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
-  private readonly _redlock: Redlock;
-  private readonly _redis: Redis;
+export class DistributedLockService implements OnModuleInit {
+  private _redlock!: Redlock;
   private readonly _keyPrefix: string;
 
   constructor(
     private readonly _configService: ConfigService,
+    private readonly _redisService: RedisService,
     @InjectPinoLogger(DistributedLockService.name)
     private readonly _logger: PinoLogger,
   ) {
@@ -60,10 +71,13 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
       this._configService.getOrThrow<DistributedLockConfigType>(
         'distributedLock',
       );
-    const { redis, keyPrefix } = distributedLockConfig;
-    this._redis = new Redis(redis);
-    this._redlock = new Redlock([this._redis], DEFAULT_REDLOCK_SETTINGS);
-    this._keyPrefix = keyPrefix;
+    this._keyPrefix = distributedLockConfig.keyPrefix;
+  }
+
+  onModuleInit(): void {
+    // RedisService 已完成连接与健康检查，此处仅基于共享 client 创建 Redlock
+    const sharedClient = this._redisService.getClient() as Redis | Cluster;
+    this._redlock = new Redlock([sharedClient], DEFAULT_REDLOCK_SETTINGS);
     this._redlock.on('error', (error: unknown) => {
       this._logger.error(
         { error: normalizeError(error), event: 'redlock_error' },
@@ -79,37 +93,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
         'Redlock Redis 客户端错误',
       );
     });
-  }
-
-  async onModuleInit(): Promise<void> {
-    try {
-      await this._redis.ping();
-      this._logger.info('分布式锁 Redis 连接成功');
-    } catch (error: unknown) {
-      this._logger.error(
-        {
-          error: normalizeError(error),
-          event: 'distributed_lock_redis_connect_failed',
-        },
-        '分布式锁 Redis 连接失败',
-      );
-      throw error;
-    }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    try {
-      await this._redlock.quit();
-      this._logger.info('分布式锁连接已关闭');
-    } catch (error: unknown) {
-      this._logger.warn(
-        {
-          error: normalizeError(error),
-          event: 'distributed_lock_close_warn',
-        },
-        '关闭分布式锁连接时发生错误',
-      );
-    }
+    this._logger.info('分布式锁服务初始化完成');
   }
 
   /**
@@ -157,9 +141,6 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     options?: DistributedLockUsingOptions;
   }): Promise<T> {
     const { resources, execute, ttlMs, options } = params;
-    if (typeof execute !== 'function') {
-      throw new Error('execute 必须是可执行的函数');
-    }
     const keys = this._buildLockKeys(resources);
     const ttl = ttlMs ?? DEFAULT_TTL_MS;
     return this._redlock.using(keys, ttl, options ?? {}, (signal) =>

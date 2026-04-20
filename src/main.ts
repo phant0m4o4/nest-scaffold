@@ -20,6 +20,9 @@ async function bootstrap() {
     rawBody: true, // 解析 body 为 rawBody 配合 Access Key 鉴权使用
     bufferLogs: true, // 缓存日志
   });
+  // 启用进程信号优雅关闭：使 SIGTERM/SIGINT 触发 app.close()，
+  // 进而执行各模块的 onModuleDestroy（如 RedisService 关闭连接）
+  app.enableShutdownHooks();
   // 如果在代理服务器后面或者使用了负载均衡，需要设置这个保证获取到真实的客户端IP
   app.set('trust proxy', true);
   // 获取 pino 日志实例

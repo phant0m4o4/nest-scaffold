@@ -4,6 +4,7 @@ import { DistributedLockModule } from '@/common/modules/distributed-lock/distrib
 import { I18nModule } from '@/common/modules/i18n/i18n.module';
 import { LoggerModule } from '@/common/modules/logger/logger.module';
 import { QueueModule } from '@/common/modules/queue/queue.module';
+import { RedisModule } from '@/common/modules/redis/redis.module';
 import appConfig from '@/configs/app.config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -13,7 +14,7 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
 
 @Module({
   imports: [
-    //配置模块
+    //配置模块(全局)
     ConfigModule.forRoot({
       cache: true,
       expandVariables: true,
@@ -21,17 +22,17 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
     }),
     //日志模块(全局)
     LoggerModule.forRoot({ name: 'app' }),
+    //Redis 共享模块(全局)
+    RedisModule,
     //国际化模块(全局)
     I18nModule,
-    //缓存模块
+    //缓存模块(全局)
     CacheModule,
-    //数据库模块
-    DatabaseModule.forRoot({
-      isGlobal: true,
-    }),
-    // 分布式锁模块
+    //数据库模块(全局)
+    DatabaseModule,
+    // 分布式锁模块(全局)
     DistributedLockModule,
-    // 队列模块
+    // 队列模块(全局)
     QueueModule,
     // API模块
     ApiModule,

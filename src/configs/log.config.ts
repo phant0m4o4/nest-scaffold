@@ -4,6 +4,7 @@ import { ConfigType } from '@nestjs/config';
 import { Expose } from 'class-transformer';
 import {
   IsBooleanString,
+  IsNotEmpty,
   IsOptional,
   IsString,
   ValidateIf,
@@ -32,8 +33,8 @@ class EnvironmentVariables {
   LOG_FILE_ENABLE?: string;
   @Expose()
   @IsString()
-  @IsOptional()
-  @ValidateIf((object: EnvironmentVariables) =>
+  @IsNotEmpty()
+  @ValidateIf((object: EnvironmentVariables): boolean =>
     parseLogFileEnable(object.LOG_FILE_ENABLE),
   )
   LOG_FILE_PATH?: string;

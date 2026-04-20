@@ -1,6 +1,6 @@
 # CacheModule
 
-基于 Redis 的缓存模块，封装 `ioredis`，提供类型安全的缓存读写服务。
+基于共享 `RedisService` 的缓存模块，提供类型安全的缓存读写服务。Redis 连接由 [`RedisModule`](../redis/README.md) 统一管理，本模块不再自建连接。
 
 ## 功能特性
 
@@ -13,18 +13,16 @@
 - **Lua 脚本** — `executeScript` 支持自定义脚本执行
 - **键管理** — `exists` / `getTtl` / `expire` / `persist` / `rename` / `flush`
 - **健康检查** — `isHealthy()` 基于 `PING/PONG` 校验连接
-- **生命周期** — 启动时自动验证连接，销毁时优雅关闭
+- **共享连接** — 复用 `RedisService.getClient()`，避免多套连接池
 
 ## 环境变量
 
-| 变量                      | 类型   | 默认值      | 说明                 |
-| ------------------------- | ------ | ----------- | -------------------- |
-| `CACHE_REDIS_HOST`        | string | `127.0.0.1` | Redis 主机地址       |
-| `CACHE_REDIS_PORT`        | number | `6379`      | Redis 端口           |
-| `CACHE_REDIS_PASSWORD`    | string | —           | Redis 密码（可选）   |
-| `CACHE_REDIS_DB`          | number | `0`         | Redis 数据库编号     |
-| `CACHE_REDIS_TTL_SECONDS` | number | `604800`    | 默认 TTL（秒），7 天 |
-| `CACHE_REDIS_KEY_PREFIX`  | string | `cache`     | 键前缀               |
+> Redis 连接相关环境变量（`REDIS_MODE` / `REDIS_HOST` / `REDIS_PORT` 等）由 [`RedisModule`](../redis/README.md) 维护，本模块仅保留缓存相关配置。
+
+| 变量                 | 类型   | 默认值   | 说明                 |
+| -------------------- | ------ | -------- | -------------------- |
+| `CACHE_TTL_SECONDS`  | number | `604800` | 默认 TTL（秒），7 天 |
+| `CACHE_KEY_PREFIX`   | string | `cache`  | 键前缀               |
 
 ## 快速开始
 

@@ -27,7 +27,7 @@ export async function unique(
   collectionKey: string,
   maxAttempts: number = 50,
 ): Promise<string> {
-  const uniqueSet = uniqueCollections.get(collectionKey) || new Set<string>();
+  const uniqueSet = uniqueCollections.get(collectionKey) ?? new Set<string>();
   let value: string;
 
   for (let attempts = 0; attempts < maxAttempts; attempts++) {
@@ -57,7 +57,7 @@ export async function uniqueArray(
   collectionKey: string,
   maxAttempts: number = 50,
 ): Promise<string[]> {
-  const uniqueSet = uniqueCollections.get(collectionKey) || new Set<string>();
+  const uniqueSet = uniqueCollections.get(collectionKey) ?? new Set<string>();
   let values: string[];
   let valueKey: string;
 

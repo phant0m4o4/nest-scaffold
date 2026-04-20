@@ -1,14 +1,14 @@
 # DatabaseModule
 
-基于 Drizzle ORM + MySQL2 的数据库模块，提供连接管理、Schema 绑定、以及可插拔的 init/seed 工具链。
+基于 Drizzle ORM + MySQL2 的数据库模块，提供连接管理与 Schema 绑定；init/seed CLI 由 `ToolsModule` 单独组合，不通过本模块注册。
 
 ## 功能特性
 
 - `DatabaseService`：MySQL2 连接池 + Drizzle ORM 实例（绑定全部 Schema）
 - 连接池生命周期管理：启动时自动验证连接、销毁时优雅关闭
 - 开发环境自动输出参数化 SQL 查询日志
-- `forRoot()` 动态模块：支持全局模式、可选注入 init/seed 实现
-- CLI 工具脚本：`db:init` 数据库结构初始化、`db:seed` 种子数据填充
+- `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
+- CLI 工具脚本（`ToolsModule`）：`db:init` / `db:seed`，在工具模块内注册 `InitService` / `SeedService` 与 Token
 - Seed 专用工具函数：`unique` / `uniqueArray` 确保生成唯一值
 
 ## 依赖
@@ -37,17 +37,13 @@ MYSQL_PORT=3306
 
 ## 快速开始
 
-### 1. 在 AppModule 中导入推荐全局导入
+### 1. 在 AppModule 中注册一次（全局）
 
 ```typescript
 import { DatabaseModule } from '@/common/modules/database/database.module';
 
 @Module({
-  imports: [
-    DatabaseModule.forRoot({
-      isGlobal: true,
-    }),
-  ],
+  imports: [DatabaseModule],
 })
 export class AppModule {}
 ```
@@ -172,17 +168,7 @@ clearUniqueCollections();
 │                         │  - onModuleDestroy: pool.end()   │ │
 │                         └──────────────────────────────────┘ │
 │                                                             │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │           forRoot() 可选扩展                          │   │
-│  │  ┌────────────────────┐  ┌────────────────────────┐  │   │
-│  │  │ DATABASE_INIT_     │  │ DATABASE_SEEDER        │  │   │
-│  │  │ INITIALIZER        │  │ (ISeeder)              │  │   │
-│  │  │ (IInitInitializer) │  │                        │  │   │
-│  │  └────────┬───────────┘  └────────┬───────────────┘  │   │
-│  │           │                       │                   │   │
-│  │           ▼                       ▼                   │   │
-│  │    ToolsService.init()    ToolsService.seed()         │   │
-│  └──────────────────────────────────────────────────────┘   │
+│  （init/seed Token 与 ToolsService 由 ToolsModule 注册，见 tools/）   │
 │                                                             │
 │  exports: [DatabaseService]                                 │
 └─────────────────────────────────────────────────────────────┘

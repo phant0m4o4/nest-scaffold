@@ -1,4 +1,3 @@
-import { DatabaseModule } from '@/common/modules/database/database.module';
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { BaseRepository } from './common/base.repository';
@@ -19,11 +18,10 @@ export interface IRepositoryModuleOptions {
  * 统一管理仓储类的注册与导出。
  * - `forRoot`：在 AppModule 中一次性注册核心仓储，可选全局
  * - `forFeature`：在业务子模块中按需注册领域仓储
+ *
+ * 依赖已在 `AppModule` 中导入的 `DatabaseModule`（全局 `DatabaseService`）。
  */
-@Module({
-  imports: [DatabaseModule],
-  exports: [DatabaseModule],
-})
+@Module({})
 export class RepositoryModule {
   /**
    * 在根模块中注册仓储（可选全局）
@@ -33,9 +31,8 @@ export class RepositoryModule {
     return {
       module: RepositoryModule,
       global: isGlobal ?? false,
-      imports: [DatabaseModule],
       providers: repositories,
-      exports: [DatabaseModule, ...repositories],
+      exports: repositories,
     };
   }
 
@@ -47,9 +44,8 @@ export class RepositoryModule {
   ): DynamicModule {
     return {
       module: RepositoryModule,
-      imports: [DatabaseModule],
       providers: repositories,
-      exports: [DatabaseModule, ...repositories],
+      exports: repositories,
     };
   }
 }

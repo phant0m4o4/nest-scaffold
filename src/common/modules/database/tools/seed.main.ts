@@ -1,4 +1,6 @@
 import { bootstrapTool } from './bootstrap-tool';
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-bootstrapTool('seed');
+void bootstrapTool('seed').catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
