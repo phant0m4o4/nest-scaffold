@@ -7,6 +7,7 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { demoTypes } from './enums/demo-type.enum';
 import { demosSchema } from './schemas';
 import { fakerZH_CN as faker } from '@faker-js/faker';
+import Sleep from '@/common/utils/sleep';
 /**
  * 数据库种子数据服务
  * 实现 ISeeder，用于执行数据填充
@@ -18,8 +19,8 @@ export class SeedService implements ISeeder {
     @InjectPinoLogger(SeedService.name) private readonly logger: PinoLogger,
   ) {}
   async run() {
-    this.logger.info('是否填充 Seed 数据?');
-    // 是否填充假数据
+    // 等待2秒，让日志输出完成
+    await Sleep(2000);
     const answer = await inquirer.prompt([
       {
         type: 'confirm',

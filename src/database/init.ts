@@ -5,6 +5,7 @@ import inquirer from 'inquirer';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { DemoTypeEnum } from './enums/demo-type.enum';
 import { demosSchema } from './schemas';
+import Sleep from '@/common/utils/sleep';
 /**
  * 数据库初始化服务
  * 实现 IInitInitializer，用于执行初始化过程
@@ -16,7 +17,8 @@ export class InitService implements IInitInitializer {
     @InjectPinoLogger(InitService.name) private readonly logger: PinoLogger,
   ) {}
   async run() {
-    this.logger.info('是否初始化数据库?');
+    // 等待2秒，让日志输出完成
+    await Sleep(2000);
     const answer = await inquirer.prompt([
       {
         type: 'confirm',
