@@ -1,4 +1,4 @@
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { z } from 'zod';
 
 export class FindManyByPaginationDto extends createZodDto(

@@ -21,8 +21,8 @@ const TRANSLATIONS_PATH = path.join(__dirname, '..', '..', '..', 'i18n');
  * - 语言解析器（Query `?lang=` / Accept-Language / x-lang Header）
  * - 开发环境自动 watch 翻译文件变更
  *
- * DTO 校验已迁移至 zod（全局 `ZodValidationPipe` + `ZodValidationExceptionFilter`，
- * 见 `AppModule`），本模块只负责业务文案翻译。
+ * DTO 校验已迁移至 zod（全局 `I18nZodValidationPipe`，见 `AppModule`），
+ * 本模块只负责业务文案翻译。
  *
  * 全局性说明：
  * - `NestI18nModule.forRootAsync()` 内部已标记 `@Global()`，

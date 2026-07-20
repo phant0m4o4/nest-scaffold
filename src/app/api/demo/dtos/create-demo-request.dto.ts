@@ -1,5 +1,5 @@
 import { demoTypes } from '@/database/enums/demo-type.enum';
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { z } from 'zod';
 
 export class CreateDemoRequestDto extends createZodDto(

@@ -9,7 +9,7 @@
 - **ORM**：Drizzle ORM（MySQL / PostgreSQL 双实现，默认装配 MySQL）
 - **缓存/队列**：Redis（ioredis）+ BullMQ
 - **日志**：nestjs-pino + pino-pretty + pino-roll
-- **校验**：zod + nestjs-zod
+- **校验**：zod（项目内轻量 createZodDto 工厂，无框架桥接依赖）
 - **测试**：Vitest（SWC）+ Supertest + Testcontainers
 - **代码规范**：ESLint + Prettier + Commitizen
 

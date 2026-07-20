@@ -1,4 +1,4 @@
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { Create__Feature__RequestDto } from './create-__feature__-request.dto';
 
 export class Update__Feature__RequestDto extends createZodDto(

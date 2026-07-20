@@ -9,7 +9,7 @@
 | `<domain>.module.ts` | NestJS 模块定义，`imports: [RepositoryModule.forFeature([<Domain>Repository])]` |
 | `<domain>.controller.ts` | 路由 + 入参校验 + 调用服务 + 组装响应 |
 | `<domain>.service.ts` | 业务逻辑，组合仓储/缓存/锁/队列等 |
-| `dtos/` | 请求/参数 DTO（zod + `createZodDto`，来自 nestjs-zod） |
+| `dtos/` | 请求/参数 DTO（zod + `createZodDto`，来自 `@/common/utils/zod/create-zod-dto`） |
 | `entities/<domain>.entity.ts` | 响应实体（`createZodDto` 定义，返回前 `.create()` 净化） |
 | `interfaces/` | 业务领域接口（`I*.interface.ts`） |
 | `__tests__/` | `*.spec.ts` 单测 + `*.e2e-spec.ts` E2E |
