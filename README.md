@@ -19,7 +19,9 @@
 - pnpm >= 10
 - Docker & Docker Compose（用于 MySQL、PostgreSQL、Redis 等基础设施）
 
-## 快速开始
+## 快速开始（开发环境）
+
+> 本章节面向本地开发。生产环境部署见下文「[生产环境部署](#生产环境部署)」。
 
 ### 1. 安装依赖
 
@@ -28,6 +30,8 @@ pnpm install
 ```
 
 ### 2. 启动基础设施
+
+`docker-compose.yml` 仅用于本地开发（含管理界面、弱密码默认值）；生产环境应使用独立部署或托管的数据库与 Redis。
 
 ```bash
 docker compose up -d
@@ -46,7 +50,7 @@ docker compose up -d
 
 ### 3. 配置环境变量
 
-复制 `.env.example` 为 `.env`，按需修改：
+复制 `.env.example` 为 `.env`。`.env` 面向本地开发，默认值与上一步 docker-compose 启动的服务一一对应，通常不改即可跑通。`NODE_ENV` 不写入 `.env`，由命令调用方传入（`start:dev` 已内置 `development`）：
 
 ```env
 APP_NAME=nest-scaffold
@@ -96,7 +100,7 @@ QUEUE_DASHBOARD_ROUTE=/queues
 ### 4. 初始化数据库
 
 ```bash
-# 推送表结构到数据库
+# 推送表结构到数据库（push 仅限开发环境；生产环境走 migration，见「生产环境部署」）
 pnpm db:push:mysql
 
 # 初始化基础数据
@@ -114,27 +118,43 @@ NODE_ENV=development pnpm db:seed:mysql
 pnpm start:dev
 ```
 
-### 6. 生产环境启动
+## 生产环境部署
+
+与开发环境的关键差异：基础设施独立部署（不使用本仓库的 docker-compose）、`NODE_ENV=production`、表结构变更只走 migration、不填充 seed 演示数据。
+
+### 1. 配置环境变量
+
+生产环境的变量建议由部署平台（K8s / systemd / PaaS 等）注入，或使用独立维护的 `.env`（不入库）。与开发环境的差异项：
+
+- 数据库 / Redis 指向生产实例，使用强密码（`.env.example` 里的默认值仅供本地开发）；
+- `NODE_ENV=production` 由启动命令或平台注入，不写入 `.env`；
+- 按需调整 `LOG_FILE_*`、`QUEUE_*`、`CACHE_*` 等。
+
+### 2. 安装依赖与构建
 
 ```bash
-# 1. 安装依赖
 pnpm install
-
-# 2. 构建
 pnpm build
-
-# 3. 表结构变更与基础数据初始化
-#    生产环境一律走 migration，禁止使用 db:push（push 直接同步表结构，
-#    可能隐式删表删列且无法回滚；迁移文件在开发期用 db:generate 生成并入库）
-# pnpm db:migrate:mysql
-# NODE_ENV=production pnpm db:init:mysql
-# （seed 填充的是演示数据，仅限开发环境，生产环境执行会被拒绝）
-
-# 4. 启动（需设置 NODE_ENV=production）
-NODE_ENV=production pnpm start:dist
 ```
 
-> 生产环境请确保已配置好 `.env` 或环境变量（数据库、Redis、日志等），并已准备好 MySQL、Redis 等基础设施。
+### 3. 数据库
+
+```bash
+# 表结构变更一律走 migration，禁止 db:push（push 直接同步表结构，
+# 可能隐式删表删列且无法回滚；迁移文件在开发期用 db:generate:mysql 生成并随代码入库）
+pnpm db:migrate:mysql
+
+# 初始化基础数据
+NODE_ENV=production pnpm db:init:mysql
+```
+
+> seed 填充的是 faker 演示数据，仅限开发环境，`NODE_ENV=production` 下执行会被工具拒绝。
+
+### 4. 启动
+
+```bash
+NODE_ENV=production pnpm start:dist
+```
 
 > **仅安装生产依赖的机器**：`pnpm db:init:mysql` 走 `nest start` 现场编译，依赖 `@nestjs/cli`（devDependencies）。若生产机器用 `pnpm install --prod` 只装了生产依赖，请直接运行构建产物：
 >
@@ -162,7 +182,7 @@ NODE_ENV=production pnpm start:dist
 | `pnpm start:debug` | -           | 调试模式，热重载 + Node.js inspector |
 | `pnpm start:dist`  | -           | 运行编译后的 dist 产物（dist/main）  |
 
-> **注意**：生产环境启动前需先执行 `pnpm build`，然后 `NODE_ENV=production pnpm start:dist`。
+> 生产环境的完整流程（环境变量 / migration / 启动）见上方「[生产环境部署](#生产环境部署)」。
 
 ### 测试（Vitest）
 
@@ -188,7 +208,10 @@ MySQL（默认）：
 | `pnpm db:init:mysql`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
 | `pnpm db:seed:mysql`      | 填充种子数据（仅限开发环境）                     |
 
-`db:init:mysql` 用法：`NODE_ENV=development pnpm db:init:mysql`（生产环境换成 `NODE_ENV=production`）。`db:seed:mysql` 填充的是 faker 演示数据，仅限开发环境，`NODE_ENV=production` 下执行会被工具拒绝。
+按环境区分的用法：
+
+- **开发**：`pnpm db:push:mysql` 同步表结构 → `NODE_ENV=development pnpm db:init:mysql` → `NODE_ENV=development pnpm db:seed:mysql`；
+- **生产**：`pnpm db:migrate:mysql` 执行迁移 → `NODE_ENV=production pnpm db:init:mysql`；**禁止** `db:push`（无迁移文件、不可回滚），`db:seed`（faker 演示数据）在 `NODE_ENV=production` 下会被工具拒绝。
 
 PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pgsql`、`db:generate:pgsql`、`db:migrate:pgsql`、`db:init:pgsql`、`db:seed:pgsql`。
 
