@@ -20,12 +20,11 @@
 | `pnpm test <文件路径>` | 运行单个文件单测（`vitest run`） |
 | `pnpm test:watch` | 监听 |
 | `pnpm test:cov` | 覆盖率（`--coverage`） |
-| `pnpm test:debug` | 调试（`--inspect-brk --no-file-parallelism --test-timeout=0`） |
 | `pnpm test:e2e <文件路径>` | E2E（`--config ./vitest-e2e.config.ts`） |
 
 `NODE_ENV=test` 由 `vitest.config.ts` 的 `env` 配置注入。
 
-调试：运行 `pnpm test:debug <文件路径>` 后，在 Chrome 打开 `chrome://inspect`，点击 Remote Target 连接。
+调试：优先在 VS Code 的 JavaScript Debug Terminal 里直接跑 `pnpm test <文件路径>`（断点自动生效）；不依赖 IDE 时用 `pnpm exec vitest run --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
 
 ## 风格总则
 

@@ -191,7 +191,6 @@ NODE_ENV=production pnpm start:dist
 | `pnpm test <文件路径>`     | 运行指定单元测试（`vitest run`）                                 |
 | `pnpm test:watch`          | 监听模式，文件变更自动重跑                                       |
 | `pnpm test:cov`            | 运行测试并生成覆盖率报告（`--coverage`）                         |
-| `pnpm test:debug`          | 调试模式（`--inspect-brk` 挂起等待 Chrome DevTools 连接；vitest 强制要求配 `--no-file-parallelism` 单进程运行，仅此场景不并行） |
 | `pnpm test:e2e <文件路径>` | 运行指定端到端测试（`--config ./vitest-e2e.config.ts`）          |
 
 > Vitest 通过 `vitest.config.ts` 中的 `env` 配置设置 `NODE_ENV=test`。
@@ -267,8 +266,12 @@ src/
 
 ### 调试 Vitest 单元测试
 
+推荐方式：在 VS Code 的 **JavaScript Debug Terminal** 中直接运行 `pnpm test <文件路径>`，断点自动生效，无需任何附加参数。
+
+不依赖 IDE 时，用 vitest 原生参数挂起等待 Chrome DevTools：
+
 ```bash
-pnpm test:debug <文件路径>
+pnpm exec vitest run --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>
 ```
 
-然后在 Chrome 打开 `chrome://inspect`，点击 Remote Target 连接。
+然后在 Chrome 打开 `chrome://inspect`，点击 Remote Target 连接（`--inspect-brk` 要求单进程，故需搭配 `--no-file-parallelism`）。
