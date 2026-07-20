@@ -1,6 +1,6 @@
 # AGENTS.md
 
-本文件给在本仓库工作的 AI 代理(Cursor / Claude Code / Codex 等)统一行为约束。
+本文件给在本仓库工作的 AI 代理(Claude Code / Codex 等)统一行为约束。
 通用部分吸收自 [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)(基于 Andrej Karpathy 对 LLM 写码常见缺陷的观察),后半段是本项目特定规则。
 
 权衡:这些约束倾向 **谨慎优于速度**。琐碎任务(改个错字、显而易见的一行)可灵活处理,不必每次都摆全套阵仗。**写文档和对话时说人话,见第 5 条。**

@@ -4,7 +4,7 @@
 
 ```
 <project-root>/
-├── .cursor/                  # Cursor 配置（含本 skill 与 rules）
+├── .claude/                  # Claude Code 配置（含本 skill）
 ├── .env / .env.example       # 环境变量（.env 不入库）
 ├── docker-compose.yml        # MySQL / Redis / phpMyAdmin / phpRedisAdmin
 ├── drizzle-mysql.config.ts   # Drizzle Kit 配置（MySQL，指向 src/database/mysql/schemas）

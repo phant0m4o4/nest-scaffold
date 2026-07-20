@@ -4,10 +4,10 @@
 # 基于本仓库（nest-scaffold）从零创建一个新项目，复制全部基础设施 + 配置。
 #
 # 用法：
-#   bash .cursor/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
+#   bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 #
 # 示例：
-#   bash .cursor/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-api
+#   bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-api
 #
 # 流程：
 #   1. 把本仓库（除 node_modules / dist / coverage / .tmp / logs / .git）拷贝到 <target-dir>
@@ -40,7 +40,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCAFFOLD_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 if [[ ! -f "$SCAFFOLD_ROOT/package.json" || ! -d "$SCAFFOLD_ROOT/src/app" ]]; then
-  echo "错误: 未在脚手架根目录找到 package.json + src/app（脚本应位于 .cursor/skills/nest-scaffold/scripts/）" >&2
+  echo "错误: 未在脚手架根目录找到 package.json + src/app（脚本应位于 .claude/skills/nest-scaffold/scripts/）" >&2
   exit 1
 fi
 
