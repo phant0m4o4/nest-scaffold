@@ -125,6 +125,7 @@ render "$TEMPLATE_DIR/__feature__.repository.ts" "$REPO_FILE"
 render "$TEMPLATE_DIR/dtos/create-__feature__-request.dto.ts"    "$API_DIR/dtos/create-$FEATURE_SINGULAR-request.dto.ts"
 render "$TEMPLATE_DIR/dtos/update-__feature__-request.dto.ts"    "$API_DIR/dtos/update-$FEATURE_SINGULAR-request.dto.ts"
 render "$TEMPLATE_DIR/dtos/find-many-__feature__-request.dto.ts" "$API_DIR/dtos/find-many-$FEATURE_SINGULAR-request.dto.ts"
+render "$TEMPLATE_DIR/dtos/find-one-__feature__-param.dto.ts"    "$API_DIR/dtos/find-one-$FEATURE_SINGULAR-param.dto.ts"
 
 render "$TEMPLATE_DIR/entities/__feature__.entity.ts" "$API_DIR/entities/$FEATURE_SINGULAR.entity.ts"
 

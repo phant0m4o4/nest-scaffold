@@ -1,4 +1,4 @@
-#mysql，postgres，redis，phpmyadmin，pgadmin 服务 用于 nestjs 项目
+# mysql，postgres，redis，phpmyadmin，pgadmin 服务 用于 nestjs 项目（仅限本地开发）
 services:
   mysql:
     container_name: ${APP_NAME}-mysql
@@ -10,26 +10,34 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root_password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-dev_db}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nest-scaffold}
     ports:
       - ${MYSQL_PORT:-3306}:3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-p${MYSQL_PASSWORD:-root_password}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - nestjs
 
   phpmyadmin:
     container_name: ${APP_NAME}-phpmyadmin
-    image: phpmyadmin
+    image: phpmyadmin:5
     restart: always
     ports:
       - '8081:80'
     environment:
-      PMA_HOST: mysql # 这里的 db-dev 是 db-dev 服务的名称
+      PMA_HOST: mysql # 指向上方 mysql 服务名
       PMA_PORT: ${MYSQL_PORT:-3306}
       PMA_USER: 'root'
       PMA_PASSWORD: ${MYSQL_PASSWORD:-root_password}
       UPLOAD_LIMIT: 100000000
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - nestjs
 
@@ -38,35 +46,50 @@ services:
     image: postgres:16
     restart: always
     environment:
-      POSTGRES_DB: ${PGSQL_DATABASE:-dev_db}
+      POSTGRES_DB: ${PGSQL_DATABASE:-nest-scaffold}
       POSTGRES_USER: ${PGSQL_USER:-postgres}
       POSTGRES_PASSWORD: ${PGSQL_PASSWORD:-root_password}
     ports:
       - ${PGSQL_PORT:-5432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${PGSQL_USER:-postgres}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - nestjs
 
   pgadmin:
     container_name: ${APP_NAME}-pgadmin
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:9
     restart: always
     ports:
       - '8082:80'
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: 'root_password'
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-root_password}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - nestjs
 
   redis:
     container_name: ${APP_NAME}-redis
-    image: redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password}
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password} --appendonly yes
     restart: always
     ports:
       - ${REDIS_PORT:-6379}:6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD:-redis_password} ping | grep PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - nestjs
 
@@ -81,10 +104,16 @@ services:
       REDIS_1_PORT: ${REDIS_PORT:-6379}
       REDIS_1_AUTH: ${REDIS_PASSWORD:-redis_password}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - nestjs
 
 networks:
   nestjs:
     driver: bridge
+
+volumes:
+  mysql-data:
+  postgres-data:
+  redis-data:

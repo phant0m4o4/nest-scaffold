@@ -1,10 +1,18 @@
 import { CreateDemoRequestDto } from '@/app/api/demo/dtos/create-demo-request.dto';
-import { UpdateDemoRequestDto } from '@/app/api/demo/dtos/update-demo-request.dto';
 import { ZodValidationException } from '@/app/exceptions/zod-validation.exception';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { I18nContext } from 'nestjs-i18n';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { I18nZodValidationPipe } from '../i18n-zod-validation.pipe';
+
+/** 带显式自定义错误消息的测试 DTO，用于验证消息优先级 */
+class CustomMessageDto extends createZodDto(
+  z.object({
+    value: z.string().min(1, { message: '自定义消息' }),
+  }),
+) {}
 
 /** 构造 body 元数据（指向传入的 DTO 类） */
 function buildBodyMetadata(metatype: unknown): ArgumentMetadata {
@@ -70,15 +78,11 @@ describe('I18nZodValidationPipe', () => {
     mockRequestLang('en');
 
     try {
-      pipe.transform(
-        { createdAt: 'not-a-date', updatedAt: '2025-01-01 00:00:00' },
-        buildBodyMetadata(UpdateDemoRequestDto),
-      );
+      pipe.transform({ value: '' }, buildBodyMetadata(CustomMessageDto));
       expect.unreachable('应当抛出 ZodValidationException');
     } catch (error) {
       const issues = (error as ZodValidationException).getZodError().issues;
-      const createdAtIssue = issues.find((i) => i.path[0] === 'createdAt');
-      expect(createdAtIssue?.message).toBe('无效的日期时间');
+      expect(issues[0].message).toBe('自定义消息');
     }
   });
 

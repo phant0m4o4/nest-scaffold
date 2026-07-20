@@ -128,6 +128,7 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 | `ER_NO_REFERENCED_ROW` (1452) / `ER_ROW_IS_REFERENCED` (1451) | `ForeignKeyConstraintViolationException` |
 | `ER_LOCK_DEADLOCK` (1213) | `DeadlockDetectedException` |
 | `ER_LOCK_WAIT_TIMEOUT` (1205) | `LockWaitTimeoutException` |
+| 非空/长度/非法值 (1048/1366/1406) | `DataIntegrityViolationException` |
 | 其他 | `RepositoryException` |
 
 业务调用方只需 catch 这些类。

@@ -235,10 +235,9 @@ const remaining =
 BottleneckModule
 ├── bottleneck.module.ts                    # 模块定义，forRoot 注册
 ├── bottleneck.service.ts                   # 限流服务核心
-├── interfaces/
-│   └── bottleneck-config.interface.ts      # 模块配置接口
-└── __tests__/
-    └── bottleneck.service.spec.ts          # 单元测试（Vitest）
+└── interfaces/
+    ├── bottleneck-client.interface.ts      # 限流客户端接口
+    └── bottleneck-config.interface.ts      # 模块配置接口
 
 configs/
 └── bottleneck.config.ts                    # 环境变量配置

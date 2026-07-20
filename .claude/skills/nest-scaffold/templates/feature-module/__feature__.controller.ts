@@ -12,6 +12,7 @@ import {
 import { __Feature__Service } from './__feature__.service';
 import { Create__Feature__RequestDto } from './dtos/create-__feature__-request.dto';
 import { FindMany__Feature__ByCursoredPaginationRequestDto } from './dtos/find-many-__feature__-request.dto';
+import { FindOne__Feature__ParamDto } from './dtos/find-one-__feature__-param.dto';
 import { Update__Feature__RequestDto } from './dtos/update-__feature__-request.dto';
 import { __Feature__Entity } from './entities/__feature__.entity';
 
@@ -56,8 +57,8 @@ export class __Feature__Controller {
 
   /** 查询单条 __feature__ */
   @Get(':id')
-  async findOne(@Param('id') id: number) {
-    const row = await this.__featureCamel__Service.findOne(id);
+  async findOne(@Param() params: FindOne__Feature__ParamDto) {
+    const row = await this.__featureCamel__Service.findOne(params.id);
     return {
       data: row ? __Feature__Entity.create(row) : null,
     };
@@ -66,15 +67,15 @@ export class __Feature__Controller {
   /** 更新 __feature__ */
   @Patch(':id')
   async update(
-    @Param('id') id: number,
+    @Param() params: FindOne__Feature__ParamDto,
     @Body() body: Update__Feature__RequestDto,
   ) {
-    await this.__featureCamel__Service.update(id, body);
+    await this.__featureCamel__Service.update(params.id, body);
   }
 
   /** 删除 __feature__ */
   @Delete(':id')
-  async remove(@Param('id') id: number) {
-    await this.__featureCamel__Service.delete(id);
+  async remove(@Param() params: FindOne__Feature__ParamDto) {
+    await this.__featureCamel__Service.delete(params.id);
   }
 }

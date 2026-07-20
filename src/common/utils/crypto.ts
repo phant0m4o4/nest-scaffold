@@ -59,7 +59,7 @@ export function encrypt(
  * @param authTag 认证标签（base64url）
  * @returns 解密后的原始数据（utf8）
  */
-export function Decrypt(
+export function decrypt(
   encryptedData: string,
   iv: string,
   password: string,

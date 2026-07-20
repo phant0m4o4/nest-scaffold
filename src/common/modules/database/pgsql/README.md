@@ -120,4 +120,4 @@ Drizzle Kit 配置见根目录 `drizzle-pgsql.config.ts`。
 
 ## docker-compose
 
-`docker-compose.yml` 中的 `postgres` / `pgadmin` 服务默认**不随 `mysql` / `phpmyadmin` 一起启动**（各自独立 service，按需 `docker compose up postgres pgadmin`）。
+`docker-compose.yml` 中的 `postgres` / `pgadmin` 服务会随 `docker compose up -d` 与 MySQL 一并启动；如需按需启动，可自行为服务添加 `profiles` 配置，或用 `docker compose up -d postgres pgadmin` 只启动指定服务。
