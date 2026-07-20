@@ -9,7 +9,7 @@
 - 开发环境自动 watch 翻译文件变更（热更新）
 - 完整的 TypeScript 类型安全（翻译键自动补全）
 
-> **注意**：DTO 校验已迁移至 zod（全局 `ZodValidationPipe` + `ZodValidationExceptionFilter`，见 `AppModule` 与 `src/app/filters/zod-validation-exception.filter.ts`）。本模块不再提供 `I18nValidationPipe` / `I18nValidationExceptionFilter`，只负责业务文案翻译。
+> **注意**：DTO 校验已迁移至 zod（全局 `I18nZodValidationPipe` + `ZodValidationExceptionFilter`，见 `AppModule` 与 `src/app/filters/zod-validation-exception.filter.ts`）。本模块不再提供 `I18nValidationPipe` / `I18nValidationExceptionFilter`，只负责业务文案翻译。校验错误消息仍按请求语言本地化：`I18nZodValidationPipe` 读取 `I18nContext` 解析出的语言（Query `?lang=` / Accept-Language / x-lang），选用 zod 官方 locale 渲染（中文 `zhCN`，默认英文）；schema 中显式书写的自定义消息优先。
 
 ## 依赖
 
@@ -86,7 +86,7 @@ export class HelloController {
 
 ### 4. DTO 校验（已迁移至 zod）
 
-DTO 校验不再由本模块处理：请求 DTO 统一用 `createZodDto`（nestjs-zod + zod）定义，由 `AppModule` 全局注册的 `ZodValidationPipe`（`APP_PIPE`）自动校验，校验失败经 `ZodValidationExceptionFilter`（`APP_FILTER`，见 `src/app/filters/zod-validation-exception.filter.ts`）统一返回 HTTP 422：
+DTO 校验不再由本模块处理：请求 DTO 统一用 `createZodDto`（nestjs-zod + zod）定义，由 `AppModule` 全局注册的 `I18nZodValidationPipe`（`APP_PIPE`）自动校验，校验失败经 `ZodValidationExceptionFilter`（`APP_FILTER`，见 `src/app/filters/zod-validation-exception.filter.ts`）统一返回 HTTP 422：
 
 ```json
 {
@@ -154,4 +154,4 @@ type I18nTranslations = {
 └──────────────────────────────────────────────────────────┘
 ```
 
-> DTO 校验的全局 Pipe / Filter 不在本模块内：`ZodValidationPipe`（`APP_PIPE`）与 `ZodValidationExceptionFilter`（`APP_FILTER`）由 `AppModule` 注册。
+> DTO 校验的全局 Pipe / Filter 不在本模块内：`I18nZodValidationPipe`（`APP_PIPE`）与 `ZodValidationExceptionFilter`（`APP_FILTER`）由 `AppModule` 注册。

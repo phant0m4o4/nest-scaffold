@@ -9,9 +9,9 @@ import appConfig from '@/configs/app.config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { ZodValidationPipe } from 'nestjs-zod';
 import { ApiModule } from '@/app/api/api.module';
 import { ZodValidationExceptionFilter } from '@/app/filters/zod-validation-exception.filter';
+import { I18nZodValidationPipe } from '@/app/pipes/i18n-zod-validation.pipe';
 import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.interceptor';
 
 @Module({
@@ -45,10 +45,11 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
       provide: APP_INTERCEPTOR,
       useClass: GlobalResponseInterceptor,
     },
-    // 全局 zod 校验管道（对使用 createZodDto 的 DTO 自动校验 body/query/param）
+    // 全局 zod 校验管道（对使用 createZodDto 的 DTO 自动校验 body/query/param，
+    // 错误消息按请求语言本地化）
     {
       provide: APP_PIPE,
-      useClass: ZodValidationPipe,
+      useClass: I18nZodValidationPipe,
     },
     // 校验失败统一转换为 422 响应
     {
