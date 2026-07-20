@@ -28,7 +28,7 @@ NestJS 11 + TypeScript 5 + Drizzle ORM (MySQL) + ioredis + BullMQ + nestjs-pino 
 4. **类 PascalCase / 变量与方法 camelCase / 私有成员以 `_` 开头**。
 5. **路径别名固定 `@/*` → `src/*`**。新代码中跨目录引用必须用 `@/`，不要写 `../../../`。
 6. **每个文件只有一个导出**（默认导出或单一具名导出）。
-7. **不主动生成 Drizzle migrations**（`db:generate:mysql` / `db:migrate:mysql`）；开发期使用 `pnpm db:push:mysql` 同步。
+7. **不主动生成 Drizzle migrations**（`db:generate:mysql` / `db:migrate:mysql`）；开发期使用 `pnpm db:push:mysql` 同步。**push 仅限开发**，生产环境表结构变更一律走 migration。
 8. **Drizzle 表必须有 `id` 主键列**，否则 `BaseRepository` 会在启动时抛错。`BaseRepository` 通过列名 `deletedAt` 自动判定软删除。
 9. **代码英文 / 注释和文档中文 / 日志 `msg` 中文 + `event` 英文枚举**。
 10. **Git commit**：`type(scope): subject`（type/scope 必须英文），body 必须中文。详见 `reference/git-commit.md`。

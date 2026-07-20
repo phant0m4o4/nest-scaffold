@@ -92,7 +92,7 @@ NODE_ENV=production pnpm db:init:mysql   # 生产环境
 # 种子数据填充（faker 演示数据，仅限开发环境，NODE_ENV=production 会被拒绝）
 NODE_ENV=development pnpm db:seed:mysql
 
-# 表结构同步（Drizzle Kit）
+# 表结构同步（Drizzle Kit，仅限开发；生产环境走 db:generate:mysql + db:migrate:mysql）
 pnpm db:push:mysql
 ```
 
