@@ -6,7 +6,7 @@
 <project-root>/
 ├── .claude/                  # Claude Code 配置（含本 skill）
 ├── .env / .env.example       # 环境变量（.env 不入库）
-├── .github/workflows/        # CI（lint/build/test/e2e，自动）与 CD（构建镜像推 ghcr.io，仅手动触发）
+├── .github/workflows/        # CI（lint/build/test/e2e，自动）；CD 不内置，下游项目参考 README「CI / CD」示例自行添加
 ├── Dockerfile                # 生产镜像（多阶段：SWC 构建 → 仅生产依赖 → node dist/main）
 ├── docker-compose.yml        # MySQL / PostgreSQL / Redis 及各自管理界面（仅本地开发）
 ├── drizzle-mysql.config.ts   # Drizzle Kit 配置（MySQL，指向 src/database/mysql/schemas）

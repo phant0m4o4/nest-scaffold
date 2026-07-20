@@ -89,6 +89,10 @@
 
 ## 本项目特定规则(Project Rules)
 
+### 0. 开发规范入口(默认加载)
+
+**任何涉及本项目代码/文档的任务,动手前先加载 `nest-scaffold` skill**(通过 Skill 工具调用,或直接读 [.claude/skills/nest-scaffold/SKILL.md](.claude/skills/nest-scaffold/SKILL.md)),按其中的决策树进入对应的 `reference/*.md`。SKILL.md 是项目开发规范(命名/分层/DTO/数据库/测试)的唯一入口,不要凭记忆或通用惯例替代它。纯对话、纯 git 操作等不涉及代码的任务可跳过。
+
 ### A. Git 规范:身份、隐私与开发工作流(其中隐私为硬规定,不可妥协)
 
 **项目里(包括 git 历史、配置、代码、注释、文档)不得出现任何本机信息或本人个人信息。**
