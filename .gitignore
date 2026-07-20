@@ -1,9 +1,15 @@
-# compiled output
-/dist
+# 依赖
 /node_modules
+
+# 构建产物
+/dist
 /build
 
-# Logs
+# 测试
+/coverage
+/.nyc_output
+
+# 日志
 logs
 *.log
 npm-debug.log*
@@ -12,45 +18,38 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# OS
+# 环境变量(.env.example 保留入库)
+.env
+.env.local
+.env.*.local
+
+# 操作系统
 .DS_Store
 
-# Tests
-/coverage
-/.nyc_output
-
-# IDEs and editors
+# IDE / 编辑器
 /.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+# AI 工具本地文件
+.claude/settings.local.json
+.claude/worktrees/
 
-# temp directory
+# SSH 密钥(项目内认证用,严禁入库)
+.ssh/
+
+# 临时目录
 .temp
 .tmp
 
-# Runtime data
+# 运行时数据
 pids
 *.pid
 *.seed
 *.pid.lock
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
+# 诊断报告 (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
