@@ -167,7 +167,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 | `reference/database.md` | Drizzle schema、BaseRepository、init/seed、事务 |
 | `reference/infra-modules.md` | Cache / Queue / DistributedLock / Redis / Logger 用法 |
 | `reference/testing.md` | Vitest / Testcontainers / useMocker / overrideProvider |
-| `reference/git-commit.md` | Commitizen 风格、type/scope/body 语言规则 |
+| `reference/git-commit.md` | Commitizen 风格、type/scope/body 语言规则、分支与推送规范 |
 | `reference/env-vars.md` | 完整环境变量清单、默认值、配置注册方式 |
 
 ## Templates 索引
