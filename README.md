@@ -168,13 +168,54 @@ NODE_ENV=production pnpm start:dist
 ## CI / CD
 
 - **CI**（`.github/workflows/ci.yml`）：push 到 `main` 或 PR 时自动运行——`pnpm install --frozen-lockfile` → `lint:check` → 构建 → 单元测试 → E2E（testcontainers 使用 runner 自带 Docker）。
-- **CD**（`.github/workflows/cd.yml`）：**仅手动触发**（GitHub Actions 页面 Run workflow，可填镜像标签），用根目录 `Dockerfile` 构建生产镜像并推送到 `ghcr.io/<owner>/<repo>`。本仓库是脚手架，没有自动发版语义；下游业务项目按自己的发布流程改为 `v*` 标签触发即可（见 cd.yml 头部注释）。
-- **生产镜像**（`Dockerfile`）：多阶段构建——全量依赖 SWC 构建 → 仅生产依赖 → 以非 root 用户运行 `node dist/main`。运行示例：
+- **CD**：本仓库是脚手架，没有交付语义，**不内置 CD 工作流**；脚手架提供的是生产镜像 `Dockerfile`（多阶段构建——全量依赖 SWC 构建 → 仅生产依赖 → 以非 root 用户运行 `node dist/main`）。下游业务项目按自己的发布流程添加 CD，参考示例：
+
+<details>
+<summary>下游项目 CD 示例：v* 标签触发，构建镜像推送 ghcr.io</summary>
+
+```yaml
+# .github/workflows/cd.yml
+name: CD
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  packages: write
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+</details>
 
 ```bash
-# 部署机拉取并运行（镜像标签为手动触发时填写的值；环境变量按「生产环境部署」章节准备）
+# 部署机拉取并运行（环境变量按「生产环境部署」章节准备）
 docker run -d --env-file .env.production -e NODE_ENV=production \
-  -p 3000:3000 ghcr.io/<owner>/nest-scaffold:0.1.0
+  -p 3000:3000 ghcr.io/<owner>/<repo>:0.1.0
 ```
 
 > 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在仓库内约定。数据库迁移在部署流程中执行：容器内含 `drizzle-kit` 与 `dist/` 下的 init 工具（见 Dockerfile 尾部注释）。
