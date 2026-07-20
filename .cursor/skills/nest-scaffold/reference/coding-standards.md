@@ -43,11 +43,13 @@
 - 命名以动词起头：`getUser`、`buildFilters`、`executeJob`、`saveOrder`。
 - 用早返/守卫语句避免嵌套。
 - 简单逻辑（< 3 行）用箭头函数；复杂逻辑命名函数。
-- 多参数用 RO-RO（receive object / return object）：
+- 多参数用 RO-RO（receive object / return object）：**参数 ≥ 3 个，或含可选/布尔参数时强制**；2 个必填参数且语义清晰（如 `id, dto`）可不强制。
 
   ```ts
-  // 推荐
+  // 推荐：含可选参数（或参数 ≥ 3 个）→ 强制 RO-RO
   async create(options: { data: CreateUserDto; tx?: MySqlTransactionType }) {}
+  // 推荐：2 个必填参数且语义清晰 → 可直接平铺
+  async update(id: number, dto: UpdateUserDto) {}
   // 不推荐
   async create(data: CreateUserDto, tx?: MySqlTransactionType) {}
   ```
