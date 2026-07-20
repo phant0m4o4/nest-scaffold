@@ -217,7 +217,7 @@ src/
 
 ## 调试指南
 
-### VS Code / Cursor 调试 NestJS
+### VS Code 调试 NestJS
 
 1. 运行 `pnpm start:debug`
 2. 在 VS Code 中按 `F5` 或通过调试面板 Attach 到 Node.js 进程

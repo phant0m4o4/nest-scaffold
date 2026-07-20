@@ -7,7 +7,7 @@
 从零搭建一个同款 NestJS 脚手架到新目录。
 
 ```bash
-bash .cursor/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
+bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 ```
 
 参数：
@@ -34,7 +34,7 @@ bash .cursor/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 在已有 nest-scaffold 项目内生成一个新业务模块。
 
 ```bash
-bash .cursor/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular> [feature-kebab-plural]
+bash .claude/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular> [feature-kebab-plural]
 ```
 
 参数：

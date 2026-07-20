@@ -4,11 +4,11 @@
 # 在当前 nest-scaffold 项目中生成一个新业务模块。
 #
 # 用法：
-#   bash .cursor/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular> [feature-kebab-plural]
+#   bash .claude/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular> [feature-kebab-plural]
 #
 # 示例：
-#   bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile
-#   bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile user-profiles
+#   bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
+#   bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile user-profiles
 #
 # 生成内容：
 #   src/app/api/<feature>/                  # controller / service / module / dtos / entities / __tests__

@@ -89,9 +89,9 @@ src/
 在仓库根目录执行：
 
 ```bash
-bash .cursor/skills/nest-scaffold/scripts/new-module.sh <domain-kebab>
+bash .claude/skills/nest-scaffold/scripts/new-module.sh <domain-kebab>
 # 示例
-bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile
+bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 ```
 
 脚本会按本仓库约定生成完整目录骨架（controller/service/module/dtos/entities/repository/__tests__），并替换占位符。
@@ -139,9 +139,9 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile
 ## 工作流 C：从零 bootstrap 新项目
 
 ```bash
-bash .cursor/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
+bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 # 示例
-bash .cursor/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-api
+bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-api
 ```
 
 脚本逻辑：
