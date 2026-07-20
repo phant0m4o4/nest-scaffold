@@ -52,21 +52,24 @@ export class <Domain>Controller {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: number) {
-    const row = await this.<domain>Service.findOne(id);
+  async findOne(@Param() params: FindOne<Domain>ParamDto) {
+    const row = await this.<domain>Service.findOne(params.id);
     return {
-      data: <Domain>Entity.create(row),
+      data: row ? <Domain>Entity.create(row) : null,
     };
   }
 
   @Patch(':id')
-  async update(@Param('id') id: number, @Body() body: Update<Domain>RequestDto) {
-    await this.<domain>Service.update(id, body);
+  async update(
+    @Param() params: FindOne<Domain>ParamDto,
+    @Body() body: Update<Domain>RequestDto,
+  ) {
+    await this.<domain>Service.update(params.id, body);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: number) {
-    await this.<domain>Service.delete(id);
+  async remove(@Param() params: FindOne<Domain>ParamDto) {
+    await this.<domain>Service.delete(params.id);
   }
 }
 ```
