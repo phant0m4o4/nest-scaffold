@@ -122,6 +122,8 @@ pnpm start:dev
 
 与开发环境的关键差异：基础设施独立部署（不使用本仓库的 docker-compose）、`NODE_ENV=production`、表结构变更只走 migration、不填充 seed 演示数据。
 
+以下为裸机/虚机直接部署的流程；**推荐用容器部署**——由 CD 构建的生产镜像开箱即用，见下文「[CI / CD](#ci--cd)」。
+
 ### 1. 配置环境变量
 
 生产环境的变量建议由部署平台（K8s / systemd / PaaS 等）注入，或使用独立维护的 `.env`（不入库）。与开发环境的差异项：
