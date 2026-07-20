@@ -9,7 +9,7 @@
 - 连接池生命周期管理：启动时自动验证连接、销毁时优雅关闭
 - 开发环境自动输出参数化 SQL 查询日志
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
-- CLI 工具脚本（`ToolsModule`）：`db:init` / `db:seed`，在工具模块内注册 `InitService` / `SeedService` 与 Token
+- CLI 工具脚本（`ToolsModule`）：`db:init:mysql` / `db:seed:mysql`，在工具模块内注册 `InitService` / `SeedService` 与 Token
 - Seed 专用工具函数：`unique` / `uniqueArray` 确保生成唯一值
 
 ## 依赖
@@ -86,15 +86,15 @@ async transferFunds(fromId: number, toId: number, amount: number) {
 
 ```bash
 # 数据库结构初始化
-NODE_ENV=development pnpm db:init    # 开发环境
-NODE_ENV=production pnpm db:init   # 生产环境
+NODE_ENV=development pnpm db:init:mysql    # 开发环境
+NODE_ENV=production pnpm db:init:mysql   # 生产环境
 
 # 种子数据填充
-NODE_ENV=development pnpm db:seed    # 开发环境
-NODE_ENV=production pnpm db:seed   # 生产环境
+NODE_ENV=development pnpm db:seed:mysql    # 开发环境
+NODE_ENV=production pnpm db:seed:mysql   # 生产环境
 
 # 表结构同步（Drizzle Kit）
-pnpm db:push
+pnpm db:push:mysql
 ```
 
 ### init/seed 实现约定

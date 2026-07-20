@@ -7,7 +7,7 @@
 - `DatabaseService`：node-postgres 连接池 + Drizzle ORM 实例，绑定全部业务 Schema（`src/database/pgsql/schemas`）
 - 连接池生命周期管理：启动时自动验证连接（`SELECT 1`）、销毁时优雅关闭
 - 开发环境自动输出参数化 SQL 查询日志（`$n` 占位符内联）
-- `tools/`：`db:init:pg` / `db:seed:pg` CLI（初始化与种子数据）
+- `tools/`：`db:init:pgsql` / `db:seed:pgsql` CLI（初始化与种子数据）
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
 
 ## 与 MySQL 版本的差异
@@ -104,10 +104,10 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
 
 | 命令 | 说明 |
 | ---- | ---- |
-| `pnpm db:push:pg` | 把 `src/database/pgsql/schemas/` 推到 PostgreSQL（开发用，无 migration 文件） |
-| `pnpm db:generate:pg` / `pnpm db:migrate:pg` | migration 生成 / 执行（用户明确要求才用） |
-| `NODE_ENV=development pnpm db:init:pg` / `NODE_ENV=production pnpm db:init:pg` | 跑 `InitService.run()`（`src/database/pgsql/init.ts`） |
-| `NODE_ENV=development pnpm db:seed:pg` / `NODE_ENV=production pnpm db:seed:pg` | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
+| `pnpm db:push:pgsql` | 把 `src/database/pgsql/schemas/` 推到 PostgreSQL（开发用，无 migration 文件） |
+| `pnpm db:generate:pgsql` / `pnpm db:migrate:pgsql` | migration 生成 / 执行（用户明确要求才用） |
+| `NODE_ENV=development pnpm db:init:pgsql` / `NODE_ENV=production pnpm db:init:pgsql` | 跑 `InitService.run()`（`src/database/pgsql/init.ts`） |
+| `NODE_ENV=development pnpm db:seed:pgsql` / `NODE_ENV=production pnpm db:seed:pgsql` | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
 
 Drizzle Kit 配置见根目录 `drizzle-pgsql.config.ts`。
 

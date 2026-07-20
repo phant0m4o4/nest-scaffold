@@ -9,7 +9,7 @@
 - 软删除以 `deletedAt: timestamp()` 列约定，由 `BaseRepository` 自动识别。
 - 所有 schema 在 `src/database/<dialect>/schemas/<table>.schema.ts`（`<dialect>` 为 `mysql` 或 `pgsql`），并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
 - 跨表枚举放 `src/database/enums/`（方言无关，两套 schema 共享），**键和值都用 camelCase**。仅当前文件用就就地定义。
-- **不主动生成 migration**。开发期 `pnpm db:push`（MySQL）/ `pnpm db:push:pg`（PG）即可。
+- **不主动生成 migration**。开发期 `pnpm db:push:mysql`（MySQL）/ `pnpm db:push:pgsql`（PG）即可。
 
 ## Schema 写法
 
@@ -75,8 +75,8 @@ export const demosSchema = pgTable('demos', {
 - `updatedAt` 用 Drizzle `$onUpdate` 在应用层写入（PG 无 `ON UPDATE CURRENT_TIMESTAMP`）。
 - 仓储基类：`src/app/repositories/common/pgsql/base.repository.ts`（API 与 MySQL 版完全一致）；错误映射走 PG SQLSTATE（`mapPgsqlErrorAndThrow`：23505 唯一冲突、23503 外键、40P01 死锁、55P03 锁不可用、23502/22001/22P02 数据完整性）。
 - 事务类型：`PgsqlTransactionType`（`@/common/modules/database/pgsql/common/types/pgsql-transaction.type`）。
-- init/seed：`src/database/pgsql/init.ts` / `seed.ts`，命令为 `NODE_ENV=development pnpm db:init:pg` / `NODE_ENV=development pnpm db:seed:pg`。
-- Drizzle Kit：`drizzle-pgsql.config.ts`，命令统一带 `:pg` 后缀（见下方命令表）。
+- init/seed：`src/database/pgsql/init.ts` / `seed.ts`，命令为 `NODE_ENV=development pnpm db:init:pgsql` / `NODE_ENV=development pnpm db:seed:pgsql`。
+- Drizzle Kit：`drizzle-pgsql.config.ts`，命令统一带 `:pgsql` 后缀（见下方命令表）。
 - `.env`：`PGSQL_HOST` / `PGSQL_PORT` / `PGSQL_DATABASE` / `PGSQL_USER` / `PGSQL_PASSWORD`（`${APP_NAME}` 占位同样生效）。
 
 ## 命名
@@ -134,7 +134,7 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 
 ## init / seed
 
-`src/database/mysql/init.ts` 实现 `IInitInitializer.run()`，由 `NODE_ENV=development pnpm db:init`（开发） / `NODE_ENV=production pnpm db:init`（生产，需先 `pnpm build`）触发。用于：基础数据、必备角色、系统配置等。
+`src/database/mysql/init.ts` 实现 `IInitInitializer.run()`，由 `NODE_ENV=development pnpm db:init:mysql`（开发） / `NODE_ENV=production pnpm db:init:mysql`（生产，需先 `pnpm build`）触发。用于：基础数据、必备角色、系统配置等。
 
 `src/database/mysql/seed.ts` 实现 `ISeeder.run()`，由 `pnpm db:seed:*` 触发，用于演示/测试数据。
 
@@ -168,11 +168,11 @@ clearUniqueCollections();
 
 | 命令（MySQL / PostgreSQL） | 说明 |
 |------|------|
-| `pnpm db:push` / `pnpm db:push:pg` | 把 `src/database/<dialect>/schemas/` 推到数据库（开发用，无 migration 文件） |
-| `pnpm db:generate` / `pnpm db:generate:pg` | 生成 migration 文件（**用户明确要求才用**） |
-| `pnpm db:migrate` / `pnpm db:migrate:pg` | 执行 migration（**用户明确要求才用**） |
-| `NODE_ENV=development pnpm db:init` / `NODE_ENV=development pnpm db:init:pg`（prod 同理） | 跑 `InitService.run()` |
-| `NODE_ENV=development pnpm db:seed` / `NODE_ENV=development pnpm db:seed:pg`（prod 同理） | 跑 `SeedService.run()` |
+| `pnpm db:push:mysql` / `pnpm db:push:pgsql` | 把 `src/database/<dialect>/schemas/` 推到数据库（开发用，无 migration 文件） |
+| `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | 生成 migration 文件（**用户明确要求才用**） |
+| `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 执行 migration（**用户明确要求才用**） |
+| `NODE_ENV=development pnpm db:init:mysql` / `NODE_ENV=development pnpm db:init:pgsql`（prod 同理） | 跑 `InitService.run()` |
+| `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（prod 同理） | 跑 `SeedService.run()` |
 
 ## .env
 

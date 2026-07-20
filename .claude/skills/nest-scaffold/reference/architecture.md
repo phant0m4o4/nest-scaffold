@@ -72,13 +72,13 @@ src/
     ├── mysql/                              # MySQL 业务库（mysql-core）
     │   ├── schemas/                        # Drizzle 表（每张表一个文件）+ index.ts 聚合 export *
     │   ├── utils/                          # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-    │   ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init）
-    │   └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed）
+    │   ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init:mysql）
+    │   └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:mysql）
     └── pgsql/                              # PostgreSQL 业务库（pg-core，与 mysql/ 平行）
         ├── schemas/                        # 同上（pgTable / pgEnum）
         ├── utils/                          # 同上（integer identity / $onUpdate）
-        ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init:pg）
-        └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:pg）
+        ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init:pgsql）
+        └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:pgsql）
 ```
 
 ## AppModule 装配顺序
