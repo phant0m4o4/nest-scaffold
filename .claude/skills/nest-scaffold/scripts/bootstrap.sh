@@ -125,8 +125,8 @@ cat <<EOF
 
 4. 同步表结构 + 初始化数据：
    pnpm db:push
-   pnpm db:init:dev
-   pnpm db:seed:dev
+   NODE_ENV=development pnpm db:init
+   NODE_ENV=development pnpm db:seed
 
 5. 启动开发服务：
    pnpm start:dev

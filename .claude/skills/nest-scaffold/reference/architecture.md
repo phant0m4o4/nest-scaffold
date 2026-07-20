@@ -12,8 +12,9 @@
 ├── eslint.config.mjs         # ESLint 9 + typescript-eslint + prettier
 ├── vitest.config.ts          # Vitest 单测配置（带 SWC + path alias）
 ├── vitest-e2e.config.ts      # Vitest E2E 配置
-├── nest-cli.json             # i18n 资产复制配置
-├── tsconfig.json             # baseUrl=./, paths={"@/*":["src/*"]}, strictNullChecks
+├── nest-cli.json             # SWC builder（typeCheck）+ i18n 资产复制配置
+├── .swcrc                    # SWC 编译配置（@/* 别名解析、装饰器元数据）
+├── tsconfig.json             # paths={"@/*":["./src/*"]}（无 baseUrl）, strictNullChecks
 ├── tsconfig.build.json       # 仅编译 src/
 └── src/
 ```
@@ -71,13 +72,13 @@ src/
     ├── mysql/                              # MySQL 业务库（mysql-core）
     │   ├── schemas/                        # Drizzle 表（每张表一个文件）+ index.ts 聚合 export *
     │   ├── utils/                          # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-    │   ├── init.ts                         # InitService（pnpm db:init:dev）
-    │   └── seed.ts                         # SeedService（pnpm db:seed:dev）
+    │   ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init）
+    │   └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed）
     └── pgsql/                              # PostgreSQL 业务库（pg-core，与 mysql/ 平行）
         ├── schemas/                        # 同上（pgTable / pgEnum）
         ├── utils/                          # 同上（integer identity / $onUpdate）
-        ├── init.ts                         # InitService（pnpm db:init:pg:dev）
-        └── seed.ts                         # SeedService（pnpm db:seed:pg:dev）
+        ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init:pg）
+        └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:pg）
 ```
 
 ## AppModule 装配顺序
