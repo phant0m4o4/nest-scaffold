@@ -36,6 +36,7 @@ lerna-debug.log*
 
 # AI 工具本地文件
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 .claude/worktrees/
 
 # SSH 密钥(项目内认证用,严禁入库)

@@ -101,6 +101,8 @@
 | 路径参数 | `<Action><Resource>ParamDto` | `<action>-<resource>-param.dto.ts` |
 | 响应实体 | `<Resource>Entity` 或 `<Resource>ResponseDto` | `<resource>.entity.ts` 或 `<resource>-response.dto.ts` |
 
+路径参数**必须**走 param DTO（`@Param() params: FindOne<Resource>ParamDto`），不要写 `@Param('id') id: number`——全局管道只校验 zod DTO，裸参数不会被校验/转换，运行时拿到的是字符串。路由参数原始值都是字符串，schema 用 `z.coerce.number().int().positive()` 这类 coerce 写法。
+
 DTO 与实体（响应类）一律用 `createZodDto`（项目内轻量工厂，见 `@/common/utils/zod/create-zod-dto`）定义：
 
 ```ts
@@ -150,8 +152,8 @@ export class DemoController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: number) {
-    const data = await this.demoService.findOne(id);
+  async findOne(@Param() params: FindOneDemoParamDto) {
+    const data = await this.demoService.findOne(params.id);
     return { data };
   }
 }
