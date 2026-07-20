@@ -13,7 +13,7 @@ describe('__Feature__ E2E', () => {
       imports: [AppModule],
     }).compile();
 
-    // 全局 ZodValidationPipe / ZodValidationExceptionFilter 已由 AppModule 注册，无需额外配置
+    // 全局 I18nZodValidationPipe / ZodValidationExceptionFilter 已由 AppModule 注册，无需额外配置
     app = moduleRef.createNestApplication();
     await app.init();
   });

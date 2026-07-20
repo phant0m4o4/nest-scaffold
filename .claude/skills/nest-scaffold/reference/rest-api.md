@@ -27,7 +27,7 @@
 // 错误（普通）
 { "statusCode": 400, "error": "Bad Request", "message": "..." }
 
-// 校验失败（全局 ZodValidationPipe + ZodValidationExceptionFilter）
+// 校验失败（全局 I18nZodValidationPipe + ZodValidationExceptionFilter）
 {
   "statusCode": 422,
   "message": "Validation Failed",

@@ -74,7 +74,7 @@ export class <Domain>Controller {
 控制器 4 条核心约束：
 
 1. `protected readonly <domain>Service: <Domain>Service` 注入服务。
-2. 入参 DTO + `@Body` / `@Query` / `@Param` 装饰器；不直接读 `req`。DTO 用 `createZodDto` 定义，全局 `ZodValidationPipe` 自动校验。
+2. 入参 DTO + `@Body` / `@Query` / `@Param` 装饰器；不直接读 `req`。DTO 用 `createZodDto` 定义，全局 `I18nZodValidationPipe` 自动校验。
 3. 返回 `{ data?, meta? }`，由全局拦截器套上 `statusCode`。
 4. 返回前必须用 `Entity.create(row)` 净化（zod 默认剔除 schema 未声明的字段）。
 

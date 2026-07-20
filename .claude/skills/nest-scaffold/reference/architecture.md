@@ -90,7 +90,7 @@ src/
 4. `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`
 5. `ApiModule`（业务聚合）
 6. `GlobalResponseInterceptor` 通过 `APP_INTERCEPTOR` Provider 注册
-7. `ZodValidationPipe`（nestjs-zod）通过 `APP_PIPE`、`ZodValidationExceptionFilter`（`src/app/filters/`）通过 `APP_FILTER` 注册 —— DTO 校验全局生效
+7. `I18nZodValidationPipe`（`app/pipes/`，基于 zod，校验消息按请求语言本地化）通过 `APP_PIPE`、`ZodValidationExceptionFilter`（`src/app/filters/`）通过 `APP_FILTER` 注册 —— DTO 校验全局生效
 
 ## main.ts 启动要点
 

@@ -60,7 +60,7 @@
 
 - 不滥用原始类型；把字段封装为类（含校验）。
 - 不可变优先：`readonly` / `as const`。
-- 不在业务函数内做参数校验：DTO 的 zod schema（全局 `ZodValidationPipe`）已经验证。
+- 不在业务函数内做参数校验：DTO 的 zod schema（全局 `I18nZodValidationPipe`）已经验证。
 
 ## 类
 
