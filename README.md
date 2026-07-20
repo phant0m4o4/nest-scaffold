@@ -123,7 +123,9 @@ pnpm install
 # 2. 构建
 pnpm build
 
-# 3. 按需执行数据库迁移与基础数据初始化（若使用迁移）
+# 3. 表结构变更与基础数据初始化
+#    生产环境一律走 migration，禁止使用 db:push（push 直接同步表结构，
+#    可能隐式删表删列且无法回滚；迁移文件在开发期用 db:generate 生成并入库）
 # pnpm db:migrate:mysql
 # NODE_ENV=production pnpm db:init:mysql
 # （seed 填充的是演示数据，仅限开发环境，生产环境执行会被拒绝）
@@ -180,9 +182,9 @@ MySQL（默认）：
 
 | 命令                | 说明                                             |
 | ------------------- | ------------------------------------------------ |
-| `pnpm db:push:mysql`      | 将 Schema 推送到数据库（开发用，不生成迁移文件） |
+| `pnpm db:push:mysql`      | 将 Schema 推送到数据库（**仅限开发**，直接同步、不生成迁移文件，禁止用于生产） |
 | `pnpm db:generate:mysql`  | 生成迁移文件                                     |
-| `pnpm db:migrate:mysql`   | 执行迁移                                         |
+| `pnpm db:migrate:mysql`   | 执行迁移（生产环境表结构变更的唯一方式）         |
 | `pnpm db:init:mysql`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
 | `pnpm db:seed:mysql`      | 填充种子数据（仅限开发环境）                     |
 

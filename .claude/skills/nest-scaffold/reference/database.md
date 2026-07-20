@@ -9,7 +9,7 @@
 - 软删除以 `deletedAt: timestamp()` 列约定，由 `BaseRepository` 自动识别。
 - 所有 schema 在 `src/database/<dialect>/schemas/<table>.schema.ts`（`<dialect>` 为 `mysql` 或 `pgsql`），并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
 - 跨表枚举放 `src/database/enums/`（方言无关，两套 schema 共享），**键和值都用 camelCase**。仅当前文件用就就地定义。
-- **不主动生成 migration**。开发期 `pnpm db:push:mysql`（MySQL）/ `pnpm db:push:pgsql`（PG）即可。
+- **不主动生成 migration**。开发期 `pnpm db:push:mysql`（MySQL）/ `pnpm db:push:pgsql`（PG）即可。**push 仅限开发**：生产环境的表结构变更一律走 migration（`db:generate:*` 生成并入库 → 生产执行 `db:migrate:*`），禁止对生产库 push。
 
 ## Schema 写法
 
@@ -168,7 +168,7 @@ clearUniqueCollections();
 
 | 命令（MySQL / PostgreSQL） | 说明 |
 |------|------|
-| `pnpm db:push:mysql` / `pnpm db:push:pgsql` | 把 `src/database/<dialect>/schemas/` 推到数据库（开发用，无 migration 文件） |
+| `pnpm db:push:mysql` / `pnpm db:push:pgsql` | 把 `src/database/<dialect>/schemas/` 推到数据库（**仅限开发**，无 migration 文件，禁止用于生产） |
 | `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | 生成 migration 文件（**用户明确要求才用**） |
 | `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 执行 migration（**用户明确要求才用**） |
 | `NODE_ENV=development pnpm db:init:mysql` / `NODE_ENV=development pnpm db:init:pgsql`（prod 同理） | 跑 `InitService.run()` |
