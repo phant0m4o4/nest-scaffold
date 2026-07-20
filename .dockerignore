@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+logs
+.git
+.claude
+.cursor
+.github
+.vscode
+.tmp
+.temp
+docs
+*.md
+.env
+.env.*
+.DS_Store

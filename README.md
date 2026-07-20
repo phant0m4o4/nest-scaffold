@@ -163,6 +163,23 @@ NODE_ENV=production pnpm start:dist
 > # PostgreSQL 对应 dist/common/modules/database/pgsql/tools/init.main
 > ```
 
+## CI / CD
+
+- **CI**（`.github/workflows/ci.yml`）：push 到 `main` 或 PR 时运行——`pnpm install --frozen-lockfile` → `lint:check` → 构建 → 单元测试 → E2E（testcontainers 使用 runner 自带 Docker）。
+- **CD**（`.github/workflows/cd.yml`）：推送 `v*` 版本标签（如 `v1.2.0`）或手动触发时，用根目录 `Dockerfile` 构建生产镜像并推送到 `ghcr.io/<owner>/<repo>`，标签含语义化版本、commit sha 与 `latest`。
+- **生产镜像**（`Dockerfile`）：多阶段构建——全量依赖 SWC 构建 → 仅生产依赖 → 以非 root 用户运行 `node dist/main`。运行示例：
+
+```bash
+# 发一个版本
+git tag v0.1.0 && git push origin v0.1.0
+
+# 部署机拉取并运行（环境变量按「生产环境部署」章节准备）
+docker run -d --env-file .env.production -e NODE_ENV=production \
+  -p 3000:3000 ghcr.io/<owner>/nest-scaffold:0.1.0
+```
+
+> 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在仓库内约定。数据库迁移在部署流程中执行：容器内含 `drizzle-kit` 与 `dist/` 下的 init 工具（见 Dockerfile 尾部注释）。
+
 ## 命令参考
 
 ### 构建
