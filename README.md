@@ -167,7 +167,7 @@ NODE_ENV=production pnpm start:dist
 
 ## CI / CD
 
-- **CI**（`.github/workflows/ci.yml`）：push 到 `main` 或 PR 时自动运行——`pnpm install --frozen-lockfile` → `lint:check` → 构建 → 单元测试 → E2E（testcontainers 使用 runner 自带 Docker）。
+- **CI**（`.github/workflows/ci.yml`）：push 到 `main` 或 PR 时自动运行两个并行任务——① `pnpm install --frozen-lockfile` → `lint:check` → 构建 → 单元测试 → E2E（testcontainers 使用 runner 自带 Docker）；② 生产镜像构建验证（`Dockerfile` 只构建不推送）。
 - **CD**：本仓库是脚手架，没有交付语义，**不内置 CD 工作流**；脚手架提供的是生产镜像 `Dockerfile`（多阶段构建——全量依赖 SWC 构建 → 仅生产依赖 → 以非 root 用户运行 `node dist/main`）。下游业务项目按自己的发布流程添加 CD，参考示例：
 
 <details>

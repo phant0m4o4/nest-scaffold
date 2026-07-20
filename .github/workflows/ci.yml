@@ -1,4 +1,5 @@
 # 持续集成：lint + 构建 + 单元测试 + E2E（testcontainers 使用 runner 自带 Docker）
+# docker 任务并行验证生产镜像可构建（只构建不推送，在干净环境暴露"本地能跑"的依赖假象）
 name: CI
 
 on:
@@ -34,3 +35,18 @@ jobs:
 
       - name: E2E 测试（testcontainers）
         run: pnpm test:e2e
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 构建生产镜像（仅验证 Dockerfile，不推送）
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
