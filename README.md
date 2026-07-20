@@ -43,10 +43,10 @@ docker compose up -d
 | ------------- | ---- | ------------------- |
 | MySQL 8.0     | 3306 | 数据库（默认）      |
 | PostgreSQL 16 | 5432 | 数据库（可选）      |
-| phpMyAdmin    | 8080 | MySQL 管理界面      |
+| phpMyAdmin    | 8081 | MySQL 管理界面      |
 | pgAdmin       | 8082 | PostgreSQL 管理界面 |
 | Redis         | 6379 | 缓存/队列           |
-| phpRedisAdmin | 8081 | Redis 管理界面      |
+| phpRedisAdmin | 8080 | Redis 管理界面      |
 
 ### 3. 配置环境变量
 

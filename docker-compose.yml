@@ -21,7 +21,7 @@ services:
     image: phpmyadmin
     restart: always
     ports:
-      - '8080:80'
+      - '8081:80'
     environment:
       PMA_HOST: mysql # 这里的 db-dev 是 db-dev 服务的名称
       PMA_PORT: ${MYSQL_PORT:-3306}
@@ -75,7 +75,7 @@ services:
     image: erikdubbelboer/phpredisadmin
     restart: always
     ports:
-      - '8081:80'
+      - '8080:80'
     environment:
       REDIS_1_HOST: redis
       REDIS_1_PORT: ${REDIS_PORT:-6379}
