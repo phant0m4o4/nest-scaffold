@@ -97,16 +97,16 @@ QUEUE_DASHBOARD_ROUTE=/queues
 
 ```bash
 # 推送表结构到数据库
-pnpm db:push
+pnpm db:push:mysql
 
 # 初始化基础数据
-NODE_ENV=development pnpm db:init
+NODE_ENV=development pnpm db:init:mysql
 
 # 填充种子数据
-NODE_ENV=development pnpm db:seed
+NODE_ENV=development pnpm db:seed:mysql
 ```
 
-> `db:init` / `db:seed` 不内置环境，`NODE_ENV` 由调用方传入（Windows PowerShell 用 `$env:NODE_ENV="development"; pnpm db:init`）。
+> `db:init:mysql` / `db:seed:mysql` 不内置环境，`NODE_ENV` 由调用方传入（Windows PowerShell 用 `$env:NODE_ENV="development"; pnpm db:init:mysql`）。
 
 ### 5. 启动开发服务
 
@@ -124,15 +124,23 @@ pnpm install
 pnpm build
 
 # 3. 按需执行数据库迁移与种子（若使用迁移）
-# pnpm db:migrate
-# NODE_ENV=production pnpm db:init
-# NODE_ENV=production pnpm db:seed
+# pnpm db:migrate:mysql
+# NODE_ENV=production pnpm db:init:mysql
+# NODE_ENV=production pnpm db:seed:mysql
 
 # 4. 启动（需设置 NODE_ENV=production）
 NODE_ENV=production pnpm start:dist
 ```
 
 > 生产环境请确保已配置好 `.env` 或环境变量（数据库、Redis、日志等），并已准备好 MySQL、Redis 等基础设施。
+
+> **仅安装生产依赖的机器**：`pnpm db:init:mysql` / `db:seed:mysql` 走 `nest start` 现场编译，依赖 `@nestjs/cli`（devDependencies）。若生产机器用 `pnpm install --prod` 只装了生产依赖，请直接运行构建产物：
+>
+> ```bash
+> NODE_ENV=production node dist/common/modules/database/mysql/tools/init.main
+> NODE_ENV=production node dist/common/modules/database/mysql/tools/seed.main
+> # PostgreSQL 对应 dist/common/modules/database/pgsql/tools/ 下的同名文件
+> ```
 
 ## 命令参考
 
@@ -173,15 +181,15 @@ MySQL（默认）：
 
 | 命令                | 说明                                             |
 | ------------------- | ------------------------------------------------ |
-| `pnpm db:push`      | 将 Schema 推送到数据库（开发用，不生成迁移文件） |
-| `pnpm db:generate`  | 生成迁移文件                                     |
-| `pnpm db:migrate`   | 执行迁移                                         |
-| `pnpm db:init`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
-| `pnpm db:seed`      | 填充种子数据（`NODE_ENV` 由调用方传入）          |
+| `pnpm db:push:mysql`      | 将 Schema 推送到数据库（开发用，不生成迁移文件） |
+| `pnpm db:generate:mysql`  | 生成迁移文件                                     |
+| `pnpm db:migrate:mysql`   | 执行迁移                                         |
+| `pnpm db:init:mysql`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
+| `pnpm db:seed:mysql`      | 填充种子数据（`NODE_ENV` 由调用方传入）          |
 
-`db:init` / `db:seed` 用法：`NODE_ENV=development pnpm db:init`（生产环境换成 `NODE_ENV=production`）。
+`db:init:mysql` / `db:seed:mysql` 用法：`NODE_ENV=development pnpm db:init:mysql`（生产环境换成 `NODE_ENV=production`）。
 
-PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pg`、`db:generate:pg`、`db:migrate:pg`、`db:init:pg`、`db:seed:pg`。
+PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pgsql`、`db:generate:pgsql`、`db:migrate:pgsql`、`db:init:pgsql`、`db:seed:pgsql`。
 
 ### 代码质量
 

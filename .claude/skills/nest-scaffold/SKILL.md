@@ -28,7 +28,7 @@ NestJS 11 + TypeScript 5 + Drizzle ORM (MySQL) + ioredis + BullMQ + nestjs-pino 
 4. **类 PascalCase / 变量与方法 camelCase / 私有成员以 `_` 开头**。
 5. **路径别名固定 `@/*` → `src/*`**。新代码中跨目录引用必须用 `@/`，不要写 `../../../`。
 6. **每个文件只有一个导出**（默认导出或单一具名导出）。
-7. **不主动生成 Drizzle migrations**（`db:generate` / `db:migrate`）；开发期使用 `pnpm db:push` 同步。
+7. **不主动生成 Drizzle migrations**（`db:generate:mysql` / `db:migrate:mysql`）；开发期使用 `pnpm db:push:mysql` 同步。
 8. **Drizzle 表必须有 `id` 主键列**，否则 `BaseRepository` 会在启动时抛错。`BaseRepository` 通过列名 `deletedAt` 自动判定软删除。
 9. **代码英文 / 注释和文档中文 / 日志 `msg` 中文 + `event` 英文枚举**。
 10. **Git commit**：`type(scope): subject`（type/scope 必须英文），body 必须中文。详见 `reference/git-commit.md`。
@@ -59,9 +59,9 @@ src/
 │   ├── mysql/                  # MySQL 侧（默认装配）
 │   │   ├── schemas/            # Drizzle 表定义（每张表 *.schema.ts，index.ts 聚合导出）
 │   │   ├── utils/              # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-│   │   ├── init.ts             # InitService（NODE_ENV=development pnpm db:init）
-│   │   └── seed.ts             # SeedService（NODE_ENV=development pnpm db:seed）
-│   └── pgsql/                  # PostgreSQL 侧（可选，结构与 mysql/ 平行，命令加 :pg）
+│   │   ├── init.ts             # InitService（NODE_ENV=development pnpm db:init:mysql）
+│   │   └── seed.ts             # SeedService（NODE_ENV=development pnpm db:seed:mysql）
+│   └── pgsql/                  # PostgreSQL 侧（可选，结构与 mysql/ 平行，命令后缀 :pgsql）
 └── main.ts                     # 启用 enableShutdownHooks、Pino logger、CORS
 ```
 
@@ -129,9 +129,9 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
    - 外键用 `createForeignKeyColumn()`。
 3. 在 `src/database/mysql/schemas/index.ts` 重导出新 schema。
 4. 必要时更新 `src/database/mysql/init.ts`（基础数据）和 `src/database/mysql/seed.ts`（演示数据，使用 `unique()` 工具 + `@faker-js/faker` 中文 locale）。
-5. 同步：`pnpm db:push` → `NODE_ENV=development pnpm db:init` → `NODE_ENV=development pnpm db:seed`。
-6. **不要**主动跑 `db:generate` / `db:migrate`，除非用户明确要求 migration。
-7. 若项目使用 PostgreSQL：在 `src/database/pgsql/schemas/` 下用 pg-core（`pgTable` / `pgEnum`）做同样的事，工具函数来自 `@/database/pgsql/utils/*`，同步命令换成 `pnpm db:push:pg` → `NODE_ENV=development pnpm db:init:pg` → `NODE_ENV=development pnpm db:seed:pg`。
+5. 同步：`pnpm db:push:mysql` → `NODE_ENV=development pnpm db:init:mysql` → `NODE_ENV=development pnpm db:seed:mysql`。
+6. **不要**主动跑 `db:generate:mysql` / `db:migrate:mysql`，除非用户明确要求 migration。
+7. 若项目使用 PostgreSQL：在 `src/database/pgsql/schemas/` 下用 pg-core（`pgTable` / `pgEnum`）做同样的事，工具函数来自 `@/database/pgsql/utils/*`，同步命令换成 `pnpm db:push:pgsql` → `NODE_ENV=development pnpm db:init:pgsql` → `NODE_ENV=development pnpm db:seed:pgsql`。
 
 `templates/schema.ts.tpl` 提供模板。详见 `reference/database.md`。
 
@@ -150,7 +150,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 1. 把当前仓库（除 `node_modules` / `dist` / `coverage` / `.tmp` / `logs` / `.git`）拷贝到 `<target-dir>`。
 2. 在目标目录里替换 `package.json` 的 `name`、`.env.example` 的 `APP_NAME` 等占位。
 3. 重新 `git init`（不带原有提交历史）。
-4. 输出后续手动步骤：`pnpm install` → `cp .env.example .env` → `docker compose up -d` → `pnpm db:push && NODE_ENV=development pnpm db:init && NODE_ENV=development pnpm db:seed` → `pnpm start:dev`。
+4. 输出后续手动步骤：`pnpm install` → `cp .env.example .env` → `docker compose up -d` → `pnpm db:push:mysql && NODE_ENV=development pnpm db:init:mysql && NODE_ENV=development pnpm db:seed:mysql` → `pnpm start:dev`。
 
 详见 `scripts/README.md`。
 
