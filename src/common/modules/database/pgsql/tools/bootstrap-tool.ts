@@ -1,3 +1,4 @@
+import { EnvironmentEnum } from '@/common/enums/environment.enum';
 import { NestFactory } from '@nestjs/core';
 import { ToolsModule } from './tools.module';
 import { ToolsService } from './tools.service';
@@ -17,6 +18,13 @@ import { ToolsService } from './tools.service';
 export async function bootstrapTool(
   action: keyof Pick<ToolsService, 'init' | 'seed'>,
 ): Promise<void> {
+  // seed 填充的是 faker 生成的演示数据，仅限开发/测试环境
+  if (
+    action === 'seed' &&
+    process.env.NODE_ENV === EnvironmentEnum.PRODUCTION
+  ) {
+    throw new Error('seed 仅用于开发/测试环境，生产环境禁止填充演示数据');
+  }
   const applicationContext =
     await NestFactory.createApplicationContext(ToolsModule);
   try {

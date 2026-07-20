@@ -123,10 +123,10 @@ pnpm install
 # 2. 构建
 pnpm build
 
-# 3. 按需执行数据库迁移与种子（若使用迁移）
+# 3. 按需执行数据库迁移与基础数据初始化（若使用迁移）
 # pnpm db:migrate:mysql
 # NODE_ENV=production pnpm db:init:mysql
-# NODE_ENV=production pnpm db:seed:mysql
+# （seed 填充的是演示数据，仅限开发环境，生产环境执行会被拒绝）
 
 # 4. 启动（需设置 NODE_ENV=production）
 NODE_ENV=production pnpm start:dist
@@ -134,12 +134,11 @@ NODE_ENV=production pnpm start:dist
 
 > 生产环境请确保已配置好 `.env` 或环境变量（数据库、Redis、日志等），并已准备好 MySQL、Redis 等基础设施。
 
-> **仅安装生产依赖的机器**：`pnpm db:init:mysql` / `db:seed:mysql` 走 `nest start` 现场编译，依赖 `@nestjs/cli`（devDependencies）。若生产机器用 `pnpm install --prod` 只装了生产依赖，请直接运行构建产物：
+> **仅安装生产依赖的机器**：`pnpm db:init:mysql` 走 `nest start` 现场编译，依赖 `@nestjs/cli`（devDependencies）。若生产机器用 `pnpm install --prod` 只装了生产依赖，请直接运行构建产物：
 >
 > ```bash
 > NODE_ENV=production node dist/common/modules/database/mysql/tools/init.main
-> NODE_ENV=production node dist/common/modules/database/mysql/tools/seed.main
-> # PostgreSQL 对应 dist/common/modules/database/pgsql/tools/ 下的同名文件
+> # PostgreSQL 对应 dist/common/modules/database/pgsql/tools/init.main
 > ```
 
 ## 命令参考
@@ -185,9 +184,9 @@ MySQL（默认）：
 | `pnpm db:generate:mysql`  | 生成迁移文件                                     |
 | `pnpm db:migrate:mysql`   | 执行迁移                                         |
 | `pnpm db:init:mysql`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
-| `pnpm db:seed:mysql`      | 填充种子数据（`NODE_ENV` 由调用方传入）          |
+| `pnpm db:seed:mysql`      | 填充种子数据（仅限开发环境）                     |
 
-`db:init:mysql` / `db:seed:mysql` 用法：`NODE_ENV=development pnpm db:init:mysql`（生产环境换成 `NODE_ENV=production`）。
+`db:init:mysql` 用法：`NODE_ENV=development pnpm db:init:mysql`（生产环境换成 `NODE_ENV=production`）。`db:seed:mysql` 填充的是 faker 演示数据，仅限开发环境，`NODE_ENV=production` 下执行会被工具拒绝。
 
 PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pgsql`、`db:generate:pgsql`、`db:migrate:pgsql`、`db:init:pgsql`、`db:seed:pgsql`。
 

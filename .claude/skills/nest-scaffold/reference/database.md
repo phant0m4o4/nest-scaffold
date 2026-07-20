@@ -136,7 +136,7 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 
 `src/database/mysql/init.ts` 实现 `IInitInitializer.run()`，由 `NODE_ENV=development pnpm db:init:mysql`（开发） / `NODE_ENV=production pnpm db:init:mysql`（生产，需先 `pnpm build`）触发。用于：基础数据、必备角色、系统配置等。
 
-`src/database/mysql/seed.ts` 实现 `ISeeder.run()`，由 `pnpm db:seed:*` 触发，用于演示/测试数据。
+`src/database/mysql/seed.ts` 实现 `ISeeder.run()`，由 `pnpm db:seed:*` 触发，用于演示/测试数据。**仅限开发/测试环境**：`NODE_ENV=production` 下 `bootstrapTool` 会直接拒绝执行。
 
 两者都通过 inquirer 二次确认：
 
@@ -172,7 +172,7 @@ clearUniqueCollections();
 | `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | 生成 migration 文件（**用户明确要求才用**） |
 | `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 执行 migration（**用户明确要求才用**） |
 | `NODE_ENV=development pnpm db:init:mysql` / `NODE_ENV=development pnpm db:init:pgsql`（prod 同理） | 跑 `InitService.run()` |
-| `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（prod 同理） | 跑 `SeedService.run()` |
+| `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()` |
 
 ## .env
 

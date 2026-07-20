@@ -107,7 +107,7 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
 | `pnpm db:push:pgsql` | 把 `src/database/pgsql/schemas/` 推到 PostgreSQL（开发用，无 migration 文件） |
 | `pnpm db:generate:pgsql` / `pnpm db:migrate:pgsql` | migration 生成 / 执行（用户明确要求才用） |
 | `NODE_ENV=development pnpm db:init:pgsql` / `NODE_ENV=production pnpm db:init:pgsql` | 跑 `InitService.run()`（`src/database/pgsql/init.ts`） |
-| `NODE_ENV=development pnpm db:seed:pgsql` / `NODE_ENV=production pnpm db:seed:pgsql` | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
+| `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
 
 Drizzle Kit 配置见根目录 `drizzle-pgsql.config.ts`。
 

@@ -89,9 +89,8 @@ async transferFunds(fromId: number, toId: number, amount: number) {
 NODE_ENV=development pnpm db:init:mysql    # 开发环境
 NODE_ENV=production pnpm db:init:mysql   # 生产环境
 
-# 种子数据填充
-NODE_ENV=development pnpm db:seed:mysql    # 开发环境
-NODE_ENV=production pnpm db:seed:mysql   # 生产环境
+# 种子数据填充（faker 演示数据，仅限开发环境，NODE_ENV=production 会被拒绝）
+NODE_ENV=development pnpm db:seed:mysql
 
 # 表结构同步（Drizzle Kit）
 pnpm db:push:mysql
