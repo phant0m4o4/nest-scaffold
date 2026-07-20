@@ -1,12 +1,11 @@
 import { EnvironmentEnum } from '@/common/enums/environment.enum';
 import { normalizeError } from '@/common/utils/normalize-error';
-import type { DatabaseConfigType } from '@/configs/database.config';
-import * as schema from '@/database/schemas';
+import type { PgsqlDatabaseConfigType } from '@/configs/pgsql-database.config';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger as DrizzleLogger } from 'drizzle-orm/logger';
-import { drizzle, MySql2Database } from 'drizzle-orm/mysql2';
-import * as mysql from 'mysql2/promise';
+import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 /**
@@ -15,7 +14,7 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
  * - null / undefined → `NULL`
  * - string → 单引号包裹，转义内部单引号
  * - number / bigint / boolean → 直接 toString
- * - Date → ISO 格式（去掉时区后缀，方便粘回 MySQL）
+ * - Date → ISO 格式（去掉时区后缀，方便粘回 PostgreSQL）
  * - Buffer → `X'<hex>'` 字面量
  * - 其他对象 → 转为 JSON 后按字符串处理
  */
@@ -24,7 +23,7 @@ function formatSqlLiteral(value: unknown): string {
   if (typeof value === 'number' || typeof value === 'bigint') {
     return value.toString();
   }
-  if (typeof value === 'boolean') return value ? '1' : '0';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (value instanceof Date) {
     return `'${value.toISOString().slice(0, 19).replace('T', ' ')}'`;
   }
@@ -38,30 +37,34 @@ function formatSqlLiteral(value: unknown): string {
 /**
  * 将 drizzle 生成的参数化 SQL 内联成可读形式。
  *
- * 仅替换位于字符串字面量之外的 `?` 占位符，避免误替换 `LIKE '%?%'` 等场景中的字面量 `?`。
+ * 仅替换位于字符串字面量之外的 `$n` 占位符（PostgreSQL 风格），避免误替换字面量场景。
  */
 function inlineSqlParams(query: string, params: readonly unknown[]): string {
   let result = '';
-  let paramIndex = 0;
-  let quote: "'" | '"' | '`' | null = null;
+  let quote: "'" | '"' | null = null;
   for (let i = 0; i < query.length; i++) {
     const ch = query[i];
     if (quote) {
       result += ch;
-      if (ch === '\\' && i + 1 < query.length) {
-        result += query[++i];
-      } else if (ch === quote) {
+      if (ch === quote) {
         quote = null;
       }
       continue;
     }
-    if (ch === "'" || ch === '"' || ch === '`') {
+    if (ch === "'" || ch === '"') {
       quote = ch;
       result += ch;
       continue;
     }
-    if (ch === '?') {
-      result += formatSqlLiteral(params[paramIndex++]);
+    if (ch === '$' && /[0-9]/.test(query[i + 1] ?? '')) {
+      let digits = '';
+      let j = i + 1;
+      while (j < query.length && /[0-9]/.test(query[j])) {
+        digits += query[j];
+        j++;
+      }
+      result += formatSqlLiteral(params[Number(digits) - 1]);
+      i = j - 1;
       continue;
     }
     result += ch;
@@ -87,52 +90,53 @@ class DrizzleQueryLogger implements DrizzleLogger {
 }
 
 /**
- * 数据库服务
+ * 数据库服务（PostgreSQL）
  *
- * 基于 MySQL2 连接池 + Drizzle ORM，提供：
- * - `db`：Drizzle 数据库实例，供 Repository 层直接使用
+ * 基于 node-postgres 连接池 + Drizzle ORM，提供：
+ * - `db`：Drizzle 数据库实例
  * - 连接池生命周期管理（启动验证、优雅关闭）
  * - 开发环境 SQL 查询日志
+ *
+ * 与 `../mysql/database.service.ts` 是平行的两套实现。当前尚未绑定业务 Schema，
+ * 待新增 pg-core Schema 后可参照 mysql 版本把 `schema` 传入 `drizzle()`。
  *
  * @see README.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
-  private readonly _pool: mysql.Pool;
+  private readonly _pool: Pool;
 
-  /** Drizzle ORM 数据库实例，绑定全部 Schema */
-  public readonly db: MySql2Database<typeof schema>;
+  /** Drizzle ORM 数据库实例 */
+  public readonly db: NodePgDatabase;
 
   constructor(
     private readonly _configService: ConfigService,
     @InjectPinoLogger(DatabaseService.name)
     private readonly _logger: PinoLogger,
   ) {
-    this._pool = mysql.createPool(
-      this._configService.getOrThrow<DatabaseConfigType>('database'),
+    this._pool = new Pool(
+      this._configService.getOrThrow<PgsqlDatabaseConfigType>('pgsqlDatabase'),
     );
     const isDev = process.env.NODE_ENV === EnvironmentEnum.DEVELOPMENT;
     this.db = drizzle({
       client: this._pool,
-      schema,
-      mode: 'default',
       logger: isDev ? new DrizzleQueryLogger(this._logger) : undefined,
     });
   }
 
   async onModuleInit(): Promise<void> {
     try {
-      const connection = await this._pool.getConnection();
-      await connection.ping();
-      connection.release();
-      this._logger.info('数据库 MySQL 连接成功');
+      const client = await this._pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      this._logger.info('数据库 PostgreSQL 连接成功');
     } catch (error) {
       this._logger.error(
         {
           error: normalizeError(error),
           event: 'db_connect_failed',
         },
-        '数据库 MySQL 连接失败',
+        '数据库 PostgreSQL 连接失败',
       );
       throw error;
     }

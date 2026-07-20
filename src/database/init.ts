@@ -1,4 +1,4 @@
-import { DatabaseService } from '@/common/modules/database/database.service';
+import { DatabaseService } from '@/common/modules/database/mysql/database.service';
 import { IInitInitializer } from '@/common/modules/database/interfaces/init-initializer.interface';
 import { Injectable } from '@nestjs/common';
 import inquirer from 'inquirer';

@@ -1,5 +1,5 @@
 import { CacheModule } from '@/common/modules/cache/cache.module';
-import { DatabaseModule } from '@/common/modules/database/database.module';
+import { DatabaseModule } from '@/common/modules/database/mysql/database.module';
 import { DistributedLockModule } from '@/common/modules/distributed-lock/distributed-lock.module';
 import { I18nModule } from '@/common/modules/i18n/i18n.module';
 import { LoggerModule } from '@/common/modules/logger/logger.module';

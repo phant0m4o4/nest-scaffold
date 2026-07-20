@@ -1,5 +1,5 @@
-import { MySqlDatabaseType } from '@/common/modules/database/common/types/mysql-database.type';
-import { DatabaseService } from '@/common/modules/database/database.service';
+import { MySqlDatabaseType } from '@/common/modules/database/mysql/common/types/mysql-database.type';
+import { DatabaseService } from '@/common/modules/database/mysql/database.service';
 import { demosSchema } from '@/database/schemas/demos.schema';
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';

@@ -1,4 +1,4 @@
-import { MySqlDatabaseType } from '@/common/modules/database/common/types/mysql-database.type';
+import { MySqlDatabaseType } from '@/common/modules/database/mysql/common/types/mysql-database.type';
 import { UTC } from '@/common/utils/date-time';
 import {
   and,
