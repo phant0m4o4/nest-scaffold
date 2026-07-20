@@ -2,7 +2,7 @@ import { FindManyByCursoredPaginationDto } from '@/app/api/common/dtos/find-many
 import { FindManyByPaginationDto } from '@/app/api/common/dtos/find-many-by-pagination.dto';
 import { UTC } from '@/common/utils/date-time';
 import { demoTypes } from '@/database/enums/demo-type.enum';
-import { demosSchema } from '@/database/schemas';
+import { demosSchema } from '@/database/mysql/schemas';
 import { Transform } from 'class-transformer';
 import { IsDate, IsIn, IsOptional, IsString } from 'class-validator';
 import { getTableConfig } from 'drizzle-orm/mysql-core';

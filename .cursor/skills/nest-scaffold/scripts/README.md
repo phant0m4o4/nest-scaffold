@@ -56,7 +56,7 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
 3. 生成：
    - `src/app/api/<feature>/`（controller / service / module / dtos / entities / __tests__）
    - `src/app/repositories/<feature>.repository.ts`
-   - `src/database/schemas/<features>.schema.ts`（如不存在，从 `templates/schema.ts.tpl` 生成桩）
+   - `src/database/mysql/schemas/<features>.schema.ts`（如不存在，从 `templates/schema.ts.tpl` 生成桩）
 4. 输出后续手动步骤（更新 schemas/index.ts、api.module.ts、db:push、补 TODO、跑测试）。
 
 约束：
@@ -69,4 +69,4 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
 
 - **`错误: 未找到仓库根目录`**：脚本要求当前工作目录或祖先有 `package.json` + `src/app/`。请进入项目根再跑。
 - **替换后的代码 lint 报错**：先 `pnpm lint --fix`，常见是 import 顺序与 prettier 行尾。
-- **`db:push` 报表不存在**：确认 `src/database/schemas/index.ts` 已 `export * from './<features>.schema'`。
+- **`db:push` 报表不存在**：确认 `src/database/mysql/schemas/index.ts` 已 `export * from './<features>.schema'`。

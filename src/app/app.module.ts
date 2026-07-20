@@ -28,7 +28,7 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
     I18nModule,
     //缓存模块(全局)
     CacheModule,
-    //数据库模块(全局)
+    //数据库模块(全局,MySQL;PG 版见 @/common/modules/database/pgsql)
     DatabaseModule,
     // 分布式锁模块(全局)
     DistributedLockModule,

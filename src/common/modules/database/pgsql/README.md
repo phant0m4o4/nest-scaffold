@@ -4,16 +4,19 @@
 
 ## 功能特性
 
-- `DatabaseService`：node-postgres 连接池 + Drizzle ORM 实例
+- `DatabaseService`：node-postgres 连接池 + Drizzle ORM 实例，绑定全部业务 Schema（`src/database/pgsql/schemas`）
 - 连接池生命周期管理：启动时自动验证连接（`SELECT 1`）、销毁时优雅关闭
 - 开发环境自动输出参数化 SQL 查询日志（`$n` 占位符内联）
+- `tools/`：`db:init:pg` / `db:seed:pg` CLI（初始化与种子数据）
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
 
-## 与 MySQL 版本的差异（现状）
+## 与 MySQL 版本的差异
 
-- **尚未绑定业务 Schema**：`src/database/schemas` 下现有 Schema 均基于 `drizzle-orm/mysql-core`，无法直接给 PG 用。新增 pg-core Schema（`pgTable` 等）后，参照 `mysql/database.service.ts` 把 `schema` 传入 `drizzle({ client, schema })` 即可获得类型化 `db.query.*`。
-- **暂无 init/seed CLI**：`../mysql/tools/` 下的 `db:init` / `db:seed` 脚本绑定的是 `src/database/init.ts` / `seed.ts`（MySQL 业务数据）。PG 侧待有业务 Schema 后，可复制 `mysql/tools/` 目录结构（`bootstrap-tool.ts` / `*.main.ts` / `tools.module.ts` / `tools.service.ts`）并指向自己的 `IInitInitializer` / `ISeeder` 实现。
-- **仓储层（`BaseRepository`）仍是 MySQL 专属**：其类型约束在 `MySqlTable`/`MySqlDatabaseType`，且依赖 `$returningId()` 等 MySQL 专属 API，`mysql-error-mapper.util.ts` 的错误码也是 MySQL 专属（`ER_xxx`）。PG 版仓储基类需要单独实现（PG 错误码走 `error.code`，如唯一冲突 `23505`、外键冲突 `23503`），本次未包含在改造范围内。
+- **主键**：`integer GENERATED ALWAYS AS IDENTITY`（MySQL 为 `int unsigned auto_increment`），见 `src/database/pgsql/utils/create-primary-key.ts`。
+- **updatedAt**：PostgreSQL 没有 `ON UPDATE CURRENT_TIMESTAMP`，由 Drizzle 的 `$onUpdate` 在应用层写入（仅经由 Drizzle 的更新生效）。
+- **枚举**：`pgEnum` 是独立的数据库类型（`CREATE TYPE`），需要在 schema 文件中声明并导出。
+- **返回 id**：插入用 `.returning()`（MySQL 为 `$returningId()`），已在 `src/app/repositories/common/pgsql/base.repository.ts` 中封装。
+- **错误码**：PG 走 SQLSTATE（唯一冲突 `23505`、外键 `23503` 等），由 `pgsql-error-mapper.util.ts` 映射为与 MySQL 版一致的领域异常。
 
 ## 依赖
 
@@ -80,6 +83,33 @@ await this._databaseService.db.transaction(async (tx: PgsqlTransactionType) => {
   // ...
 });
 ```
+
+### 4. 定义业务仓储
+
+```typescript
+import { DatabaseService } from '@/common/modules/database/pgsql/database.service';
+import { demosSchema } from '@/database/pgsql/schemas/demos.schema';
+import { Injectable } from '@nestjs/common';
+import { BaseRepository } from '@/app/repositories/common/pgsql/base.repository';
+
+@Injectable()
+export class DemoRepository extends BaseRepository<typeof demosSchema> {
+  constructor(private readonly _databaseService: DatabaseService) {
+    super(demosSchema, _databaseService.db);
+  }
+}
+```
+
+## 命令
+
+| 命令 | 说明 |
+| ---- | ---- |
+| `pnpm db:push:pg` | 把 `src/database/pgsql/schemas/` 推到 PostgreSQL（开发用，无 migration 文件） |
+| `pnpm db:generate:pg` / `pnpm db:migrate:pg` | migration 生成 / 执行（用户明确要求才用） |
+| `pnpm db:init:pg:dev` / `pnpm db:init:pg:prod` | 跑 `InitService.run()`（`src/database/pgsql/init.ts`） |
+| `pnpm db:seed:pg:dev` / `pnpm db:seed:pg:prod` | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
+
+Drizzle Kit 配置见根目录 `drizzle-pgsql.config.ts`。
 
 ## 类型导出
 

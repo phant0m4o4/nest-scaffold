@@ -1,8 +1,8 @@
-import { DataIntegrityViolationException } from '../exceptions/data-integrity-violation-exception';
-import { DeadlockDetectedException } from '../exceptions/deadlock-detected-exception';
-import { ForeignKeyConstraintViolationException } from '../exceptions/foreign-key-constraint-violation-exception';
-import { LockWaitTimeoutException } from '../exceptions/lock-wait-timeout-exception';
-import { RecordAlreadyExistsException } from '../exceptions/record-already-exists-exception';
+import { DataIntegrityViolationException } from '../../exceptions/data-integrity-violation-exception';
+import { DeadlockDetectedException } from '../../exceptions/deadlock-detected-exception';
+import { ForeignKeyConstraintViolationException } from '../../exceptions/foreign-key-constraint-violation-exception';
+import { LockWaitTimeoutException } from '../../exceptions/lock-wait-timeout-exception';
+import { RecordAlreadyExistsException } from '../../exceptions/record-already-exists-exception';
 
 /** MySQL 错误对象的类型安全访问结构 */
 interface IMysqlErrorLike {

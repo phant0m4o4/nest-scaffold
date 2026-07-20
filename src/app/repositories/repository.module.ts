@@ -1,6 +1,15 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
-import { BaseRepository } from './common/base.repository';
+import { PgTable } from 'drizzle-orm/pg-core';
+import { BaseRepository as MysqlBaseRepository } from './common/mysql/base.repository';
+import { BaseRepository as PgsqlBaseRepository } from './common/pgsql/base.repository';
+
+/**
+ * 任意方言的仓储基类（MySQL / PostgreSQL）
+ */
+export type AnyBaseRepositoryType =
+  | MysqlBaseRepository<MySqlTable>
+  | PgsqlBaseRepository<PgTable>;
 
 /**
  * RepositoryModule 配置选项
@@ -9,7 +18,7 @@ export interface IRepositoryModuleOptions {
   /** 是否注册为全局模块 */
   isGlobal?: boolean;
   /** 需要注册的仓储类列表 */
-  repositories?: Type<BaseRepository<MySqlTable>>[];
+  repositories?: Type<AnyBaseRepositoryType>[];
 }
 
 /**
@@ -40,7 +49,7 @@ export class RepositoryModule {
    * 在业务子模块中按需注册仓储
    */
   static forFeature(
-    repositories: Type<BaseRepository<MySqlTable>>[],
+    repositories: Type<AnyBaseRepositoryType>[],
   ): DynamicModule {
     return {
       module: RepositoryModule,

@@ -8,6 +8,6 @@ import {
 export type MySqlTransactionType = MySqlTransaction<
   MySql2QueryResultHKT,
   MySql2PreparedQueryHKT,
-  typeof import('@/database/schemas'),
-  ExtractTablesWithRelations<typeof import('@/database/schemas')>
+  typeof import('@/database/mysql/schemas'),
+  ExtractTablesWithRelations<typeof import('@/database/mysql/schemas')>
 >;

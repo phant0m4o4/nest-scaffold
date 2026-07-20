@@ -53,7 +53,7 @@ export class AppModule {}
 
 ```typescript
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
-import { demos } from '@/database/schemas';
+import { demos } from '@/database/mysql/schemas';
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
@@ -102,7 +102,7 @@ pnpm db:push
 初始化器和种子器需实现对应接口：
 
 ```typescript
-// src/database/init.ts
+// src/database/mysql/init.ts
 import type { IInitInitializer } from '@/common/modules/database/interfaces/init-initializer.interface';
 
 @Injectable()
@@ -112,7 +112,7 @@ export class InitService implements IInitInitializer {
   }
 }
 
-// src/database/seed.ts
+// src/database/mysql/seed.ts
 import type { ISeeder } from '@/common/modules/database/interfaces/seeder.interface';
 
 @Injectable()

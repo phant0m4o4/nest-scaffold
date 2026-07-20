@@ -4,10 +4,10 @@
 
 ## 功能特性
 
-- **BaseRepository 抽象基类** — 提供完整的 CRUD + 分页 + 软删除能力，业务仓储零样板继承
+- **BaseRepository 抽象基类** — 提供完整的 CRUD + 分页 + 软删除能力，业务仓储零样板继承；MySQL / PostgreSQL 两套平行实现（`common/mysql` / `common/pgsql`），API 完全一致
 - **两种分页模式** — 普通分页（page/pageSize）与游标分页（cursor/limit）
 - **自动软删除** — 表含 `deletedAt` 列时自动启用，查询/删除无感知切换
-- **MySQL 错误映射** — 将数据库错误码转换为语义化领域异常
+- **错误映射** — 将数据库错误码（MySQL `ER_xxx` / PG SQLSTATE）转换为同一套语义化领域异常
 - **RepositoryModule** — 支持 `forRoot` / `forFeature` 动态注册仓储
 
 ## 目录结构
@@ -15,14 +15,19 @@
 ```
 src/app/repositories/
 ├── common/
-│   ├── base.repository.ts              # 抽象基类
-│   ├── utils/
-│   │   └── mysql-error-mapper.util.ts  # MySQL 错误码 → 领域异常映射
-│   ├── interfaces/
+│   ├── mysql/
+│   │   ├── base.repository.ts              # 抽象基类（MySQL）
+│   │   └── utils/
+│   │       └── mysql-error-mapper.util.ts  # MySQL 错误码 → 领域异常映射
+│   ├── pgsql/
+│   │   ├── base.repository.ts              # 抽象基类（PostgreSQL，与 mysql 版 API 一致）
+│   │   └── utils/
+│   │       └── pgsql-error-mapper.util.ts  # PG SQLSTATE → 领域异常映射
+│   ├── interfaces/                         # 方言无关，两套实现共享
 │   │   ├── pagination-result.interface.ts        # 普通分页结果
 │   │   ├── cursor-pagination-result.interface.ts  # 游标分页结果
 │   │   └── order-option.interface.ts              # 排序选项
-│   └── exceptions/
+│   └── exceptions/                         # 方言无关，两套实现共享
 │       ├── repository-exception.ts                 # 基础异常
 │       ├── record-not-found-exception.ts           # 记录未找到
 │       ├── record-already-exists-exception.ts      # 记录已存在（唯一键冲突）
@@ -30,12 +35,8 @@ src/app/repositories/
 │       ├── deadlock-detected-exception.ts          # 死锁
 │       ├── lock-wait-timeout-exception.ts          # 锁等待超时
 │       └── data-integrity-violation-exception.ts   # 数据完整性异常
-├── demo.repository.ts                  # 示例仓储
-├── repository.module.ts                # 模块定义
-├── __tests__/                          # 单元测试
-│   ├── base.repository.spec.ts
-│   ├── mysql-error-mapper.util.spec.ts
-│   └── exceptions.spec.ts
+├── demo.repository.ts                  # 示例仓储（MySQL）
+├── repository.module.ts                # 模块定义（两种方言的仓储类均可注册）
 └── README.md
 ```
 
@@ -45,9 +46,9 @@ src/app/repositories/
 
 ```typescript
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
-import { usersSchema } from '@/database/schemas/users.schema';
+import { usersSchema } from '@/database/mysql/schemas/users.schema';
 import { Injectable } from '@nestjs/common';
-import { BaseRepository } from './common/base.repository';
+import { BaseRepository } from './common/mysql/base.repository';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<typeof usersSchema> {
@@ -56,6 +57,9 @@ export class UsersRepository extends BaseRepository<typeof usersSchema> {
   }
 }
 ```
+
+PostgreSQL 版完全对应：`DatabaseService` 换 `@/common/modules/database/pgsql/database.service`、
+Schema 换 `@/database/pgsql/schemas/*`、基类换 `./common/pgsql/base.repository` 即可。
 
 ### 2. 注册仓储
 
@@ -127,14 +131,14 @@ export class UserService {
 
 所有仓储异常继承自 `RepositoryException`（→ `Error`），可在全局过滤器中统一处理。
 
-| 异常类                                   | MySQL 错误码        | 建议 HTTP 状态码 | 说明                         |
-| ---------------------------------------- | ------------------- | ---------------- | ---------------------------- |
-| `RecordNotFoundException`                | —                   | 404              | 记录不存在                   |
-| `RecordAlreadyExistsException`           | 1062 (ER_DUP_ENTRY) | 409              | 唯一键冲突                   |
-| `ForeignKeyConstraintViolationException` | 1451, 1452          | 409              | 外键约束冲突                 |
-| `DeadlockDetectedException`              | 1213                | 503 / 重试       | 死锁                         |
-| `LockWaitTimeoutException`               | 1205                | 503 / 重试       | 锁等待超时                   |
-| `DataIntegrityViolationException`        | 1048, 1366, 1406    | 400              | 数据完整性（非空/类型/长度） |
+| 异常类                                   | MySQL 错误码        | PG SQLSTATE         | 建议 HTTP 状态码 | 说明                         |
+| ---------------------------------------- | ------------------- | ------------------- | ---------------- | ---------------------------- |
+| `RecordNotFoundException`                | —                   | —                   | 404              | 记录不存在                   |
+| `RecordAlreadyExistsException`           | 1062 (ER_DUP_ENTRY) | 23505               | 409              | 唯一键冲突                   |
+| `ForeignKeyConstraintViolationException` | 1451, 1452          | 23503               | 409              | 外键约束冲突                 |
+| `DeadlockDetectedException`              | 1213                | 40P01               | 503 / 重试       | 死锁                         |
+| `LockWaitTimeoutException`               | 1205                | 55P03               | 503 / 重试       | 锁等待超时                   |
+| `DataIntegrityViolationException`        | 1048, 1366, 1406    | 23502, 22P02, 22001 | 400              | 数据完整性（非空/类型/长度） |
 
 ## 软删除机制
 
@@ -173,7 +177,7 @@ await repo.findMany({
 
 ## 注意事项
 
-- 表**必须**拥有 `id` 列（int 类型、主键），否则构造时抛出错误
+- 表**必须**拥有 `id` 列（整型、主键），否则构造时抛出错误
 - 游标分页仅支持按 `id` 列进行游标定位
-- `mapMysqlErrorAndThrow` 始终抛出异常（返回类型 `never`），不会静默吞掉错误
-- 业务仓储应继承 `BaseRepository` 并通过 `@Injectable()` 注册
+- `mapMysqlErrorAndThrow` / `mapPgsqlErrorAndThrow` 始终抛出异常（返回类型 `never`），不会静默吞掉错误
+- 业务仓储应继承对应方言的 `BaseRepository` 并通过 `@Injectable()` 注册；同一个仓储类不要混用两种方言的 `DatabaseService`

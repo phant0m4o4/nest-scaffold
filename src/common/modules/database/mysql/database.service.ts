@@ -1,7 +1,7 @@
 import { EnvironmentEnum } from '@/common/enums/environment.enum';
 import { normalizeError } from '@/common/utils/normalize-error';
 import type { MysqlDatabaseConfigType } from '@/configs/mysql-database.config';
-import * as schema from '@/database/schemas';
+import * as schema from '@/database/mysql/schemas';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger as DrizzleLogger } from 'drizzle-orm/logger';

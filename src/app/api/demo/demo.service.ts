@@ -1,5 +1,5 @@
 import { DemoRepository } from '@/app/repositories/demo.repository';
-import { demosSchema } from '@/database/schemas/demos.schema';
+import { demosSchema } from '@/database/mysql/schemas/demos.schema';
 import { Injectable } from '@nestjs/common';
 import { eq, gte, like, lte, SQL } from 'drizzle-orm';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';

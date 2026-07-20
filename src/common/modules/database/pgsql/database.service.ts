@@ -1,6 +1,7 @@
 import { EnvironmentEnum } from '@/common/enums/environment.enum';
 import { normalizeError } from '@/common/utils/normalize-error';
 import type { PgsqlDatabaseConfigType } from '@/configs/pgsql-database.config';
+import * as schema from '@/database/pgsql/schemas';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger as DrizzleLogger } from 'drizzle-orm/logger';
@@ -97,8 +98,7 @@ class DrizzleQueryLogger implements DrizzleLogger {
  * - 连接池生命周期管理（启动验证、优雅关闭）
  * - 开发环境 SQL 查询日志
  *
- * 与 `../mysql/database.service.ts` 是平行的两套实现。当前尚未绑定业务 Schema，
- * 待新增 pg-core Schema 后可参照 mysql 版本把 `schema` 传入 `drizzle()`。
+ * 与 `../mysql/database.service.ts` 是平行的两套实现。
  *
  * @see README.md 查看完整使用示例与配置说明
  */
@@ -106,8 +106,8 @@ class DrizzleQueryLogger implements DrizzleLogger {
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private readonly _pool: Pool;
 
-  /** Drizzle ORM 数据库实例 */
-  public readonly db: NodePgDatabase;
+  /** Drizzle ORM 数据库实例，绑定全部 Schema */
+  public readonly db: NodePgDatabase<typeof schema>;
 
   constructor(
     private readonly _configService: ConfigService,
@@ -120,6 +120,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const isDev = process.env.NODE_ENV === EnvironmentEnum.DEVELOPMENT;
     this.db = drizzle({
       client: this._pool,
+      schema,
       logger: isDev ? new DrizzleQueryLogger(this._logger) : undefined,
     });
   }

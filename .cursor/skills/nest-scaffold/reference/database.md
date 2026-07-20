@@ -1,15 +1,15 @@
-# 数据库（Drizzle ORM + MySQL）
+# 数据库（Drizzle ORM + MySQL / PostgreSQL）
 
-> 本文档描述的是当前唯一有业务 Schema/仓储实现的 MySQL 版（`src/common/modules/database/mysql/`）。
-> 项目同时提供一套平行的 PostgreSQL 连接层（`src/common/modules/database/pgsql/`），仅有连接管理，尚未绑定业务 Schema 与仓储层，详见其 README。两者按需二选一或同时导入，见 `src/common/modules/database/README.md`。
+> 项目提供 MySQL（`src/common/modules/database/mysql/`）与 PostgreSQL（`src/common/modules/database/pgsql/`）两套平行、各自完整的实现（连接层 + 业务 Schema + 仓储基类 + init/seed CLI），按需二选一或同时导入，见 `src/common/modules/database/README.md`。**脚手架默认启用 MySQL**（`AppModule` 导入的是 mysql 版 `DatabaseModule`）。
+> 本文以 MySQL 版为主线，PG 版差异集中在「PostgreSQL 版差异」一节。
 
 ## 关键约束
 
-- 表必须有 `id` 列（int unsigned auto-increment primary key），由 `createPrimaryKeyColumn()` 提供。否则 `BaseRepository` 启动会抛错。
+- 表必须有 `id` 整型主键列（MySQL：int unsigned auto-increment；PG：integer generated always as identity），由各自的 `createPrimaryKeyColumn()` 提供。否则 `BaseRepository` 启动会抛错。
 - 软删除以 `deletedAt: timestamp()` 列约定，由 `BaseRepository` 自动识别。
-- 所有 schema 在 `src/database/schemas/<table>.schema.ts`，并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
-- 跨表枚举放 `src/database/enums/`，**键和值都用 camelCase**。仅当前文件用就就地定义。
-- **不主动生成 migration**。开发期 `pnpm db:push` 即可。
+- 所有 schema 在 `src/database/<dialect>/schemas/<table>.schema.ts`（`<dialect>` 为 `mysql` 或 `pgsql`），并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
+- 跨表枚举放 `src/database/enums/`（方言无关，两套 schema 共享），**键和值都用 camelCase**。仅当前文件用就就地定义。
+- **不主动生成 migration**。开发期 `pnpm db:push`（MySQL）/ `pnpm db:push:pg`（PG）即可。
 
 ## Schema 写法
 
@@ -41,7 +41,7 @@ export const demosSchema = mysqlTable(
 );
 ```
 
-工具函数（位于 `src/database/utils/`）：
+工具函数（位于 `src/database/mysql/utils/`）：
 
 | 函数 | 说明 |
 |------|------|
@@ -49,6 +49,35 @@ export const demosSchema = mysqlTable(
 | `createForeignKeyColumn(name?)` | 生成可空的外键列（int unsigned），约束在 schema 第 3 个参数声明 |
 | `createTimestamps()` | `{ createdAt, updatedAt }` 默认 now、`onUpdateNow()` |
 | `createTimestampsWithSoftDelete()` | 额外加 `deletedAt: timestamp()` |
+
+## PostgreSQL 版差异
+
+Schema 写法与 MySQL 版一致，仅方言 API 不同（`src/database/pgsql/`）：
+
+```ts
+import { foreignKey, pgEnum, pgTable, unique, varchar } from 'drizzle-orm/pg-core';
+
+// PG 枚举是独立数据库类型，需声明并导出（drizzle-kit 依赖导出生成 CREATE TYPE）
+export const demoTypeEnum = pgEnum('demo_type', demoTypes);
+
+export const demosSchema = pgTable('demos', {
+  id: createPrimaryKeyColumn(),            // integer generated always as identity
+  name: varchar({ length: 100 }).notNull(),
+  type: demoTypeEnum().notNull().default(DemoTypeEnum.type1),
+  parentId: createForeignKeyColumn(),
+  ...createTimestamps(),
+}, (table) => [ /* 同 MySQL 版 */ ]);
+```
+
+要点：
+
+- 工具函数来自 `src/database/pgsql/utils/`，签名与 MySQL 版一致。
+- `updatedAt` 用 Drizzle `$onUpdate` 在应用层写入（PG 无 `ON UPDATE CURRENT_TIMESTAMP`）。
+- 仓储基类：`src/app/repositories/common/pgsql/base.repository.ts`（API 与 MySQL 版完全一致）；错误映射走 PG SQLSTATE（`mapPgsqlErrorAndThrow`：23505 唯一冲突、23503 外键、40P01 死锁、55P03 锁不可用、23502/22001/22P02 数据完整性）。
+- 事务类型：`PgsqlTransactionType`（`@/common/modules/database/pgsql/common/types/pgsql-transaction.type`）。
+- init/seed：`src/database/pgsql/init.ts` / `seed.ts`，命令为 `pnpm db:init:pg:dev` / `pnpm db:seed:pg:dev`。
+- Drizzle Kit：`drizzle-pgsql.config.ts`，命令统一带 `:pg` 后缀（见下方命令表）。
+- `.env`：`PGSQL_HOST` / `PGSQL_PORT` / `PGSQL_DATABASE` / `PGSQL_USER` / `PGSQL_PASSWORD`（`${APP_NAME}` 占位同样生效）。
 
 ## 命名
 
@@ -105,9 +134,9 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 
 ## init / seed
 
-`src/database/init.ts` 实现 `IInitInitializer.run()`，由 `pnpm db:init:dev`（开发） / `pnpm db:init:prod`（生产，需先 `pnpm build`）触发。用于：基础数据、必备角色、系统配置等。
+`src/database/mysql/init.ts` 实现 `IInitInitializer.run()`，由 `pnpm db:init:dev`（开发） / `pnpm db:init:prod`（生产，需先 `pnpm build`）触发。用于：基础数据、必备角色、系统配置等。
 
-`src/database/seed.ts` 实现 `ISeeder.run()`，由 `pnpm db:seed:*` 触发，用于演示/测试数据。
+`src/database/mysql/seed.ts` 实现 `ISeeder.run()`，由 `pnpm db:seed:*` 触发，用于演示/测试数据。
 
 两者都通过 inquirer 二次确认：
 
@@ -137,25 +166,32 @@ clearUniqueCollections();
 
 ## 命令
 
-| 命令 | 说明 |
+| 命令（MySQL / PostgreSQL） | 说明 |
 |------|------|
-| `pnpm db:push` | 把 `src/database/schemas/` 推到 MySQL（开发用，无 migration 文件） |
-| `pnpm db:generate` | 生成 migration 文件（**用户明确要求才用**） |
-| `pnpm db:migrate` | 执行 migration（**用户明确要求才用**） |
-| `pnpm db:init:dev` / `pnpm db:init:prod` | 跑 `InitService.run()` |
-| `pnpm db:seed:dev` / `pnpm db:seed:prod` | 跑 `SeedService.run()` |
+| `pnpm db:push` / `pnpm db:push:pg` | 把 `src/database/<dialect>/schemas/` 推到数据库（开发用，无 migration 文件） |
+| `pnpm db:generate` / `pnpm db:generate:pg` | 生成 migration 文件（**用户明确要求才用**） |
+| `pnpm db:migrate` / `pnpm db:migrate:pg` | 执行 migration（**用户明确要求才用**） |
+| `pnpm db:init:dev` / `pnpm db:init:pg:dev`（prod 同理） | 跑 `InitService.run()` |
+| `pnpm db:seed:dev` / `pnpm db:seed:pg:dev`（prod 同理） | 跑 `SeedService.run()` |
 
 ## .env
 
 ```env
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
-MYSQL_DATABASE=${APP_NAME}    # drizzle.config.ts 会把 ${APP_NAME} 替换为 process.env.APP_NAME
+MYSQL_DATABASE=${APP_NAME}    # drizzle-mysql.config.ts 会把 ${APP_NAME} 替换为 process.env.APP_NAME
 MYSQL_USER=root
 MYSQL_PASSWORD=root_password
+
+# PostgreSQL（使用 pgsql 版时）
+PGSQL_HOST=127.0.0.1
+PGSQL_PORT=5432
+PGSQL_DATABASE=${APP_NAME}
+PGSQL_USER=postgres
+PGSQL_PASSWORD=root_password
 ```
 
-`drizzle.config.ts` 通过 `process.env.MYSQL_DATABASE.replace('${APP_NAME}', process.env.APP_NAME)` 实现动态库名。
+`drizzle-mysql.config.ts` / `drizzle-pgsql.config.ts` 通过 `process.env.*_DATABASE.replace('${APP_NAME}', process.env.APP_NAME)` 实现动态库名。
 
 ## docker-compose
 
