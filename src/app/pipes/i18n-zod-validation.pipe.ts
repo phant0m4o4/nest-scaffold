@@ -1,7 +1,8 @@
+import { ZodValidationException } from '@/app/exceptions/zod-validation.exception';
+import type { IZodDtoClass } from '@/common/utils/zod/create-zod-dto';
 import { Injectable, PipeTransform } from '@nestjs/common';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { I18nContext } from 'nestjs-i18n';
-import { ZodValidationException } from 'nestjs-zod';
 import { z } from 'zod';
 
 /**
@@ -21,14 +22,12 @@ function resolveLocaleError(lang?: string): z.core.$ZodErrorMap | undefined {
  * 对使用 `createZodDto` 声明的 DTO 自动校验 body/query/param，
  * 并按 `I18nContext` 解析出的请求语言（Query `?lang=` / Accept-Language / x-lang）
  * 渲染 zod 校验错误消息；schema 中显式书写的自定义消息优先于 locale 文案。
- * 校验失败抛出 `ZodValidationException`，由 `ZodValidationExceptionFilter` 统一转为 422。
+ * 校验失败抛出 `ZodValidationException`（自身携带统一的 422 响应体）。
  */
 @Injectable()
 export class I18nZodValidationPipe implements PipeTransform {
   transform(value: unknown, metadata: ArgumentMetadata): unknown {
-    const metatype = metadata.metatype as
-      | { isZodDto?: boolean; schema?: z.ZodType }
-      | undefined;
+    const metatype = metadata.metatype as Partial<IZodDtoClass> | undefined;
     if (!metatype?.isZodDto || !metatype.schema) {
       return value;
     }

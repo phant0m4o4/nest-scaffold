@@ -112,7 +112,7 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 - 控制器统一返回 `{ data?, meta? }`，由 `GlobalResponseInterceptor` 包装为 `{ statusCode, data?, meta? }`。
 - CRUD 方法名固定：`create` / `findOne` / `findMany` / `findManyByCursorPagination` / `update` / `remove` / `findAll`。
 - DTO 一律放 `dtos/` 下，命名 `create-<feature>-request.dto.ts`、`update-<feature>-request.dto.ts`、`find-many-<feature>-request.dto.ts`、`find-one-<feature>-param.dto.ts`、`<feature>-response.dto.ts`（实体可放 `entities/<feature>.entity.ts`）。
-- 请求/响应 DTO 一律用 `createZodDto(z.object({ ... }))` 定义（nestjs-zod + zod），控制器返回时用 `EntityClass.create(raw)` 净化（zod 默认剔除 schema 未声明的字段）。
+- 请求/响应 DTO 一律用 `createZodDto(z.object({ ... }))` 定义（zod，项目内 createZodDto 工厂），控制器返回时用 `EntityClass.create(raw)` 净化（zod 默认剔除 schema 未声明的字段）。
 - Service 注入仓储；分页查询从 `BaseRepository` 继承的 `findManyWithCursorPagination` / `findManyWithPagination` 调用。
 - `<Feature>Module` 通过 `RepositoryModule.forFeature([<Feature>Repository])` 注册仓储。
 

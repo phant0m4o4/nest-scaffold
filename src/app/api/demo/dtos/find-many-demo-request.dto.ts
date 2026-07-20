@@ -4,7 +4,7 @@ import { zUtcDateTime } from '@/common/utils/zod/utc-date-time';
 import { demoTypes } from '@/database/enums/demo-type.enum';
 import { demosSchema } from '@/database/mysql/schemas';
 import { getTableConfig } from 'drizzle-orm/mysql-core';
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { z } from 'zod';
 
 /**

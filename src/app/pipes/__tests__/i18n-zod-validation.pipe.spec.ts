@@ -1,8 +1,8 @@
 import { CreateDemoRequestDto } from '@/app/api/demo/dtos/create-demo-request.dto';
 import { UpdateDemoRequestDto } from '@/app/api/demo/dtos/update-demo-request.dto';
+import { ZodValidationException } from '@/app/exceptions/zod-validation.exception';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { I18nContext } from 'nestjs-i18n';
-import { ZodValidationException } from 'nestjs-zod';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nZodValidationPipe } from '../i18n-zod-validation.pipe';
 
@@ -49,8 +49,7 @@ describe('I18nZodValidationPipe', () => {
       expect.unreachable('应当抛出 ZodValidationException');
     } catch (error) {
       expect(error).toBeInstanceOf(ZodValidationException);
-      const issues = (error as ZodValidationException).getZodError()
-        .issues as Array<{ message: string }>;
+      const issues = (error as ZodValidationException).getZodError().issues;
       expect(issues[0].message).toContain('无效输入');
     }
   });
@@ -62,8 +61,7 @@ describe('I18nZodValidationPipe', () => {
       pipe.transform({ name: 1 }, buildBodyMetadata(CreateDemoRequestDto));
       expect.unreachable('应当抛出 ZodValidationException');
     } catch (error) {
-      const issues = (error as ZodValidationException).getZodError()
-        .issues as Array<{ message: string }>;
+      const issues = (error as ZodValidationException).getZodError().issues;
       expect(issues[0].message).toContain('Invalid input');
     }
   });
@@ -78,8 +76,7 @@ describe('I18nZodValidationPipe', () => {
       );
       expect.unreachable('应当抛出 ZodValidationException');
     } catch (error) {
-      const issues = (error as ZodValidationException).getZodError()
-        .issues as Array<{ message: string; path: Array<string | number> }>;
+      const issues = (error as ZodValidationException).getZodError().issues;
       const createdAtIssue = issues.find((i) => i.path[0] === 'createdAt');
       expect(createdAtIssue?.message).toBe('无效的日期时间');
     }

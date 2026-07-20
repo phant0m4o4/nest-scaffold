@@ -1,7 +1,7 @@
 import { FindManyByCursoredPaginationDto } from '@/app/api/common/dtos/find-many-by-cursored-pagination.dto';
 import { __featuresCamel__Schema } from '@/database/mysql/schemas/__features__.schema';
 import { getTableConfig } from 'drizzle-orm/mysql-core';
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { z } from 'zod';
 
 const __FEATURE___ORDERABLE_COLUMNS = getTableConfig(__featuresCamel__Schema).columns.map(

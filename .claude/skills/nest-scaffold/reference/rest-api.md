@@ -27,7 +27,7 @@
 // 错误（普通）
 { "statusCode": 400, "error": "Bad Request", "message": "..." }
 
-// 校验失败（全局 I18nZodValidationPipe + ZodValidationExceptionFilter）
+// 校验失败（全局 I18nZodValidationPipe，ZodValidationException 自带 422 响应体）
 {
   "statusCode": 422,
   "message": "Validation Failed",
@@ -101,10 +101,10 @@
 | 路径参数 | `<Action><Resource>ParamDto` | `<action>-<resource>-param.dto.ts` |
 | 响应实体 | `<Resource>Entity` 或 `<Resource>ResponseDto` | `<resource>.entity.ts` 或 `<resource>-response.dto.ts` |
 
-DTO 与实体（响应类）一律用 `createZodDto`（nestjs-zod + zod）定义：
+DTO 与实体（响应类）一律用 `createZodDto`（项目内轻量工厂，见 `@/common/utils/zod/create-zod-dto`）定义：
 
 ```ts
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { z } from 'zod';
 
 export class CreateDemoRequestDto extends createZodDto(
