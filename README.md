@@ -191,7 +191,7 @@ NODE_ENV=production pnpm start:dist
 | `pnpm test <文件路径>`     | 运行指定单元测试（`vitest run`）                                 |
 | `pnpm test:watch`          | 监听模式，文件变更自动重跑                                       |
 | `pnpm test:cov`            | 运行测试并生成覆盖率报告（`--coverage`）                         |
-| `pnpm test:debug`          | 调试模式（`--inspect-brk`，禁用并行，可用 Chrome DevTools 连接） |
+| `pnpm test:debug`          | 调试模式（`--inspect-brk` 挂起等待 Chrome DevTools 连接；vitest 强制要求配 `--no-file-parallelism` 单进程运行，仅此场景不并行） |
 | `pnpm test:e2e <文件路径>` | 运行指定端到端测试（`--config ./vitest-e2e.config.ts`）          |
 
 > Vitest 通过 `vitest.config.ts` 中的 `env` 配置设置 `NODE_ENV=test`。
