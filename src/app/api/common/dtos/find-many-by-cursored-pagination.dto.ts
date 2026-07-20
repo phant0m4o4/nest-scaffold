@@ -1,8 +1,6 @@
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { Transform } from 'class-transformer';
 import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
 
-@DtoSchema({ name: 'app.api.common.dtos.find-many-by-cursored-pagination.dto' })
 export class FindManyByCursoredPaginationDto {
   /**
    * 分页游标，用于获取下一页数据

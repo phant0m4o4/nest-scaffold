@@ -1,8 +1,4 @@
 import { OnlyIdEntity } from '@/app/api/common/entities/only-id.entity';
-import { ArrayOkResponse } from '@/common/decorators/swagger/responses/array-ok-response.decorator';
-import { CreatedResponse } from '@/common/decorators/swagger/responses/created-response.decorator';
-import { CursoredPaginationOkResponse } from '@/common/decorators/swagger/responses/cursored-pagination-ok-response.decorator';
-import { OkResponse } from '@/common/decorators/swagger/responses/ok-response.decorator';
 import {
   Body,
   Controller,
@@ -29,7 +25,6 @@ export class __Feature__Controller {
   constructor(protected readonly __featureCamel__Service: __Feature__Service) {}
 
   /** 创建 __feature__ */
-  @CreatedResponse(OnlyIdEntity)
   @Post()
   async create(@Body() body: Create__Feature__RequestDto) {
     const id = await this.__featureCamel__Service.create(body);
@@ -43,7 +38,6 @@ export class __Feature__Controller {
   }
 
   /** 查询全部 __feature__（无分页） */
-  @ArrayOkResponse(__Feature__Entity)
   @Get('all')
   async findAll() {
     const rows = await this.__featureCamel__Service.findAll();
@@ -57,7 +51,6 @@ export class __Feature__Controller {
   }
 
   /** 游标分页查询 __feature__ */
-  @CursoredPaginationOkResponse(__Feature__Entity)
   @Get()
   async findManyByCursorPagination(
     @Query() query: FindMany__Feature__ByCursoredPaginationRequestDto,
@@ -75,7 +68,6 @@ export class __Feature__Controller {
   }
 
   /** 查询单条 __feature__ */
-  @OkResponse(__Feature__Entity)
   @Get(':id')
   async findOne(@Param('id') id: number) {
     const row = await this.__featureCamel__Service.findOne(id);
@@ -87,7 +79,6 @@ export class __Feature__Controller {
   }
 
   /** 更新 __feature__ */
-  @OkResponse()
   @Patch(':id')
   async update(
     @Param('id') id: number,
@@ -97,7 +88,6 @@ export class __Feature__Controller {
   }
 
   /** 删除 __feature__ */
-  @OkResponse()
   @Delete(':id')
   async remove(@Param('id') id: number) {
     await this.__featureCamel__Service.delete(id);

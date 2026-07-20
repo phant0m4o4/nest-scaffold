@@ -70,4 +70,3 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
 - **`错误: 未找到仓库根目录`**：脚本要求当前工作目录或祖先有 `package.json` + `src/app/`。请进入项目根再跑。
 - **替换后的代码 lint 报错**：先 `pnpm lint --fix`，常见是 import 顺序与 prettier 行尾。
 - **`db:push` 报表不存在**：确认 `src/database/schemas/index.ts` 已 `export * from './<features>.schema'`。
-- **Swagger 报 schema 名重复**：检查 DTO 的 `@DtoSchema({ name: '...' })` 是否唯一（脚本生成的命名都基于路径）。

@@ -133,7 +133,6 @@ cat <<EOF
 
 6. 访问：
    - API:     http://localhost:3000
-   - Swagger: http://localhost:3000/api-docs
    - Bull Board (dev): http://localhost:3000/queues
    - phpMyAdmin:    http://localhost:8080
    - phpRedisAdmin: http://localhost:8081

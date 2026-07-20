@@ -1,7 +1,5 @@
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { Expose } from 'class-transformer';
 
-@DtoSchema({ name: 'app.api.__features__.entities.__feature__.entity' })
 export class __Feature__Entity {
   /**
    * 主键

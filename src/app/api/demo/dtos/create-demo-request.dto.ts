@@ -1,4 +1,3 @@
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { demoTypes } from '@/database/enums/demo-type.enum';
 import {
   IsIn,
@@ -8,7 +7,6 @@ import {
   IsString,
 } from 'class-validator';
 
-@DtoSchema({ name: 'app.api.demo.dtos.create-demo-request.dto' })
 export class CreateDemoRequestDto {
   /**
    * 名称

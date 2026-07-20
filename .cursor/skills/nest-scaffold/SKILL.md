@@ -49,7 +49,6 @@ src/
 │   │   └── common/             # BaseRepository、Repository 异常、分页接口
 │   └── app.module.ts
 ├── common/
-│   ├── decorators/swagger/     # OkResponse / CursoredPaginationOkResponse / DtoSchema
 │   ├── enums/                  # 跨模块通用枚举
 │   ├── modules/                # 通用基础设施模块（全部 @Global()）
 │   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/ redis/
@@ -62,7 +61,7 @@ src/
 │   ├── utils/                  # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
 │   ├── init.ts                 # InitService（pnpm db:init）
 │   └── seed.ts                 # SeedService（pnpm db:seed）
-└── main.ts                     # 启用 enableShutdownHooks、Pino logger、Swagger（dev）、CORS
+└── main.ts                     # 启用 enableShutdownHooks、Pino logger、CORS
 ```
 
 详细架构见 `reference/architecture.md`。
@@ -112,9 +111,7 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile
 - 控制器统一返回 `{ data?, meta? }`，由 `GlobalResponseInterceptor` 包装为 `{ statusCode, data?, meta? }`。
 - CRUD 方法名固定：`create` / `findOne` / `findMany` / `findManyByCursorPagination` / `update` / `remove` / `findAll`。
 - DTO 一律放 `dtos/` 下，命名 `create-<feature>-request.dto.ts`、`update-<feature>-request.dto.ts`、`find-many-<feature>-request.dto.ts`、`find-one-<feature>-param.dto.ts`、`<feature>-response.dto.ts`（实体可放 `entities/<feature>.entity.ts`）。
-- DTO 类用 `@DtoSchema({ name: 'app.api.<domain>.dtos.<dto-name>' })` 装饰，确保 Swagger 模型唯一。
 - 所有响应 DTO 字段加 `@Expose()`，控制器返回时用 `plainToInstance(EntityClass, raw, { excludeExtraneousValues: true })`。
-- 控制器方法上挂 Swagger 装饰器：`@OkResponse(Entity)` / `@CreatedResponse(Entity)` / `@CursoredPaginationOkResponse(Entity)` / `@ArrayOkResponse(Entity)`。
 - Service 注入仓储；分页查询从 `BaseRepository` 继承的 `findManyWithCursorPagination` / `findManyWithPagination` 调用。
 - `<Feature>Module` 通过 `RepositoryModule.forFeature([<Feature>Repository])` 注册仓储。
 

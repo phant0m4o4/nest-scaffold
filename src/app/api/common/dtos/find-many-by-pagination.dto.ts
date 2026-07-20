@@ -1,7 +1,5 @@
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
 
-@DtoSchema({ name: 'app.api.common.dtos.find-many-by-pagination.dto' })
 export class FindManyByPaginationDto {
   /**
    * 页码

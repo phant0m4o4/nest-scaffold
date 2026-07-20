@@ -1,7 +1,5 @@
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { Expose } from 'class-transformer';
 
-@DtoSchema({ name: 'app.api.demo.entities.demo.entity' })
 export class DemoEntity {
   /**
    * 主键

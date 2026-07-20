@@ -13,7 +13,7 @@
 ├── jest-e2e.config.ts        # Jest E2E 配置
 ├── vitest.config.ts          # Vitest 单测配置（带 SWC + path alias）
 ├── vitest-e2e.config.ts      # Vitest E2E 配置
-├── nest-cli.json             # 接入 @nestjs/swagger 插件 + i18n 资产
+├── nest-cli.json             # i18n 资产复制配置
 ├── tsconfig.json             # baseUrl=./, paths={"@/*":["src/*"]}, strictNullChecks
 ├── tsconfig.build.json       # 仅编译 src/
 └── src/
@@ -50,8 +50,6 @@ src/
 │           └── utils/mysql-error-mapper.util.ts
 ├── common/
 │   ├── decorators/
-│   │   ├── swagger/dto-schema.decorator.ts # 给 DTO 类设置稳定 Swagger 名称
-│   │   ├── swagger/responses/              # OkResponse / ArrayOk / Cursored / Created 等
 │   │   └── validators/is-id.decorator.ts
 │   ├── enums/environment.enum.ts           # development / test / production
 │   ├── modules/                            # 全部 @Global() 基础设施模块
@@ -92,7 +90,6 @@ src/
 - `app.useLogger(app.get(PinoLogger))` + `app.flushLogs()` —— 接管 Nest 内置 logger。
 - `app.set('trust proxy', true)` —— 反代/负载均衡场景下取真实 IP。
 - 静态资源：`app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' })`。
-- 仅在 `NODE_ENV === 'development'` 启用 Swagger（`/api-docs`），生产隐藏。
 
 ## 路径别名
 
