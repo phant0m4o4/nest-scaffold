@@ -100,11 +100,13 @@ QUEUE_DASHBOARD_ROUTE=/queues
 pnpm db:push
 
 # 初始化基础数据
-pnpm db:init:dev
+NODE_ENV=development pnpm db:init
 
 # 填充种子数据
-pnpm db:seed:dev
+NODE_ENV=development pnpm db:seed
 ```
+
+> `db:init` / `db:seed` 不内置环境，`NODE_ENV` 由调用方传入（Windows PowerShell 用 `$env:NODE_ENV="development"; pnpm db:init`）。
 
 ### 5. 启动开发服务
 
@@ -123,8 +125,8 @@ pnpm build
 
 # 3. 按需执行数据库迁移与种子（若使用迁移）
 # pnpm db:migrate
-# pnpm db:init:prod
-# pnpm db:seed:prod
+# NODE_ENV=production pnpm db:init
+# NODE_ENV=production pnpm db:seed
 
 # 4. 启动（需设置 NODE_ENV=production）
 NODE_ENV=production pnpm start:dist
@@ -174,12 +176,12 @@ MySQL（默认）：
 | `pnpm db:push`      | 将 Schema 推送到数据库（开发用，不生成迁移文件） |
 | `pnpm db:generate`  | 生成迁移文件                                     |
 | `pnpm db:migrate`   | 执行迁移                                         |
-| `pnpm db:init:dev`  | 开发环境：初始化基础数据                         |
-| `pnpm db:seed:dev`  | 开发环境：填充种子数据                           |
-| `pnpm db:init:prod` | 生产环境：初始化基础数据（需先 build）           |
-| `pnpm db:seed:prod` | 生产环境：填充种子数据（需先 build）             |
+| `pnpm db:init`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
+| `pnpm db:seed`      | 填充种子数据（`NODE_ENV` 由调用方传入）          |
 
-PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pg`、`db:generate:pg`、`db:migrate:pg`、`db:init:pg:dev`、`db:seed:pg:dev`、`db:init:pg:prod`、`db:seed:pg:prod`。
+`db:init` / `db:seed` 用法：`NODE_ENV=development pnpm db:init`（生产环境换成 `NODE_ENV=production`）。
+
+PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pg`、`db:generate:pg`、`db:migrate:pg`、`db:init:pg`、`db:seed:pg`。
 
 ### 代码质量
 

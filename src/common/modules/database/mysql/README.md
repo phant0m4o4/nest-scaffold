@@ -86,12 +86,12 @@ async transferFunds(fromId: number, toId: number, amount: number) {
 
 ```bash
 # 数据库结构初始化
-pnpm db:init:dev    # 开发环境
-pnpm db:init:prod   # 生产环境
+NODE_ENV=development pnpm db:init    # 开发环境
+NODE_ENV=production pnpm db:init   # 生产环境
 
 # 种子数据填充
-pnpm db:seed:dev    # 开发环境
-pnpm db:seed:prod   # 生产环境
+NODE_ENV=development pnpm db:seed    # 开发环境
+NODE_ENV=production pnpm db:seed   # 生产环境
 
 # 表结构同步（Drizzle Kit）
 pnpm db:push
