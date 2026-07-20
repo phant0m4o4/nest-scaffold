@@ -1,23 +1,6 @@
-import { parseBooleanString } from '@/common/utils/parse-boolean-string';
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import {
-  IsBooleanString,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateIf,
-} from 'class-validator';
-
-/** 安全解析日志文件开关，解析失败时返回 false（用于 ValidateIf 等未校验场景） */
-function parseLogFileEnable(value?: string): boolean {
-  try {
-    return parseBooleanString(value ?? 'false');
-  } catch {
-    return false;
-  }
-}
+import { z } from 'zod';
 
 /**
  * 日志配置
@@ -26,22 +9,23 @@ function parseLogFileEnable(value?: string): boolean {
  * LOG_FILE_ENABLE=false
  * LOG_FILE_PATH=/var/log/app.log  # 仅当 LOG_FILE_ENABLE 为 true 时必填
  */
-class EnvironmentVariables {
-  @Expose()
-  @IsBooleanString()
-  @IsOptional()
-  LOG_FILE_ENABLE?: string;
-  @Expose()
-  @IsString()
-  @IsNotEmpty()
-  @ValidateIf((object: EnvironmentVariables): boolean =>
-    parseLogFileEnable(object.LOG_FILE_ENABLE),
-  )
-  LOG_FILE_PATH?: string;
-}
+const environmentSchema = z
+  .object({
+    LOG_FILE_ENABLE: z.stringbool().optional(),
+    LOG_FILE_PATH: z.string().min(1).optional(),
+  })
+  .superRefine((env, ctx) => {
+    if ((env.LOG_FILE_ENABLE ?? false) && !env.LOG_FILE_PATH) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['LOG_FILE_PATH'],
+        message: 'LOG_FILE_ENABLE 为 true 时必填',
+      });
+    }
+  });
 
-const logConfig = registerEnvAsConfig('log', EnvironmentVariables, (env) => ({
-  logFileEnable: parseBooleanString(env.LOG_FILE_ENABLE ?? 'false'),
+const logConfig = registerEnvAsConfig('log', environmentSchema, (env) => ({
+  logFileEnable: env.LOG_FILE_ENABLE ?? false,
   // 日志文件路径：优先使用 .env 配置，否则按项目根目录/logs 生成默认路径
   logFilePath: env.LOG_FILE_PATH ?? `${process.cwd()}/logs`,
 }));

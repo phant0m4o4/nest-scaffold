@@ -1,40 +1,43 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { RedisModuleConfig } from '@/configs/redis.config';
-import { EventEmitter } from 'events';
+import type { EventEmitter } from 'events';
 import type { PinoLogger } from 'nestjs-pino';
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+  type Mocked,
+} from 'vitest';
 
-/**
- * 用 EventEmitter 充当 ioredis 的 Redis / Cluster 实例
- *
- * 暴露：
- * - status：模拟客户端连接状态
- * - quit / disconnect：jest mock，便于断言关闭分支
- * - constructorArgs：保留构造时透传的参数，用于断言配置映射
- */
-class MockRedisClient extends EventEmitter {
-  public status = 'ready';
-  public readonly quit = jest.fn(async () => await Promise.resolve('OK'));
-  public readonly disconnect = jest.fn();
-  public constructor(public readonly constructorArgs: unknown[]) {
-    super();
-  }
-}
+import { MockRedisClient } from './support/mock-redis-client';
 
-const redisInstances: MockRedisClient[] = [];
-const clusterInstances: MockRedisClient[] = [];
-
-jest.mock('ioredis', () => ({
-  Redis: jest.fn().mockImplementation((...args: unknown[]) => {
-    const instance = new MockRedisClient(args);
-    redisInstances.push(instance);
-    return instance;
-  }),
-  Cluster: jest.fn().mockImplementation((...args: unknown[]) => {
-    const instance = new MockRedisClient(args);
-    clusterInstances.push(instance);
-    return instance;
-  }),
+const { redisInstances, clusterInstances } = vi.hoisted(() => ({
+  redisInstances: [] as unknown[],
+  clusterInstances: [] as unknown[],
 }));
+
+vi.mock('ioredis', async () => {
+  // 显式标注类型：动态 import 在部分类型解析场景下会退化为 any
+  const { MockRedisClient } = (await import('./support/mock-redis-client')) as {
+    MockRedisClient: typeof import('./support/mock-redis-client').MockRedisClient;
+  };
+  // 注意：实现必须是普通 function（可被 new 调用），箭头函数不可作为构造函数
+  return {
+    Redis: vi.fn(function (...args: unknown[]) {
+      const instance = new MockRedisClient(args);
+      redisInstances.push(instance);
+      return instance;
+    }),
+    Cluster: vi.fn(function (...args: unknown[]) {
+      const instance = new MockRedisClient(args);
+      clusterInstances.push(instance);
+      return instance;
+    }),
+  };
+});
 
 import { Cluster, Redis } from 'ioredis';
 
@@ -43,20 +46,20 @@ import { closeRedisClient, createRedisClient } from '../redis.factory';
 /**
  * 构造一个仅断言所需方法的 PinoLogger 测试替身
  */
-function buildMockLogger(): jest.Mocked<PinoLogger> {
+function buildMockLogger(): Mocked<PinoLogger> {
   return {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    trace: jest.fn(),
-    fatal: jest.fn(),
-  } as unknown as jest.Mocked<PinoLogger>;
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  } as unknown as Mocked<PinoLogger>;
 }
 
 describe('redis.factory', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     redisInstances.length = 0;
     clusterInstances.length = 0;
   });
@@ -79,7 +82,7 @@ describe('redis.factory', () => {
         logger: mockLogger,
       });
 
-      const expectedRedisCtor = Redis as unknown as jest.Mock;
+      const expectedRedisCtor = Redis as unknown as Mock;
       expect(expectedRedisCtor).toHaveBeenCalledTimes(1);
       expect(expectedRedisCtor).toHaveBeenCalledWith({
         host: '10.0.0.1',
@@ -110,7 +113,7 @@ describe('redis.factory', () => {
         logger: mockLogger,
       });
 
-      const expectedRedisCtor = Redis as unknown as jest.Mock;
+      const expectedRedisCtor = Redis as unknown as Mock;
       expect(expectedRedisCtor).toHaveBeenCalledWith({
         name: 'mymaster',
         sentinels: [
@@ -141,7 +144,7 @@ describe('redis.factory', () => {
         logger: mockLogger,
       });
 
-      const expectedClusterCtor = Cluster as unknown as jest.Mock;
+      const expectedClusterCtor = Cluster as unknown as Mock;
       expect(expectedClusterCtor).toHaveBeenCalledTimes(1);
       expect(expectedClusterCtor).toHaveBeenCalledWith(
         [

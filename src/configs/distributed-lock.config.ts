@@ -1,7 +1,6 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 
 /**
  * 分布式锁配置
@@ -12,16 +11,13 @@ import { IsOptional, IsString } from 'class-validator';
  * .env 示例：
  * DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
  */
-class EnvironmentVariables {
-  @Expose()
-  @IsString()
-  @IsOptional()
-  DISTRIBUTED_LOCK_KEY_PREFIX?: string;
-}
+const environmentSchema = z.object({
+  DISTRIBUTED_LOCK_KEY_PREFIX: z.string().optional(),
+});
 
 const distributedLockConfig = registerEnvAsConfig(
   'distributedLock',
-  EnvironmentVariables,
+  environmentSchema,
   (env) => ({
     keyPrefix: env.DISTRIBUTED_LOCK_KEY_PREFIX ?? 'distributed-lock',
   }),

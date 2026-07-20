@@ -21,6 +21,11 @@
 
 ## 选择哪一套
 
-- 只用 MySQL：在 `AppModule` 中 `imports: [MysqlDatabaseModule]`（见 `mysql/README.md`）。当前脚手架默认使用 MySQL。
-- 只用 PG：在 `AppModule` 中改为导入 `PgsqlDatabaseModule`（见 `pgsql/README.md`），业务仓储改继承 `src/app/repositories/common/pgsql/base.repository`。
-- 两者都要：两个 `DatabaseModule` 分别以别名导入即可（均为 `@Global()`，`DatabaseService` 各自独立，不冲突）。
+- 两套模块的类名都是 `DatabaseModule`，靠导入路径区分：`@/common/modules/database/mysql/database.module` 与 `@/common/modules/database/pgsql/database.module`。
+- 只用 MySQL：在 `AppModule` 中导入 mysql 侧的 `DatabaseModule`（见 `mysql/README.md`）。当前脚手架默认使用 MySQL。
+- 只用 PG：改为导入 pgsql 侧的 `DatabaseModule`（见 `pgsql/README.md`），业务仓储改继承 `src/app/repositories/common/pgsql/base.repository`。
+- 两者都要：以别名区分导入即可（均为 `@Global()`，`DatabaseService` 各自独立，不冲突）：
+  ```typescript
+  import { DatabaseModule as MysqlDatabaseModule } from '@/common/modules/database/mysql/database.module';
+  import { DatabaseModule as PgsqlDatabaseModule } from '@/common/modules/database/pgsql/database.module';
+  ```

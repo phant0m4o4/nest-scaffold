@@ -1,7 +1,6 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 /**
  * 数据库配置（MySQL）
  *
@@ -12,31 +11,16 @@ import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
  * MYSQL_USER=root
  * MYSQL_PASSWORD=123456
  */
-class EnvironmentVariables {
-  @Expose()
-  @IsString()
-  @IsOptional()
-  MYSQL_HOST?: string;
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  MYSQL_PORT?: number;
-  @Expose()
-  @IsString()
-  @IsNotEmpty()
-  MYSQL_DATABASE: string;
-  @Expose()
-  @IsString()
-  @IsNotEmpty()
-  MYSQL_USER: string;
-  @Expose()
-  @IsString()
-  @IsNotEmpty()
-  MYSQL_PASSWORD: string;
-}
+const environmentSchema = z.object({
+  MYSQL_HOST: z.string().optional(),
+  MYSQL_PORT: z.coerce.number().int().optional(),
+  MYSQL_DATABASE: z.string().min(1),
+  MYSQL_USER: z.string().min(1),
+  MYSQL_PASSWORD: z.string().min(1),
+});
 const mysqlDatabaseConfig = registerEnvAsConfig(
   'mysqlDatabase',
-  EnvironmentVariables,
+  environmentSchema,
   (env) => {
     return {
       host: env.MYSQL_HOST ?? '127.0.0.1',

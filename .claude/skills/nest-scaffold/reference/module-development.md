@@ -9,8 +9,8 @@
 | `<domain>.module.ts` | NestJS 模块定义，`imports: [RepositoryModule.forFeature([<Domain>Repository])]` |
 | `<domain>.controller.ts` | 路由 + 入参校验 + 调用服务 + 组装响应 |
 | `<domain>.service.ts` | 业务逻辑，组合仓储/缓存/锁/队列等 |
-| `dtos/` | 请求/参数 DTO（class-validator） |
-| `entities/<domain>.entity.ts` | 响应实体（`@Expose` 字段） |
+| `dtos/` | 请求/参数 DTO（zod + `createZodDto`，来自 nestjs-zod） |
+| `entities/<domain>.entity.ts` | 响应实体（`createZodDto` 定义，返回前 `.create()` 净化） |
 | `interfaces/` | 业务领域接口（`I*.interface.ts`） |
 | `__tests__/` | `*.spec.ts` 单测 + `*.e2e-spec.ts` E2E |
 
@@ -27,7 +27,7 @@ export class <Domain>Controller {
   async create(@Body() body: Create<Domain>RequestDto) {
     const id = await this.<domain>Service.create(body);
     return {
-      data: plainToInstance(OnlyIdEntity, { id }, { excludeExtraneousValues: true }),
+      data: OnlyIdEntity.create({ id }),
     };
   }
 
@@ -35,9 +35,7 @@ export class <Domain>Controller {
   async findAll() {
     const rows = await this.<domain>Service.findAll();
     return {
-      data: rows.map((row) =>
-        plainToInstance(<Domain>Entity, row, { excludeExtraneousValues: true }),
-      ),
+      data: rows.map((row) => <Domain>Entity.create(row)),
     };
   }
 
@@ -48,9 +46,7 @@ export class <Domain>Controller {
     const { data, meta } =
       await this.<domain>Service.findManyByCursorPagination(query);
     return {
-      data: data.map((row) =>
-        plainToInstance(<Domain>Entity, row, { excludeExtraneousValues: true }),
-      ),
+      data: data.map((row) => <Domain>Entity.create(row)),
       meta,
     };
   }
@@ -59,7 +55,7 @@ export class <Domain>Controller {
   async findOne(@Param('id') id: number) {
     const row = await this.<domain>Service.findOne(id);
     return {
-      data: plainToInstance(<Domain>Entity, row, { excludeExtraneousValues: true }),
+      data: <Domain>Entity.create(row),
     };
   }
 
@@ -78,9 +74,9 @@ export class <Domain>Controller {
 控制器 4 条核心约束：
 
 1. `protected readonly <domain>Service: <Domain>Service` 注入服务。
-2. 入参 DTO + `@Body` / `@Query` / `@Param` 装饰器；不直接读 `req`。
+2. 入参 DTO + `@Body` / `@Query` / `@Param` 装饰器；不直接读 `req`。DTO 用 `createZodDto` 定义，全局 `ZodValidationPipe` 自动校验。
 3. 返回 `{ data?, meta? }`，由全局拦截器套上 `statusCode`。
-4. 单条返回前必须 `plainToInstance(Entity, row, { excludeExtraneousValues: true })`。
+4. 返回前必须用 `Entity.create(row)` 净化（zod 默认剔除 schema 未声明的字段）。
 
 ## 服务写法
 

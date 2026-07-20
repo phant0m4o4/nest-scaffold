@@ -10,8 +10,6 @@
 ├── drizzle-mysql.config.ts   # Drizzle Kit 配置（MySQL，指向 src/database/mysql/schemas）
 ├── drizzle-pgsql.config.ts   # Drizzle Kit 配置（PostgreSQL，指向 src/database/pgsql/schemas）
 ├── eslint.config.mjs         # ESLint 9 + typescript-eslint + prettier
-├── jest.config.ts            # Jest 单测配置
-├── jest-e2e.config.ts        # Jest E2E 配置
 ├── vitest.config.ts          # Vitest 单测配置（带 SWC + path alias）
 ├── vitest-e2e.config.ts      # Vitest E2E 配置
 ├── nest-cli.json             # i18n 资产复制配置
@@ -39,19 +37,23 @@ src/
 │   │       ├── dtos/
 │   │       ├── entities/
 │   │       └── __tests__/
+│   ├── filters/
+│   │   └── zod-validation-exception.filter.ts  # zod 校验失败 → 422 { field, message }[]
 │   ├── interceptors/
 │   │   └── global-response.interceptor.ts  # 包装 { statusCode, data?, meta? }
 │   └── repositories/
 │       ├── repository.module.ts            # forFeature(...) 注册仓储 Provider
 │       ├── <domain>.repository.ts          # 继承 BaseRepository
 │       └── common/
-│           ├── base.repository.ts          # 通用 CRUD + 分页 + 软删除
-│           ├── exceptions/                 # RepositoryException 体系
-│           ├── interfaces/                 # 分页/排序接口
-│           └── utils/mysql-error-mapper.util.ts
+│           ├── mysql/
+│           │   ├── base.repository.ts      # 通用 CRUD + 分页 + 软删除（MySQL 方言）
+│           │   └── utils/mysql-error-mapper.util.ts
+│           ├── pgsql/                      # 与 mysql/ 平行的 PostgreSQL 实现
+│           │   ├── base.repository.ts
+│           │   └── utils/pgsql-error-mapper.util.ts
+│           ├── exceptions/                 # RepositoryException 体系（两方言共享）
+│           └── interfaces/                 # 分页/排序接口（两方言共享）
 ├── common/
-│   ├── decorators/
-│   │   └── validators/is-id.decorator.ts
 │   ├── enums/environment.enum.ts           # development / test / production
 │   ├── modules/                            # 全部 @Global() 基础设施模块
 │   │   ├── bottleneck/                     # 进程内速率限流
@@ -88,6 +90,7 @@ src/
 4. `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`
 5. `ApiModule`（业务聚合）
 6. `GlobalResponseInterceptor` 通过 `APP_INTERCEPTOR` Provider 注册
+7. `ZodValidationPipe`（nestjs-zod）通过 `APP_PIPE`、`ZodValidationExceptionFilter`（`src/app/filters/`）通过 `APP_FILTER` 注册 —— DTO 校验全局生效
 
 ## main.ts 启动要点
 
@@ -100,7 +103,6 @@ src/
 ## 路径别名
 
 - `tsconfig.json` 的 `paths`：`{"@/*": ["src/*"]}`
-- Jest 通过 `moduleNameMapper`：`{"^@/(.*)$": "<rootDir>/$1"}`（`rootDir` 是 `src`）
 - Vitest 通过 `resolve.alias`：`{ '@': resolve(__dirname, './src') }`
 
 新代码跨目录一律使用 `@/...`，不要使用 `../../../`。

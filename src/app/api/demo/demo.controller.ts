@@ -9,7 +9,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { DemoService } from './demo.service';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';
 import { FindManyDemoByCursoredPaginationRequestDto } from './dtos/find-many-demo-request.dto';
@@ -30,11 +29,7 @@ export class DemoController {
   async create(@Body() body: CreateDemoRequestDto) {
     const id = await this.demoService.create(body);
     return {
-      data: plainToInstance(
-        OnlyIdEntity,
-        { id },
-        { excludeExtraneousValues: true },
-      ),
+      data: OnlyIdEntity.create({ id }),
     };
   }
 

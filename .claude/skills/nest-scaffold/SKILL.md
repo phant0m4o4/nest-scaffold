@@ -16,7 +16,7 @@ NestJS 11 + TypeScript 5 + Drizzle ORM (MySQL) + ioredis + BullMQ + nestjs-pino 
 
 - 用户要"新增一个业务模块"、"新加一张表"、"写 Repository / Service / Controller"、"补单元/E2E 测试"。
 - 用户要重构、补全、修改现有模块，需要遵循项目命名/分层/依赖注入/响应格式约定。
-- 用户要起新项目，希望与本仓库一致：`docker-compose.yml`、`.env`、`AppModule`、`common/modules/*`、Drizzle 配置、Jest/Vitest、Commitizen、ESLint/Prettier 等。
+- 用户要起新项目，希望与本仓库一致：`docker-compose.yml`、`.env`、`AppModule`、`common/modules/*`、Drizzle 配置、Vitest、Commitizen、ESLint/Prettier 等。
 
 ## 核心约束（始终生效）
 
@@ -46,7 +46,7 @@ src/
 │   │   └── <domain>/           # 单域：controller/service/module/dtos/entities/__tests__
 │   ├── interceptors/           # 全局响应拦截器等
 │   ├── repositories/           # 仓储层（继承 BaseRepository）
-│   │   └── common/             # BaseRepository、Repository 异常、分页接口
+│   │   └── common/             # mysql/ 与 pgsql/ 各自的 BaseRepository + 共享的异常、分页接口
 │   └── app.module.ts
 ├── common/
 │   ├── enums/                  # 跨模块通用枚举
@@ -56,11 +56,12 @@ src/
 ├── configs/                    # 各模块的 ConfigModule（registerEnvAsConfig）
 ├── database/
 │   ├── enums/                  # 跨表复用的枚举（camelCase 键值）
-│   ├── schemas/                # Drizzle 表定义（每张表 *.schema.ts）
-│   ├── schemas/index.ts        # 聚合导出
-│   ├── utils/                  # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-│   ├── init.ts                 # InitService（pnpm db:init）
-│   └── seed.ts                 # SeedService（pnpm db:seed）
+│   ├── mysql/                  # MySQL 侧（默认装配）
+│   │   ├── schemas/            # Drizzle 表定义（每张表 *.schema.ts，index.ts 聚合导出）
+│   │   ├── utils/              # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
+│   │   ├── init.ts             # InitService（pnpm db:init:dev）
+│   │   └── seed.ts             # SeedService（pnpm db:seed:dev）
+│   └── pgsql/                  # PostgreSQL 侧（可选，结构与 mysql/ 平行，命令加 :pg）
 └── main.ts                     # 启用 enableShutdownHooks、Pino logger、CORS
 ```
 
@@ -72,9 +73,9 @@ src/
 |---------|-------|---------|
 | 新增业务模块（含 controller/service/dto/repository/tests） | 见下方"工作流 A" | `reference/module-development.md` + `reference/rest-api.md` |
 | 新增一张数据库表 | 见下方"工作流 B" | `reference/database.md` |
-| 写/改测试（Jest 或 Vitest） | 见 `reference/testing.md` | `reference/testing.md` |
+| 写/改测试（Vitest） | 见 `reference/testing.md` | `reference/testing.md` |
 | 使用 Cache / Queue / DistributedLock / Redis / Logger | 看对应模块 README + 见 `reference/infra-modules.md` | `reference/infra-modules.md` |
-| 加配置（环境变量） | 在 `src/configs/<name>.config.ts` 写 `EnvironmentVariables` 类 + `registerEnvAsConfig` | `reference/env-vars.md` |
+| 加配置（环境变量） | 在 `src/configs/<name>.config.ts` 写 zod 环境变量 schema + `registerEnvAsConfig` | `reference/env-vars.md` |
 | 写 commit message | 见 `reference/git-commit.md` | `reference/git-commit.md` |
 | 从零 bootstrap 新项目 | 运行 `scripts/bootstrap.sh <target-dir> <APP_NAME>` | `scripts/README.md` |
 
@@ -111,7 +112,7 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 - 控制器统一返回 `{ data?, meta? }`，由 `GlobalResponseInterceptor` 包装为 `{ statusCode, data?, meta? }`。
 - CRUD 方法名固定：`create` / `findOne` / `findMany` / `findManyByCursorPagination` / `update` / `remove` / `findAll`。
 - DTO 一律放 `dtos/` 下，命名 `create-<feature>-request.dto.ts`、`update-<feature>-request.dto.ts`、`find-many-<feature>-request.dto.ts`、`find-one-<feature>-param.dto.ts`、`<feature>-response.dto.ts`（实体可放 `entities/<feature>.entity.ts`）。
-- 所有响应 DTO 字段加 `@Expose()`，控制器返回时用 `plainToInstance(EntityClass, raw, { excludeExtraneousValues: true })`。
+- 请求/响应 DTO 一律用 `createZodDto(z.object({ ... }))` 定义（nestjs-zod + zod），控制器返回时用 `EntityClass.create(raw)` 净化（zod 默认剔除 schema 未声明的字段）。
 - Service 注入仓储；分页查询从 `BaseRepository` 继承的 `findManyWithCursorPagination` / `findManyWithPagination` 调用。
 - `<Feature>Module` 通过 `RepositoryModule.forFeature([<Feature>Repository])` 注册仓储。
 
@@ -165,7 +166,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 | `reference/rest-api.md` | RESTful 规范、统一响应、CRUD 与 DTO 命名 |
 | `reference/database.md` | Drizzle schema、BaseRepository、init/seed、事务 |
 | `reference/infra-modules.md` | Cache / Queue / DistributedLock / Redis / Logger 用法 |
-| `reference/testing.md` | Jest / Vitest / Testcontainers / useMocker / overrideProvider |
+| `reference/testing.md` | Vitest / Testcontainers / useMocker / overrideProvider |
 | `reference/git-commit.md` | Commitizen 风格、type/scope/body 语言规则 |
 | `reference/env-vars.md` | 完整环境变量清单、默认值、配置注册方式 |
 
@@ -191,7 +192,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 - 在服务中拼装 SQL 字符串。一律使用 Drizzle 的查询构造器或 `BaseRepository` 提供的方法。
 - 在长期运行的服务中调用 `unique()` / `uniqueArray()`。这两个函数有进程内 Map，**仅限 seed CLI 使用**。
 - 业务里 `setTimeout` 做时序。改用 BullMQ 队列或 cron。
-- 控制器返回未经 `plainToInstance(... { excludeExtraneousValues: true })` 净化的 Drizzle 原始行（会泄露未声明字段，且时间格式不可控）。
+- 控制器返回未经 `Entity.create(raw)` 净化的 Drizzle 原始行（zod schema 会剔除未声明字段；直接返回原始行会泄露未声明字段，且时间格式不可控）。
 - 在新业务里跑 `flushdb` / `cache.flush()`（会清空整库 Redis 数据）。
 - 把 Redis client 直接共享给 BullMQ：BullMQ Worker 需要专用 blocking 连接，统一通过 `QueueModule` 接管。
 - 在 `.env` 里直接写明文密码并提交。所有敏感字段都通过 redact 脱敏并保持 `.env` 不入库。

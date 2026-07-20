@@ -9,7 +9,7 @@ services:
     #    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 'root_password'
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root_password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-dev_db}
     ports:
       - ${MYSQL_PORT:-3306}:3306
@@ -26,7 +26,7 @@ services:
       PMA_HOST: mysql # 这里的 db-dev 是 db-dev 服务的名称
       PMA_PORT: ${MYSQL_PORT:-3306}
       PMA_USER: 'root'
-      PMA_PASSWORD: 'root_password'
+      PMA_PASSWORD: ${MYSQL_PASSWORD:-root_password}
       UPLOAD_LIMIT: 100000000
     depends_on:
       - mysql

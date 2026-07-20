@@ -4,7 +4,7 @@
 
 ## 配置注册方式
 
-每组配置都通过 `registerEnvAsConfig(namespace, EnvironmentVariablesClass, mapper)` 注册，使用 `class-transformer` + `class-validator` 校验。
+每组配置都通过 `registerEnvAsConfig(namespace, zodSchema, mapper)` 注册，使用 `zod` schema 校验。
 
 模板：
 
@@ -12,18 +12,14 @@
 // src/configs/<name>.config.ts
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { z } from 'zod';
 
-class EnvironmentVariables {
-  @Expose() @IsString() @IsNotEmpty()
-  MY_HOST: string;
+const environmentSchema = z.object({
+  MY_HOST: z.string().min(1),
+  MY_PORT: z.coerce.number().int().optional(),
+});
 
-  @Expose() @IsInt() @IsOptional()
-  MY_PORT?: number;
-}
-
-const myConfig = registerEnvAsConfig('my', EnvironmentVariables, (env) => ({
+const myConfig = registerEnvAsConfig('my', environmentSchema, (env) => ({
   host: env.MY_HOST,
   port: env.MY_PORT ?? 8080,
 }));
@@ -31,6 +27,13 @@ const myConfig = registerEnvAsConfig('my', EnvironmentVariables, (env) => ({
 export type MyConfigType = ConfigType<typeof myConfig>;
 export default myConfig;
 ```
+
+常用写法：
+
+- 数字：`z.coerce.number().int()`（环境变量都是字符串，需 coerce）。
+- 布尔：`z.stringbool()`（识别 `true`/`false` 等字符串形式）。
+- 枚举：`z.enum([...])`。
+- 条件必填（如某模式下才必填）：在 schema 上挂 `.superRefine()`。
 
 校验失败启动直接报错，列出具体哪个变量哪条规则不通过。
 
@@ -110,6 +113,23 @@ export default myConfig;
 | `LOG_FILE_ENABLE` | `false` | 是否落盘 |
 | `LOG_FILE_PATH` | `${process.cwd()}/logs` | 日志目录 |
 
+## I18nModule
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `I18N_FALLBACK_LANGUAGE` | `en` | 兜底语言 |
+
+## BottleneckModule（可选，默认未在 AppModule 装配）
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `BOTTLENECK_MODE` | `memory` | `memory` / `redis` |
+| `BOTTLENECK_REDIS_KEY_PREFIX` | `bottleneck` | 仅 redis 模式 |
+| `BOTTLENECK_REDIS_HOST` | `127.0.0.1` | 仅 redis 模式 |
+| `BOTTLENECK_REDIS_PORT` | `6379` | 仅 redis 模式 |
+| `BOTTLENECK_REDIS_PASSWORD` | — | 仅 redis 模式，可空 |
+| `BOTTLENECK_REDIS_DB` | `0` | 仅 redis 模式 |
+
 ## .env 完整示例
 
 ```env
@@ -122,6 +142,13 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=${APP_NAME}
 MYSQL_USER=root
 MYSQL_PASSWORD=root_password
+
+#PostgreSQL（可选，与 MySQL 平行的数据源）
+PGSQL_HOST=127.0.0.1
+PGSQL_PORT=5432
+PGSQL_DATABASE=${APP_NAME}
+PGSQL_USER=postgres
+PGSQL_PASSWORD=root_password
 
 #Redis（全应用共享）
 REDIS_MODE=single
@@ -148,4 +175,10 @@ QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
 QUEUE_REDIS_DB=0
 QUEUE_KEY_PREFIX=queue
 QUEUE_DASHBOARD_ROUTE=/queues
+
+#I18n（可选，默认 en）
+# I18N_FALLBACK_LANGUAGE=en
+
+#Bottleneck（可选模块，默认未装配；mode 为 memory 或 redis）
+# BOTTLENECK_MODE=memory
 ```

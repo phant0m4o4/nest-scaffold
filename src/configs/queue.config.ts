@@ -1,7 +1,6 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 
 /**
  * 队列配置（BullMQ）
@@ -23,55 +22,28 @@ import { IsInt, IsOptional, IsString } from 'class-validator';
  * QUEUE_KEY_PREFIX=queue
  * QUEUE_DASHBOARD_ROUTE=/queues
  */
-class EnvironmentVariables {
-  @Expose()
-  @IsString()
-  @IsOptional()
-  QUEUE_REDIS_HOST?: string;
+const environmentSchema = z.object({
+  QUEUE_REDIS_HOST: z.string().optional(),
+  QUEUE_REDIS_PORT: z.coerce.number().int().optional(),
+  QUEUE_REDIS_PASSWORD: z.string().optional(),
+  QUEUE_REDIS_DB: z.coerce.number().int().optional(),
+  QUEUE_KEY_PREFIX: z.string().optional(),
+  QUEUE_DASHBOARD_ROUTE: z.string().optional(),
+});
 
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  QUEUE_REDIS_PORT?: number;
-
-  @Expose()
-  @IsString()
-  @IsOptional()
-  QUEUE_REDIS_PASSWORD?: string;
-
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  QUEUE_REDIS_DB?: number;
-
-  @Expose()
-  @IsString()
-  @IsOptional()
-  QUEUE_KEY_PREFIX?: string;
-
-  @Expose()
-  @IsString()
-  @IsOptional()
-  QUEUE_DASHBOARD_ROUTE?: string;
-}
-
-const queueConfig = registerEnvAsConfig(
-  'queue',
-  EnvironmentVariables,
-  (env) => {
-    return {
-      keyPrefix: env.QUEUE_KEY_PREFIX ?? 'queue',
-      dashboardRoute: env.QUEUE_DASHBOARD_ROUTE ?? '/queues',
-      redis: {
-        host: env.QUEUE_REDIS_HOST ?? '127.0.0.1',
-        port: env.QUEUE_REDIS_PORT ?? 6379,
-        password: env.QUEUE_REDIS_PASSWORD ?? undefined,
-        db: env.QUEUE_REDIS_DB ?? 0,
-        // BullMQ worker 走 blocking 命令，必须关闭重试上限
-        maxRetriesPerRequest: null,
-      },
-    };
-  },
-);
+const queueConfig = registerEnvAsConfig('queue', environmentSchema, (env) => {
+  return {
+    keyPrefix: env.QUEUE_KEY_PREFIX ?? 'queue',
+    dashboardRoute: env.QUEUE_DASHBOARD_ROUTE ?? '/queues',
+    redis: {
+      host: env.QUEUE_REDIS_HOST ?? '127.0.0.1',
+      port: env.QUEUE_REDIS_PORT ?? 6379,
+      password: env.QUEUE_REDIS_PASSWORD ?? undefined,
+      db: env.QUEUE_REDIS_DB ?? 0,
+      // BullMQ worker 走 blocking 命令，必须关闭重试上限
+      maxRetriesPerRequest: null,
+    },
+  };
+});
 export default queueConfig;
 export type QueueConfigType = ConfigType<typeof queueConfig>;

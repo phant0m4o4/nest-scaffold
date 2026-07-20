@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { LoggerModule } from 'nestjs-pino';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { RedisModule } from '../redis.module';
 import { RedisService } from '../redis.service';
@@ -35,7 +36,7 @@ describe('RedisModule (e2e)', () => {
       single: { host: containerHost, port: containerPort, db: 0 },
     };
     const mockConfigService: Pick<ConfigService, 'getOrThrow'> = {
-      getOrThrow: jest.fn().mockReturnValue(inputRedisConfig),
+      getOrThrow: vi.fn().mockReturnValue(inputRedisConfig),
     } as unknown as Pick<ConfigService, 'getOrThrow'>;
     testingModule = await Test.createTestingModule({
       imports: [
@@ -90,7 +91,7 @@ describe('RedisModule (e2e)', () => {
       },
     };
     const mockConfigService: Pick<ConfigService, 'getOrThrow'> = {
-      getOrThrow: jest.fn().mockReturnValue(isolatedConfig),
+      getOrThrow: vi.fn().mockReturnValue(isolatedConfig),
     } as unknown as Pick<ConfigService, 'getOrThrow'>;
     const isolatedModule = await Test.createTestingModule({
       imports: [

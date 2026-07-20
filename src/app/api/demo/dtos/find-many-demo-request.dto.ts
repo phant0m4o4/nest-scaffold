@@ -1,148 +1,44 @@
 import { FindManyByCursoredPaginationDto } from '@/app/api/common/dtos/find-many-by-cursored-pagination.dto';
 import { FindManyByPaginationDto } from '@/app/api/common/dtos/find-many-by-pagination.dto';
-import { UTC } from '@/common/utils/date-time';
+import { zUtcDateTime } from '@/common/utils/zod/utc-date-time';
 import { demoTypes } from '@/database/enums/demo-type.enum';
 import { demosSchema } from '@/database/mysql/schemas';
-import { Transform } from 'class-transformer';
-import { IsDate, IsIn, IsOptional, IsString } from 'class-validator';
 import { getTableConfig } from 'drizzle-orm/mysql-core';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
 /**
  * demos 表的可排序列名列表（运行时获取）
  */
 const DEMO_ORDERABLE_COLUMNS = getTableConfig(demosSchema).columns.map(
   (col) => col.name,
-);
+) as [string, ...string[]];
 
 /**
- * Demo 公共过滤字段接口
- * 定义所有 Demo 查询共用的过滤条件字段，确保类型一致性
+ * Demo 查询共用的字段 schema
+ * 覆盖基类的 orderColumn 验证规则（限制为 demos 表的列名），并追加过滤条件字段
  */
-interface IDemoFilterFields {
-  name?: string;
-  type?: string;
-  createdAtFrom?: Date;
-  createdAtTo?: Date;
-  updatedAtFrom?: Date;
-  updatedAtTo?: Date;
-}
+const demoFilterFieldsSchema = z.object({
+  /** 排序列，例如 'id' */
+  orderColumn: z.enum(DEMO_ORDERABLE_COLUMNS).optional(),
+  /** 名称（模糊匹配），例如 'test' */
+  name: z.string().optional(),
+  /** 类型，例如 'TYPE_1' */
+  type: z.enum(demoTypes).optional(),
+  /** 创建时间从，例如 '2025-01-01 00:00:00' */
+  createdAtFrom: zUtcDateTime.optional(),
+  /** 创建时间到，例如 '2025-01-01 00:00:00' */
+  createdAtTo: zUtcDateTime.optional(),
+  /** 更新时间从，例如 '2025-01-01 00:00:00' */
+  updatedAtFrom: zUtcDateTime.optional(),
+  /** 更新时间到，例如 '2025-01-01 00:00:00' */
+  updatedAtTo: zUtcDateTime.optional(),
+});
 
-export class FindManyDemoByCursoredPaginationRequestDto
-  extends FindManyByCursoredPaginationDto
-  implements IDemoFilterFields
-{
-  /**
-   * 排序列（覆盖基类验证规则，限制为 demos 表的列名）
-   * @example 'id'
-   */
-  @IsIn(DEMO_ORDERABLE_COLUMNS)
-  @IsString()
-  @IsOptional()
-  declare orderColumn?: string;
-  /**
-   * 名称（模糊匹配）
-   * @example 'test'
-   */
-  @IsString()
-  @IsOptional()
-  name?: string;
-  /**
-   * 类型
-   * @example 'TYPE_1'
-   */
-  @IsIn(demoTypes)
-  @IsOptional()
-  type?: string;
-  /**
-   * 创建时间从
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  createdAtFrom?: Date;
-  /**
-   * 创建时间到
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  createdAtTo?: Date;
-  /**
-   * 更新时间从
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  updatedAtFrom?: Date;
-  /**
-   * 更新时间到
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  updatedAtTo?: Date;
-}
+export class FindManyDemoByCursoredPaginationRequestDto extends createZodDto(
+  FindManyByCursoredPaginationDto.schema.extend(demoFilterFieldsSchema.shape),
+) {}
 
-export class FindManyDemoByPaginationRequestDto
-  extends FindManyByPaginationDto
-  implements IDemoFilterFields
-{
-  /**
-   * 排序列（覆盖基类验证规则，限制为 demos 表的列名）
-   * @example 'id'
-   */
-  @IsIn(DEMO_ORDERABLE_COLUMNS)
-  @IsString()
-  @IsOptional()
-  declare orderColumn?: string;
-  /**
-   * 名称（模糊匹配）
-   * @example 'test'
-   */
-  @IsString()
-  @IsOptional()
-  name?: string;
-  /**
-   * 类型
-   * @example 'TYPE_1'
-   */
-  @IsIn(demoTypes)
-  @IsOptional()
-  type?: string;
-  /**
-   * 创建时间从
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  createdAtFrom?: Date;
-  /**
-   * 创建时间到
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  createdAtTo?: Date;
-  /**
-   * 更新时间从
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  updatedAtFrom?: Date;
-  /**
-   * 更新时间到
-   * @example '2025-01-01 00:00:00'
-   */
-  @IsDate()
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => UTC(value).toDate())
-  updatedAtTo?: Date;
-}
+export class FindManyDemoByPaginationRequestDto extends createZodDto(
+  FindManyByPaginationDto.schema.extend(demoFilterFieldsSchema.shape),
+) {}

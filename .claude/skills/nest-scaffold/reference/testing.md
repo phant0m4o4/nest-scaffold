@@ -1,6 +1,6 @@
 # 测试规范
 
-项目同时支持 **Jest** 和 **Vitest**，两套配置并存。新代码默认按 Jest 写（jest 是 NestJS 默认），需要更快本地反馈时再用 Vitest。
+项目统一使用 **Vitest**（配合 SWC 编译，`unplugin-swc`，支持装饰器元数据）。Jest 已完全移除。
 
 ## 文件位置与命名
 
@@ -8,31 +8,24 @@
 - E2E：同样放 `__tests__/`，文件名 `<name>.e2e-spec.ts`。
 - 被测代码：与测试文件路径对应。
 
+## 配置文件
+
+- `vitest.config.ts`：单测配置。include `src/**/*.spec.ts`，`globals: true`，SWC 插件，alias `@` → `src`，`env` 注入 `NODE_ENV=test`。
+- `vitest-e2e.config.ts`：E2E 配置。include `src/**/*.e2e-spec.ts`。
+
 ## 命令
 
-### Jest
-
 | 命令 | 说明 |
 |------|------|
-| `pnpm test <文件路径>` | 运行单个文件单测 |
+| `pnpm test <文件路径>` | 运行单个文件单测（`vitest run`） |
 | `pnpm test:watch` | 监听 |
-| `pnpm test:cov` | 覆盖率 |
-| `pnpm test:debug` | `--inspect-brk` |
-| `pnpm test:e2e <文件路径>` | E2E |
+| `pnpm test:cov` | 覆盖率（`--coverage`） |
+| `pnpm test:debug` | 调试（`--inspect-brk --no-file-parallelism --test-timeout=0`） |
+| `pnpm test:e2e <文件路径>` | E2E（`--config ./vitest-e2e.config.ts`） |
 
-Jest 启动时自动设 `NODE_ENV=test`。
+`NODE_ENV=test` 由 `vitest.config.ts` 的 `env` 配置注入。
 
-### Vitest
-
-| 命令 | 说明 |
-|------|------|
-| `pnpm vitest <文件路径>` | 单个文件 |
-| `pnpm vitest:watch` | 监听 |
-| `pnpm vitest:cov` | 覆盖率 |
-| `pnpm vitest:debug` | 调试 |
-| `pnpm vitest:e2e <文件路径>` | E2E |
-
-Vitest 通过 `vitest.config.ts` 的 `env` 设 `NODE_ENV=test`。
+调试：运行 `pnpm test:debug <文件路径>` 后，在 Chrome 打开 `chrome://inspect`，点击 Remote Target 连接。
 
 ## 风格总则
 
@@ -41,6 +34,13 @@ Vitest 通过 `vitest.config.ts` 的 `env` 设 `NODE_ENV=test`。
 - 变量命名：`inputX` / `mockX` / `actualX` / `expectedX`。
 - E2E 命名遵循 Given-When-Then 心智模型。
 - 优先使用官方风格（[NestJS Testing](https://docs.nestjs.com/fundamentals/testing)）。
+- **显式导入 Vitest API**（不依赖全局注入）：
+
+  ```ts
+  import { describe, it, expect, beforeEach, vi, type Mock, type Mocked } from 'vitest';
+  ```
+
+- mock API 对照：`jest.fn/mock/clearAllMocks` → `vi.fn/mock/clearAllMocks`；类型 `jest.Mock` → `Mock`、`jest.Mocked<T>` → `Mocked<T>`（均从 `vitest` 导入）。
 
 ## 单元测试：useMocker
 
@@ -48,15 +48,16 @@ Vitest 通过 `vitest.config.ts` 的 `env` 设 `NODE_ENV=test`。
 
 ```ts
 import { Test } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 describe('DemoService', () => {
   let demoService: DemoService;
-  let mockDemoRepository: Partial<Record<keyof DemoRepository, jest.Mock>>;
+  let mockDemoRepository: Partial<Record<keyof DemoRepository, Mock>>;
 
   beforeEach(async () => {
     mockDemoRepository = {
-      create: jest.fn(),
-      findOne: jest.fn(),
+      create: vi.fn(),
+      findOne: vi.fn(),
       // ...
     };
     const moduleRef = await Test.createTestingModule({
@@ -65,12 +66,7 @@ describe('DemoService', () => {
       .useMocker((token) => {
         if (token === DemoRepository) return mockDemoRepository;
         // 其它依赖给个空 mock
-        if (typeof token === 'function') {
-          return new (require('jest-mock').ModuleMocker)(global)
-            .generateFromMetadata(
-              new (require('jest-mock').ModuleMocker)(global).getMetadata(token),
-            );
-        }
+        return {};
       })
       .compile();
     demoService = moduleRef.get(DemoService);
@@ -79,7 +75,7 @@ describe('DemoService', () => {
   it('应当创建一条 demo 并返回 id', async () => {
     const inputBody = { name: 'test', type: 'TYPE_1' };
     const expectedId = 1;
-    (mockDemoRepository.create as jest.Mock).mockImplementation(
+    (mockDemoRepository.create as Mock).mockImplementation(
       async () => await Promise.resolve(expectedId),
     );
     const actualId = await demoService.create(inputBody);
@@ -91,6 +87,34 @@ describe('DemoService', () => {
 
 **异步 mock 风格固定**：`async () => await Promise.resolve(value)`。
 
+## 模块 mock：vi.mock 提升注意事项
+
+`vi.mock` 的工厂函数会被**提升到文件顶部**执行，因此：
+
+1. 工厂内**不能引用文件顶层变量**；需要跨作用域共享的状态用 `vi.hoisted()` 声明。
+2. 工厂内需要的类可放独立文件，在工厂内 `await import()` 引入。
+3. mock 构造函数时实现必须用**普通 `function`**（可被 `new` 调用），不能用箭头函数。
+
+参考 `src/common/modules/redis/__tests__/redis.factory.spec.ts` 的实际写法：
+
+```ts
+const { redisInstances } = vi.hoisted(() => ({
+  redisInstances: [] as unknown[],
+}));
+
+vi.mock('ioredis', async () => {
+  const { MockRedisClient } = await import('./support/mock-redis-client');
+  // 注意：实现必须是普通 function（可被 new 调用），箭头函数不可作为构造函数
+  return {
+    Redis: vi.fn(function (...args: unknown[]) {
+      const instance = new MockRedisClient(args);
+      redisInstances.push(instance);
+      return instance;
+    }),
+  };
+});
+```
+
 ## ConfigService mock
 
 依赖 `ConfigService` 时**不要**用环境变量覆盖，**用 mock**：
@@ -99,8 +123,8 @@ describe('DemoService', () => {
 {
   provide: ConfigService,
   useValue: {
-    getOrThrow: jest.fn().mockReturnValue({ port: 3000, name: 'test-app' }),
-    get: jest.fn(),
+    getOrThrow: vi.fn().mockReturnValue({ port: 3000, name: 'test-app' }),
+    get: vi.fn(),
   },
 }
 ```
@@ -112,6 +136,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { MySqlContainer, RedisContainer } from 'testcontainers';
 import * as request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 describe('Demo E2E', () => {
   let app: INestApplication;
@@ -162,7 +187,7 @@ describe('Demo E2E', () => {
 
 ## 已存在的测试参考
 
-- `src/common/modules/redis/__tests__/redis.factory.spec.ts` —— 单测样例
+- `src/common/modules/redis/__tests__/redis.factory.spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
 - `src/common/modules/redis/__tests__/redis.module.e2e-spec.ts` —— testcontainers E2E 样例
 
 ## 覆盖范围要求

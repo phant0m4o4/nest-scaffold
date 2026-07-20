@@ -1,7 +1,6 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { z } from 'zod';
 
 /**
  * Bottleneck 限流配置
@@ -16,80 +15,24 @@ import { IsIn, IsInt, IsOptional, IsString, ValidateIf } from 'class-validator';
  * BOTTLENECK_REDIS_DB=3
  * BOTTLENECK_REDIS_KEY_PREFIX=bottleneck
  */
-class EnvironmentVariables {
-  /**
-   * 限流模式：'redis' 表示分布式限流（基于 Redis），'memory' 表示内存限流（单机）
-   * 默认值: 'memory'
-   */
-  @Expose()
-  @IsIn(['redis', 'memory'])
-  @IsOptional()
-  BOTTLENECK_MODE?: 'redis' | 'memory';
-
-  /**
-   * Redis 主机地址（仅在 redis 模式下使用）
-   * 默认值: '127.0.0.1'
-   */
-  @Expose()
-  @IsString()
-  @IsOptional()
-  @ValidateIf(
-    (object: EnvironmentVariables) => object.BOTTLENECK_MODE === 'redis',
-  )
-  BOTTLENECK_REDIS_HOST?: string;
-
-  /**
-   * Redis 端口（仅在 redis 模式下使用）
-   * 默认值: 6379
-   */
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  @ValidateIf(
-    (object: EnvironmentVariables) => object.BOTTLENECK_MODE === 'redis',
-  )
-  BOTTLENECK_REDIS_PORT?: number;
-
-  /**
-   * Redis 密码（仅在 redis 模式下使用）
-   * 默认值: undefined（无密码）
-   */
-  @Expose()
-  @IsString()
-  @IsOptional()
-  @ValidateIf(
-    (object: EnvironmentVariables) => object.BOTTLENECK_MODE === 'redis',
-  )
-  BOTTLENECK_REDIS_PASSWORD?: string;
-
-  /**
-   * Redis 数据库编号（仅在 redis 模式下使用）
-   * 默认值: 0
-   */
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  @ValidateIf(
-    (object: EnvironmentVariables) => object.BOTTLENECK_MODE === 'redis',
-  )
-  BOTTLENECK_REDIS_DB?: number;
-
-  /**
-   * Redis Key 前缀（仅在 redis 模式下使用）
-   * 用于区分不同模块的 Redis key，避免冲突
-   */
-  @Expose()
-  @IsString()
-  @IsOptional()
-  @ValidateIf(
-    (object: EnvironmentVariables) => object.BOTTLENECK_MODE === 'redis',
-  )
-  BOTTLENECK_REDIS_KEY_PREFIX?: string;
-}
+const environmentSchema = z.object({
+  /** 限流模式：'redis' 表示分布式限流（基于 Redis），'memory' 表示内存限流（单机），默认 'memory' */
+  BOTTLENECK_MODE: z.enum(['redis', 'memory']).optional(),
+  /** Redis 主机地址（仅在 redis 模式下使用），默认 '127.0.0.1' */
+  BOTTLENECK_REDIS_HOST: z.string().optional(),
+  /** Redis 端口（仅在 redis 模式下使用），默认 6379 */
+  BOTTLENECK_REDIS_PORT: z.coerce.number().int().optional(),
+  /** Redis 密码（仅在 redis 模式下使用），默认无密码 */
+  BOTTLENECK_REDIS_PASSWORD: z.string().optional(),
+  /** Redis 数据库编号（仅在 redis 模式下使用），默认 0 */
+  BOTTLENECK_REDIS_DB: z.coerce.number().int().optional(),
+  /** Redis Key 前缀（仅在 redis 模式下使用），用于区分不同模块的 Redis key，避免冲突 */
+  BOTTLENECK_REDIS_KEY_PREFIX: z.string().optional(),
+});
 
 const bottleneckConfig = registerEnvAsConfig(
   'bottleneck',
-  EnvironmentVariables,
+  environmentSchema,
   (env) => {
     return {
       mode: env.BOTTLENECK_MODE ?? 'memory',
@@ -103,6 +46,5 @@ const bottleneckConfig = registerEnvAsConfig(
     };
   },
 );
-
 export default bottleneckConfig;
 export type BottleneckConfigType = ConfigType<typeof bottleneckConfig>;

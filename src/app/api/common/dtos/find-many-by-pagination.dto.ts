@@ -1,36 +1,15 @@
-import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class FindManyByPaginationDto {
-  /**
-   * 页码
-   * @example 1
-   */
-  @IsNumber()
-  @IsOptional()
-  page?: number;
-  /**
-   * 每页条数
-   * @example 30
-   */
-  @IsNumber()
-  @IsOptional()
-  /**
-   * 每页条数
-   * @example 30
-   */
-  pageSize?: number;
-  /**
-   * 排序列
-   * @example id
-   */
-  @IsString()
-  @IsOptional()
-  orderColumn?: string;
-  /**
-   * 排序方向
-   * @example desc
-   */
-  @IsIn(['asc', 'desc'])
-  @IsOptional()
-  orderDirection?: string;
-}
+export class FindManyByPaginationDto extends createZodDto(
+  z.object({
+    /** 页码，例如 1 */
+    page: z.coerce.number().int().optional(),
+    /** 每页条数，例如 30 */
+    pageSize: z.coerce.number().int().optional(),
+    /** 排序列，例如 id */
+    orderColumn: z.string().optional(),
+    /** 排序方向，例如 desc */
+    orderDirection: z.enum(['asc', 'desc']).optional(),
+  }),
+) {}
