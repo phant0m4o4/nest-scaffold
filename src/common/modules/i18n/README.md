@@ -54,7 +54,7 @@ src/i18n/
 │   ├── common.json
 │   ├── validation.json
 │   └── error.json
-└── zh-CN/
+└── zh-cn/
     ├── common.json
     ├── validation.json
     └── error.json

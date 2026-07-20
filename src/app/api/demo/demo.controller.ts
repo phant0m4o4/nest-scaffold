@@ -12,7 +12,9 @@ import {
 import { DemoService } from './demo.service';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';
 import { FindManyDemoByCursoredPaginationRequestDto } from './dtos/find-many-demo-request.dto';
+import { FindOneDemoParamDto } from './dtos/find-one-demo-param.dto';
 import { UpdateDemoRequestDto } from './dtos/update-demo-request.dto';
+import { DemoEntity } from './entities/demo.entity';
 
 /**
  * demo控制器
@@ -38,8 +40,8 @@ export class DemoController {
    */
   @Get('all')
   async findAll() {
-    const data = await this.demoService.findAll();
-    return { data };
+    const rows = await this.demoService.findAll();
+    return { data: rows.map((row) => DemoEntity.create(row)) };
   }
 
   /**
@@ -51,31 +53,34 @@ export class DemoController {
   ) {
     const { data, meta } =
       await this.demoService.findManyByCursorPagination(query);
-    return { data, meta };
+    return { data: data.map((row) => DemoEntity.create(row)), meta };
   }
 
   /**
    * 查询单条资源
    */
   @Get(':id')
-  async findOne(@Param('id') id: number) {
-    const data = await this.demoService.findOne(id);
-    return { data };
+  async findOne(@Param() params: FindOneDemoParamDto) {
+    const row = await this.demoService.findOne(params.id);
+    return { data: row ? DemoEntity.create(row) : null };
   }
 
   /**
    * 更新资源
    */
   @Patch(':id')
-  async update(@Param('id') id: number, @Body() body: UpdateDemoRequestDto) {
-    await this.demoService.update(id, body);
+  async update(
+    @Param() params: FindOneDemoParamDto,
+    @Body() body: UpdateDemoRequestDto,
+  ) {
+    await this.demoService.update(params.id, body);
   }
 
   /**
    * 删除单条资源
    */
   @Delete(':id')
-  async remove(@Param('id') id: number) {
-    await this.demoService.delete(id);
+  async remove(@Param() params: FindOneDemoParamDto) {
+    await this.demoService.delete(params.id);
   }
 }

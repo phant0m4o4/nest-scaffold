@@ -136,12 +136,10 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 ```
 CacheModule
 ├── cache.module.ts          # 模块定义，forRoot 注册
-├── cache.service.ts         # 缓存服务（Redis 封装）
-└── __tests__/
-    └── cache.service.spec.ts # 单元测试（Vitest）
+└── cache.service.ts         # 缓存服务（Redis 封装）
 
 configs/
-└── cache.config.ts          # 配置（Redis 连接 + TTL + 前缀）
+└── cache.config.ts          # 配置（TTL + 键前缀，Redis 连接由 RedisModule 管理）
 ```
 
 ## 键名规则

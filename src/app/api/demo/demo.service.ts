@@ -61,6 +61,9 @@ export class DemoService {
 
   /**
    * 普通分页查询 Demo，支持多条件过滤
+   *
+   * 示例保留：演示 `findManyWithPagination` 的用法，当前控制器未暴露对应路由
+   * （默认走游标分页），需要 offset 分页时在控制器加路由接入即可。
    */
   async findManyByPagination(query: FindManyDemoByPaginationRequestDto) {
     const { page, pageSize, orderColumn, orderDirection, ...filterOptions } =

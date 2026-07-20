@@ -1,0 +1,36 @@
+# 持续集成：lint + 构建 + 单元测试 + E2E（testcontainers 使用 runner 自带 Docker）
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # 版本取自 package.json 的 packageManager 字段
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint（只读检查）
+        run: pnpm lint:check
+
+      - name: 构建（SWC + tsc 类型检查）
+        run: pnpm build
+
+      - name: 单元测试
+        run: pnpm test
+
+      - name: E2E 测试（testcontainers）
+        run: pnpm test:e2e

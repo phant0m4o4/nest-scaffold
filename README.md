@@ -226,14 +226,14 @@ PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pgsql`、`db:gene
 
 ```
 src/
-├── app/                    # 业务模块（按域划分）
-│   └── <domain>/           # 单个业务域
-│       ├── *.controller.ts
-│       ├── *.service.ts
-│       ├── *.module.ts
-│       ├── dtos/
-│       ├── interfaces/
-│       └── __tests__/
+├── app/
+│   ├── api/                # 业务模块（按域划分）
+│   │   ├── common/         # 跨业务复用 DTO/Entity（分页等）
+│   │   └── <domain>/       # 单个业务域：controller/service/module/dtos/entities/__tests__
+│   ├── exceptions/         # ZodValidationException（自带 422 响应体）
+│   ├── interceptors/       # GlobalResponseInterceptor（统一响应包装）
+│   ├── pipes/              # I18nZodValidationPipe（全局 zod 校验）
+│   └── repositories/       # 仓储层（继承 BaseRepository，mysql/pgsql 两套实现）
 ├── common/                 # 通用模块（跨业务复用）
 │   ├── enums/
 │   ├── modules/            # 通用 NestJS 模块
