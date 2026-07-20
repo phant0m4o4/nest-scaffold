@@ -1,4 +1,4 @@
-#mysql，redis，phpmyadmin 服务 用于 nestjs 项目
+#mysql，postgres，redis，phpmyadmin，pgadmin 服务 用于 nestjs 项目
 services:
   mysql:
     container_name: ${APP_NAME}-mysql
@@ -30,6 +30,33 @@ services:
       UPLOAD_LIMIT: 100000000
     depends_on:
       - mysql
+    networks:
+      - nestjs
+
+  postgres:
+    container_name: ${APP_NAME}-postgres
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: ${PGSQL_DATABASE:-dev_db}
+      POSTGRES_USER: ${PGSQL_USER:-postgres}
+      POSTGRES_PASSWORD: ${PGSQL_PASSWORD:-root_password}
+    ports:
+      - ${PGSQL_PORT:-5432}:5432
+    networks:
+      - nestjs
+
+  pgadmin:
+    container_name: ${APP_NAME}-pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    ports:
+      - '8082:80'
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: 'root_password'
+    depends_on:
+      - postgres
     networks:
       - nestjs
 

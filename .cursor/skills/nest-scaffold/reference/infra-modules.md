@@ -160,7 +160,7 @@ this._logger.info({ event: 'user_query', userId: '1' }, '查询用户');
 ```ts
 import { CacheService } from '@/common/modules/cache/cache.service';
 import { DistributedLockService } from '@/common/modules/distributed-lock/distributed-lock.service';
-import { DatabaseService } from '@/common/modules/database/database.service';
+import { DatabaseService } from '@/common/modules/database/mysql/database.service'; // pgsql 版见 database/pgsql/database.service
 import { RedisService } from '@/common/modules/redis/redis.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';

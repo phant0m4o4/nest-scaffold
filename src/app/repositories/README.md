@@ -44,7 +44,7 @@ src/app/repositories/
 ### 1. 定义仓储
 
 ```typescript
-import { DatabaseService } from '@/common/modules/database/database.service';
+import { DatabaseService } from '@/common/modules/database/mysql/database.service';
 import { usersSchema } from '@/database/schemas/users.schema';
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from './common/base.repository';

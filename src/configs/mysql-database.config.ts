@@ -34,8 +34,8 @@ class EnvironmentVariables {
   @IsNotEmpty()
   MYSQL_PASSWORD: string;
 }
-const databaseConfig = registerEnvAsConfig(
-  'database',
+const mysqlDatabaseConfig = registerEnvAsConfig(
+  'mysqlDatabase',
   EnvironmentVariables,
   (env) => {
     return {
@@ -47,5 +47,5 @@ const databaseConfig = registerEnvAsConfig(
     };
   },
 );
-export type DatabaseConfigType = ConfigType<typeof databaseConfig>;
-export default databaseConfig;
+export type MysqlDatabaseConfigType = ConfigType<typeof mysqlDatabaseConfig>;
+export default mysqlDatabaseConfig;

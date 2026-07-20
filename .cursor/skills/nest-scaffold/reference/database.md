@@ -1,5 +1,8 @@
 # 数据库（Drizzle ORM + MySQL）
 
+> 本文档描述的是当前唯一有业务 Schema/仓储实现的 MySQL 版（`src/common/modules/database/mysql/`）。
+> 项目同时提供一套平行的 PostgreSQL 连接层（`src/common/modules/database/pgsql/`），仅有连接管理，尚未绑定业务 Schema 与仓储层，详见其 README。两者按需二选一或同时导入，见 `src/common/modules/database/README.md`。
+
 ## 关键约束
 
 - 表必须有 `id` 列（int unsigned auto-increment primary key），由 `createPrimaryKeyColumn()` 提供。否则 `BaseRepository` 启动会抛错。
@@ -76,7 +79,7 @@ export const demosSchema = mysqlTable(
 ## 事务
 
 ```ts
-import type { MySqlTransactionType } from '@/common/modules/database/common/types/mysql-transaction.type';
+import type { MySqlTransactionType } from '@/common/modules/database/mysql/common/types/mysql-transaction.type';
 
 await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
   await this._userRepository.create({ db: tx, data: userData });
@@ -160,6 +163,8 @@ MYSQL_PASSWORD=root_password
 
 - `mysql:8.0`（端口 3306，命令 `--character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci`）
 - `phpmyadmin`（端口 8080）
+- `postgres:16`（端口 5432，仅在需要 PG 时用；见 `PGSQL_*` 环境变量）
+- `pgadmin`（端口 8082）
 - `redis`（端口 6379，`requirepass`）
 - `phpRedisAdmin`（端口 8081）
 
