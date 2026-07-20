@@ -1,12 +1,17 @@
-# 持续交付：构建生产镜像并推送到 GitHub Container Registry (ghcr.io)
-# 触发：推送 v* 版本标签（如 v1.2.0），或手动触发
-# 后续部署（K8s / 服务器拉取镜像等）依基础设施而定，不在此工作流内
+# 持续交付：手动触发，构建生产镜像并推送到 GitHub Container Registry (ghcr.io)
+#
+# 本仓库是脚手架，不自动发布镜像；本工作流仅手动触发，主要用于验证镜像构建
+# 与按需出一个镜像。下游业务项目可按自己的发布流程改为标签触发：
+#   on: { push: { tags: ['v*'] } }  并配合 type=semver 标签规则
 name: CD
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '镜像标签（如 0.1.0；留空则仅打 commit sha 标签）'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -33,10 +38,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ inputs.image_tag }},enable=${{ inputs.image_tag != '' }}
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: 构建并推送镜像
         uses: docker/build-push-action@v6
