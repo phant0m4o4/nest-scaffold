@@ -1,9 +1,9 @@
-import { MySqlTable } from 'drizzle-orm/mysql-core';
+import { Table } from 'drizzle-orm';
 
 /**
  * 游标分页结果接口
  */
-export interface ICursorPaginationResult<TSchema extends MySqlTable> {
+export interface ICursorPaginationResult<TSchema extends Table> {
   /**
    * 数据列表
    */

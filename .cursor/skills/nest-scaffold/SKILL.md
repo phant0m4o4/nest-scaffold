@@ -98,7 +98,7 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile
 
 生成后必须做的人工步骤：
 
-1. 在 `src/database/schemas/` 增加对应表（如尚未存在）并在 `schemas/index.ts` 导出。
+1. 在 `src/database/mysql/schemas/` 增加对应表（如尚未存在）并在 `schemas/index.ts` 导出。
 2. 在 `<Feature>Repository` 中确认表名、特殊查询方法。
 3. 在 `<Feature>Service` 中实现真实业务逻辑（脚本只生成 CRUD 桩）。
 4. 在 `src/app/api/api.module.ts` 中 `imports` 新模块。
@@ -122,14 +122,15 @@ bash .cursor/skills/nest-scaffold/scripts/new-module.sh user-profile
 ## 工作流 B：新增数据库表
 
 1. 在 `src/database/enums/` 决定是否需要枚举（跨文件复用才放这里，键值用 camelCase）。
-2. 在 `src/database/schemas/<table-name>.schema.ts` 用 Drizzle MySQL 定义：
-   - 必须 `id: createPrimaryKeyColumn()`（来自 `@/database/utils/create-primary-key`）。
+2. 在 `src/database/mysql/schemas/<table-name>.schema.ts` 用 Drizzle MySQL 定义：
+   - 必须 `id: createPrimaryKeyColumn()`（来自 `@/database/mysql/utils/create-primary-key`）。
    - 时间戳用 `...createTimestamps()`，需要软删除则 `...createTimestampsWithSoftDelete()`（自动生成 `deletedAt`，`BaseRepository` 会识别）。
    - 外键用 `createForeignKeyColumn()`。
-3. 在 `src/database/schemas/index.ts` 重导出新 schema。
-4. 必要时更新 `src/database/init.ts`（基础数据）和 `src/database/seed.ts`（演示数据，使用 `unique()` 工具 + `@faker-js/faker` 中文 locale）。
+3. 在 `src/database/mysql/schemas/index.ts` 重导出新 schema。
+4. 必要时更新 `src/database/mysql/init.ts`（基础数据）和 `src/database/mysql/seed.ts`（演示数据，使用 `unique()` 工具 + `@faker-js/faker` 中文 locale）。
 5. 同步：`pnpm db:push` → `pnpm db:init:dev` → `pnpm db:seed:dev`。
 6. **不要**主动跑 `db:generate` / `db:migrate`，除非用户明确要求 migration。
+7. 若项目使用 PostgreSQL：在 `src/database/pgsql/schemas/` 下用 pg-core（`pgTable` / `pgEnum`）做同样的事，工具函数来自 `@/database/pgsql/utils/*`，同步命令换成 `pnpm db:push:pg` → `pnpm db:init:pg:dev` → `pnpm db:seed:pg:dev`。
 
 `templates/schema.ts.tpl` 提供模板。详见 `reference/database.md`。
 

@@ -3,7 +3,7 @@ import { IInitInitializer } from '@/common/modules/database/interfaces/init-init
 import { Injectable } from '@nestjs/common';
 import inquirer from 'inquirer';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { DemoTypeEnum } from './enums/demo-type.enum';
+import { DemoTypeEnum } from '../enums/demo-type.enum';
 import { demosSchema } from './schemas';
 import Sleep from '@/common/utils/sleep';
 /**

@@ -1,10 +1,10 @@
 import { MySqlDatabaseType } from '@/common/modules/database/mysql/common/types/mysql-database.type';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
-import { demosSchema } from '@/database/schemas/demos.schema';
+import { demosSchema } from '@/database/mysql/schemas/demos.schema';
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { BaseRepository } from './common/base.repository';
+import { BaseRepository } from './common/mysql/base.repository';
 
 /**
  * Demo 仓储

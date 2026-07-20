@@ -1,4 +1,4 @@
-import { MySqlDatabaseType } from '@/common/modules/database/mysql/common/types/mysql-database.type';
+import { PgsqlDatabaseType } from '@/common/modules/database/pgsql/common/types/pgsql-database.type';
 import { UTC } from '@/common/utils/date-time';
 import {
   and,
@@ -12,24 +12,25 @@ import {
   lt,
   SQL,
 } from 'drizzle-orm';
-import { getTableConfig, MySqlTable } from 'drizzle-orm/mysql-core';
-import { RecordNotFoundException } from './exceptions/record-not-found-exception';
-import { ICursorPaginationResult } from './interfaces/cursor-pagination-result.interface';
-import { IOrderOption } from './interfaces/order-option.interface';
-import { IPaginationResult } from './interfaces/pagination-result.interface';
-import { mapMysqlErrorAndThrow } from './utils/mysql-error-mapper.util';
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
+import { RecordNotFoundException } from '../exceptions/record-not-found-exception';
+import { ICursorPaginationResult } from '../interfaces/cursor-pagination-result.interface';
+import { IOrderOption } from '../interfaces/order-option.interface';
+import { IPaginationResult } from '../interfaces/pagination-result.interface';
+import { mapPgsqlErrorAndThrow } from './utils/pgsql-error-mapper.util';
 
 /**
- * 通用仓储基类
+ * 通用仓储基类（PostgreSQL）
  *
  * 封装 Drizzle ORM 常用 CRUD、分页、软删除等数据访问逻辑，
  * 业务仓储只需继承并传入对应 Schema 即可获得完整能力。
+ * 与 `../mysql/base.repository.ts` 是平行的两套实现。
  *
- * 约束：表必须拥有 `id` 列（int 类型、主键）。
+ * 约束：表必须拥有 `id` 列（integer 类型、主键）。
  */
-export abstract class BaseRepository<TSchema extends MySqlTable> {
+export abstract class BaseRepository<TSchema extends PgTable> {
   /** 数据库实例 */
-  protected readonly _db: MySqlDatabaseType;
+  protected readonly _db: PgsqlDatabaseType;
   /** 数据表 Schema */
   protected readonly _schema: TSchema;
   /** 软删除字段名 */
@@ -39,7 +40,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
   /** 表配置元数据 */
   protected readonly _tableConfig: ReturnType<typeof getTableConfig>;
 
-  protected constructor(schema: TSchema, db: MySqlDatabaseType) {
+  protected constructor(schema: TSchema, db: PgsqlDatabaseType) {
     this._schema = schema;
     this._db = db;
     this._tableConfig = getTableConfig(schema);
@@ -52,7 +53,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     );
     if (!hasValidIdColumn) {
       throw new Error(
-        `${this._tableConfig.name}: 必须存在 id 列且为主键且类型为 int`,
+        `${this._tableConfig.name}: 必须存在 id 列且为主键且类型为 integer`,
       );
     }
   }
@@ -64,7 +65,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @returns 记录对象或 null
    */
   public async findOne(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     id: TSchema['$inferSelect']['id'];
   }): Promise<TSchema['$inferSelect'] | null> {
     const { db = this._db, id } = options;
@@ -84,16 +85,16 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    */
   public async findAll(
     options: {
-      db?: MySqlDatabaseType;
+      db?: PgsqlDatabaseType;
       order?: IOrderOption | IOrderOption[];
     } = {},
   ): Promise<TSchema['$inferSelect'][]> {
     const { db = this._db, order } = options;
-    const query = db.select().from(this._schema);
+    const query = db.select().from(this._schema as PgTable);
     query.orderBy(
       ...this._buildOrder(order ?? { column: 'id', direction: 'asc' }),
     );
-    return await query;
+    return (await query) as TSchema['$inferSelect'][];
   }
 
   /**
@@ -106,14 +107,14 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    */
   public async findMany(
     options: {
-      db?: MySqlDatabaseType;
+      db?: PgsqlDatabaseType;
       filter?: SQL[] | SQL;
       limit?: number;
       order?: IOrderOption | IOrderOption[];
     } = {},
   ): Promise<TSchema['$inferSelect'][]> {
     const { db = this._db, filter, limit, order } = options;
-    const query = db.select().from(this._schema);
+    const query = db.select().from(this._schema as PgTable);
     const whereFilter = this._buildWhereFilter(filter);
     if (whereFilter) {
       query.where(whereFilter);
@@ -124,7 +125,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     if (limit) {
       query.limit(limit);
     }
-    return await query;
+    return (await query) as TSchema['$inferSelect'][];
   }
 
   /**
@@ -137,7 +138,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @returns 分页结果（data + meta）
    */
   public async findManyWithPagination(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     page: number;
     pageSize: number;
     filter?: SQL[] | SQL;
@@ -146,13 +147,15 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     const { db = this._db, page, pageSize, filter, order } = options;
     const offset = (page - 1) * pageSize;
     const whereFilter = filter ? this._buildWhereFilter(filter) : undefined;
-    const countQuery = db.select({ count: count() }).from(this._schema);
+    const countQuery = db
+      .select({ count: count() })
+      .from(this._schema as PgTable);
     if (whereFilter) {
       countQuery.where(whereFilter);
     }
     const totalResult = await countQuery;
     const total = totalResult[0]?.count ?? 0;
-    const dataQuery = db.select().from(this._schema);
+    const dataQuery = db.select().from(this._schema as PgTable);
     if (whereFilter) {
       dataQuery.where(whereFilter);
     }
@@ -160,7 +163,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
       ...this._buildOrder(order ?? { column: 'id', direction: 'asc' }),
     );
     dataQuery.limit(pageSize).offset(offset);
-    const data = await dataQuery;
+    const data = (await dataQuery) as TSchema['$inferSelect'][];
     const totalPages = Math.ceil(total / pageSize);
     const hasPreviousPage = page > 1;
     const hasNextPage = page < totalPages;
@@ -180,7 +183,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @returns 分页结果（data + meta.nextCursor）
    */
   public async findManyWithCursorPagination(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     limit: number;
     filter?: SQL[] | SQL;
     order?: IOrderOption | IOrderOption[];
@@ -203,7 +206,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
         filters.push(gt(this._schema['id'], cursor));
       }
     }
-    const query = db.select().from(this._schema);
+    const query = db.select().from(this._schema as PgTable);
     const whereFilter = this._buildWhereFilter(filters);
     if (whereFilter) {
       query.where(whereFilter);
@@ -213,7 +216,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     );
     // 多查一条用于判断是否有下一页
     query.limit(limit + 1);
-    const results = await query;
+    const results = (await query) as TSchema['$inferSelect'][];
     const hasNextPage = results.length > limit;
     if (hasNextPage) {
       results.pop();
@@ -236,7 +239,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @throws RecordAlreadyExistsException 唯一键冲突
    */
   public async create(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     data: TSchema['$inferInsert'];
   }): Promise<TSchema['$inferSelect']['id']> {
     const { db = this._db, data } = options;
@@ -244,13 +247,13 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
       const resultIds = (await db
         .insert(this._schema)
         .values(data)
-        .$returningId()) as unknown as { id: TSchema['$inferSelect']['id'] }[];
+        .returning()) as unknown as { id: TSchema['$inferSelect']['id'] }[];
       if (resultIds.length !== 1) {
         throw new Error(`创建${this._tableConfig.name}失败: 0 行受影响`);
       }
       return resultIds[0]['id'];
     } catch (error) {
-      mapMysqlErrorAndThrow(error);
+      mapPgsqlErrorAndThrow(error);
     }
   }
 
@@ -262,19 +265,18 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @throws RecordAlreadyExistsException 唯一键冲突
    */
   public async batchCreate(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     data: TSchema['$inferInsert'][];
   }): Promise<{ id: TSchema['$inferSelect']['id'] }[]> {
     const { db = this._db, data } = options;
     try {
-      return (await db
+      const rows = (await db
         .insert(this._schema)
         .values(data)
-        .$returningId()) as unknown as {
-        id: TSchema['$inferSelect']['id'];
-      }[];
+        .returning()) as unknown as { id: TSchema['$inferSelect']['id'] }[];
+      return rows.map((row) => ({ id: row.id }));
     } catch (error) {
-      mapMysqlErrorAndThrow(error);
+      mapPgsqlErrorAndThrow(error);
     }
   }
 
@@ -286,7 +288,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @throws RecordNotFoundException 记录不存在
    */
   public async update(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     id: TSchema['$inferSelect']['id'];
     data: Partial<TSchema['$inferSelect']>;
   }): Promise<void> {
@@ -300,7 +302,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
       }
       await db.update(this._schema).set(data).where(eq(this._schema['id'], id));
     } catch (error) {
-      mapMysqlErrorAndThrow(error);
+      mapPgsqlErrorAndThrow(error);
     }
   }
 
@@ -311,7 +313,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @throws RecordNotFoundException 记录不存在
    */
   public async delete(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     id: TSchema['$inferSelect']['id'];
   }): Promise<void> {
     const { db = this._db, id } = options;
@@ -340,7 +342,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @throws RecordNotFoundException 部分记录不存在
    */
   public async batchDelete(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     ids: TSchema['$inferSelect']['id'][];
   }): Promise<void> {
     const { db = this._db, ids } = options;
@@ -381,7 +383,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    * @returns 是否存在
    */
   public async isExists(options: {
-    db?: MySqlDatabaseType;
+    db?: PgsqlDatabaseType;
     filters: SQL[];
   }): Promise<boolean> {
     const { db = this._db, filters } = options;
@@ -397,12 +399,12 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
    */
   public async count(
     options: {
-      db?: MySqlDatabaseType;
+      db?: PgsqlDatabaseType;
       filter?: SQL[] | SQL;
     } = {},
   ): Promise<number> {
     const { db = this._db, filter } = options;
-    const query = db.select({ count: count() }).from(this._schema);
+    const query = db.select({ count: count() }).from(this._schema as PgTable);
     const whereFilter = this._buildWhereFilter(filter);
     if (whereFilter) {
       query.where(whereFilter);

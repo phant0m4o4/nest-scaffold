@@ -1,10 +1,10 @@
-import { unique } from '../common/modules/database/common/utils/unique';
+import { unique } from '@/common/modules/database/common/utils/unique';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
 import { ISeeder } from '@/common/modules/database/interfaces/seeder.interface';
 import { Injectable } from '@nestjs/common';
 import inquirer from 'inquirer';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { demoTypes } from './enums/demo-type.enum';
+import { demoTypes } from '../enums/demo-type.enum';
 import { demosSchema } from './schemas';
 import { fakerZH_CN as faker } from '@faker-js/faker';
 import Sleep from '@/common/utils/sleep';

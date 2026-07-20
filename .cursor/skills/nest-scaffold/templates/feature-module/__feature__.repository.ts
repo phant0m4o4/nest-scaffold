@@ -1,8 +1,8 @@
 import { DatabaseService } from '@/common/modules/database/database.service';
-import { __featuresCamel__Schema } from '@/database/schemas/__features__.schema';
+import { __featuresCamel__Schema } from '@/database/mysql/schemas/__features__.schema';
 import { Injectable } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { BaseRepository } from './common/base.repository';
+import { BaseRepository } from './common/mysql/base.repository';
 
 /**
  * __feature__ 仓储

@@ -52,9 +52,19 @@ export default myConfig;
 |------|------|------|
 | `MYSQL_HOST` | `127.0.0.1` | |
 | `MYSQL_PORT` | `3306` | |
-| `MYSQL_DATABASE` | — | 必填，可写 `${APP_NAME}` 占位（drizzle.config.ts 会替换） |
+| `MYSQL_DATABASE` | — | 必填，可写 `${APP_NAME}` 占位（drizzle-mysql.config.ts 会替换） |
 | `MYSQL_USER` | — | |
 | `MYSQL_PASSWORD` | — | |
+
+## PostgreSQL（database/pgsql DatabaseModule）
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `PGSQL_HOST` | `127.0.0.1` | |
+| `PGSQL_PORT` | `5432` | |
+| `PGSQL_DATABASE` | — | 必填，可写 `${APP_NAME}` 占位（drizzle-pgsql.config.ts 会替换） |
+| `PGSQL_USER` | — | |
+| `PGSQL_PASSWORD` | — | |
 
 ## Redis（RedisModule，全局共享）
 

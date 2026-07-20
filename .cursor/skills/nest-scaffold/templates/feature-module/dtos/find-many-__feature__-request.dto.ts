@@ -1,5 +1,5 @@
 import { FindManyByCursoredPaginationDto } from '@/app/api/common/dtos/find-many-by-cursored-pagination.dto';
-import { __featuresCamel__Schema } from '@/database/schemas/__features__.schema';
+import { __featuresCamel__Schema } from '@/database/mysql/schemas/__features__.schema';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 import { getTableConfig } from 'drizzle-orm/mysql-core';
 

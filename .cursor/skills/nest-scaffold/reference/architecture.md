@@ -7,7 +7,8 @@
 ├── .cursor/                  # Cursor 配置（含本 skill 与 rules）
 ├── .env / .env.example       # 环境变量（.env 不入库）
 ├── docker-compose.yml        # MySQL / Redis / phpMyAdmin / phpRedisAdmin
-├── drizzle.config.ts         # Drizzle Kit 配置（指向 src/database/schemas）
+├── drizzle-mysql.config.ts   # Drizzle Kit 配置（MySQL，指向 src/database/mysql/schemas）
+├── drizzle-pgsql.config.ts   # Drizzle Kit 配置（PostgreSQL，指向 src/database/pgsql/schemas）
 ├── eslint.config.mjs         # ESLint 9 + typescript-eslint + prettier
 ├── jest.config.ts            # Jest 单测配置
 ├── jest-e2e.config.ts        # Jest E2E 配置
@@ -55,7 +56,7 @@ src/
 │   ├── modules/                            # 全部 @Global() 基础设施模块
 │   │   ├── bottleneck/                     # 进程内速率限流
 │   │   ├── cache/                          # 基于 RedisService 的缓存
-│   │   ├── database/                       # Drizzle MySQL + Tools(init/seed CLI)
+│   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(init/seed CLI)
 │   │   ├── distributed-lock/               # Redlock
 │   │   ├── i18n/                           # nestjs-i18n（项目实际不强依赖）
 │   │   ├── logger/                         # nestjs-pino + pino-roll
@@ -64,12 +65,17 @@ src/
 │   └── utils/                              # date-time / hash / random / sleep / register-env-as-config 等
 ├── configs/                                # registerEnvAsConfig 注册的各模块配置
 └── database/
-    ├── enums/                              # 跨表枚举
-    ├── schemas/                            # Drizzle 表（每张表一个文件）
-    ├── schemas/index.ts                    # 聚合 export *
-    ├── utils/                              # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-    ├── init.ts                             # InitService（pnpm db:init）
-    └── seed.ts                             # SeedService（pnpm db:seed）
+    ├── enums/                              # 跨表枚举（方言无关，两套 schema 共享）
+    ├── mysql/                              # MySQL 业务库（mysql-core）
+    │   ├── schemas/                        # Drizzle 表（每张表一个文件）+ index.ts 聚合 export *
+    │   ├── utils/                          # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
+    │   ├── init.ts                         # InitService（pnpm db:init:dev）
+    │   └── seed.ts                         # SeedService（pnpm db:seed:dev）
+    └── pgsql/                              # PostgreSQL 业务库（pg-core，与 mysql/ 平行）
+        ├── schemas/                        # 同上（pgTable / pgEnum）
+        ├── utils/                          # 同上（integer identity / $onUpdate）
+        ├── init.ts                         # InitService（pnpm db:init:pg:dev）
+        └── seed.ts                         # SeedService（pnpm db:seed:pg:dev）
 ```
 
 ## AppModule 装配顺序
