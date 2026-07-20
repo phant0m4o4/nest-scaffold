@@ -1,4 +1,4 @@
-# Git Commit 规范（Commitizen 风格）
+# Git 规范：提交（Commitizen 风格）、分支与推送
 
 ## 强制要求
 
@@ -115,6 +115,20 @@ Implement user list query functionality with pagination support.
    - 关联 issue（可空）
 3. commitizen 会自动拼装并提交，符合规范。
 
+## 分支规范
+
+- 仓库常态**只保留 `main` 一个分支**（本地与远端一致）。小改动直接在 `main` 上提交推送。
+- 成规模的功能/重构才开工作分支，命名 `<type>/<kebab-topic>`（如 `feature/pgsql-support`、`refactor/zod-migration`），`type` 与上方提交 type 表一致。
+- 工作分支**用完即清**：合回 `main`（能 fast-forward 就 fast-forward，不刻意造 merge commit）后，立即删除本地与远端分支及对应 worktree（工作树，同一仓库的另一份检出目录）。
+- **禁止对 `main` 强推**（`push --force`）；改历史（rebase / amend）仅限尚未推送的本地提交。
+
+## 提交与推送流程
+
+- **原子提交**：一次提交只做一件事；因本次改动而需要同步的文档/模板/配置放进同一个提交，不留"文档稍后补"的尾巴。
+- **推送前验证**：`pnpm lint && pnpm build && pnpm test` 必须全绿（改动涉及 e2e 面时加 `pnpm test:e2e`），工作区不留未跟踪的临时文件。
+- 推送后关注 CI 结果；CI 挂了优先修复或回滚，不在红着的 `main` 上继续叠加提交。
+- 身份与隐私要求（SSH key、noreply 署名、提交内容不得含本机/个人信息）见仓库根 [CLAUDE.md](../../../../CLAUDE.md) 规则 A。
+
 ## 验证清单
 
 提交前过一遍：
@@ -124,3 +138,6 @@ Implement user list query functionality with pagination support.
 - [ ] `subject` ≤ 50 字符、动词开头、末尾无句号
 - [ ] 如有 `body`，使用中文
 - [ ] 不在标题里包含敏感信息（密码、token、内部 URL）
+- [ ] 本次提交只做一件事，连带的文档/模板已在同一提交内
+- [ ] `pnpm lint && pnpm build && pnpm test` 全绿后再推送
+- [ ] 工作分支合并后已删除本地/远端分支（仓库只剩 `main`）
