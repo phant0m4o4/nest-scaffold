@@ -1,7 +1,8 @@
 import { AppModule } from '@/app/app.module';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 describe('__Feature__ E2E', () => {
   let app: INestApplication;
@@ -12,10 +13,8 @@ describe('__Feature__ E2E', () => {
       imports: [AppModule],
     }).compile();
 
+    // 全局 ZodValidationPipe / ZodValidationExceptionFilter 已由 AppModule 注册，无需额外配置
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ transform: true, whitelist: true }),
-    );
     await app.init();
   });
 

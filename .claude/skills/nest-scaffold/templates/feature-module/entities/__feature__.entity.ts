@@ -1,31 +1,15 @@
-import { Expose } from 'class-transformer';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class __Feature__Entity {
-  /**
-   * 主键
-   * @example 1
-   */
-  @Expose()
-  id: number;
-
-  /**
-   * 名称
-   * @example '示例名称'
-   */
-  @Expose()
-  name: string;
-
-  /**
-   * 创建时间
-   * @example '2025-01-01 00:00:00'
-   */
-  @Expose()
-  createdAt: Date;
-
-  /**
-   * 更新时间
-   * @example '2025-01-01 00:00:00'
-   */
-  @Expose()
-  updatedAt: Date;
-}
+export class __Feature__Entity extends createZodDto(
+  z.object({
+    /** 主键，例如 1 */
+    id: z.number(),
+    /** 名称，例如 '示例名称' */
+    name: z.string(),
+    /** 创建时间，例如 '2025-01-01 00:00:00' */
+    createdAt: z.date(),
+    /** 更新时间，例如 '2025-01-01 00:00:00' */
+    updatedAt: z.date(),
+  }),
+) {}

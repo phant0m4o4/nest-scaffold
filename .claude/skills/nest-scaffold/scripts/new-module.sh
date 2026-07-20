@@ -13,7 +13,7 @@
 # 生成内容：
 #   src/app/api/<feature>/                  # controller / service / module / dtos / entities / __tests__
 #   src/app/repositories/<feature>.repository.ts
-#   src/database/schemas/<features>.schema.ts （桩，需补字段）
+#   src/database/mysql/schemas/<features>.schema.ts （桩，需补字段）
 #
 # 占位符替换：
 #   __feature__   → <feature-kebab-singular>           （文件名、路径、DTO schema name）
@@ -86,7 +86,7 @@ fi
 
 API_DIR="$ROOT/src/app/api/$FEATURE_SINGULAR"
 REPO_FILE="$ROOT/src/app/repositories/$FEATURE_SINGULAR.repository.ts"
-SCHEMA_FILE="$ROOT/src/database/schemas/$FEATURE_PLURAL.schema.ts"
+SCHEMA_FILE="$ROOT/src/database/mysql/schemas/$FEATURE_PLURAL.schema.ts"
 
 if [[ -d "$API_DIR" ]]; then
   echo "错误: 模块目录已存在: $API_DIR" >&2
@@ -146,14 +146,14 @@ cat <<EOF
 
 后续手动步骤：
 
-1. 在 src/database/schemas/index.ts 添加：
+1. 在 src/database/mysql/schemas/index.ts 添加：
    export * from './$FEATURE_PLURAL.schema';
 
 2. 在 src/app/api/api.module.ts 的 imports 加入：
    ${PASCAL_SINGULAR}Module
 
 3. 完善以下文件中的 TODO：
-   - src/database/schemas/$FEATURE_PLURAL.schema.ts  （补充表字段）
+   - src/database/mysql/schemas/$FEATURE_PLURAL.schema.ts  （补充表字段）
    - src/app/api/$FEATURE_SINGULAR/dtos/create-$FEATURE_SINGULAR-request.dto.ts
    - src/app/api/$FEATURE_SINGULAR/dtos/update-$FEATURE_SINGULAR-request.dto.ts
    - src/app/api/$FEATURE_SINGULAR/dtos/find-many-$FEATURE_SINGULAR-request.dto.ts

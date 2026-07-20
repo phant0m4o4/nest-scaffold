@@ -5,6 +5,6 @@ export default defineConfig({
   ...config,
   test: {
     ...config.test,
-    include: ['**/*.e2e-spec.ts'],
+    include: ['src/**/*.e2e-spec.ts'],
   },
 });

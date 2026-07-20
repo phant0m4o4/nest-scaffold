@@ -8,8 +8,10 @@ import { RedisModule } from '@/common/modules/redis/redis.module';
 import appConfig from '@/configs/app.config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { ApiModule } from '@/app/api/api.module';
+import { ZodValidationExceptionFilter } from '@/app/filters/zod-validation-exception.filter';
 import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.interceptor';
 
 @Module({
@@ -42,6 +44,16 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
     {
       provide: APP_INTERCEPTOR,
       useClass: GlobalResponseInterceptor,
+    },
+    // 全局 zod 校验管道（对使用 createZodDto 的 DTO 自动校验 body/query/param）
+    {
+      provide: APP_PIPE,
+      useClass: ZodValidationPipe,
+    },
+    // 校验失败统一转换为 422 响应
+    {
+      provide: APP_FILTER,
+      useClass: ZodValidationExceptionFilter,
     },
   ],
 })

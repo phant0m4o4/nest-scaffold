@@ -1,7 +1,6 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 
 /**
  * i18n 环境变量定义与配置映射
@@ -12,20 +11,13 @@ import { IsOptional, IsString } from 'class-validator';
  * .env 示例：
  * I18N_FALLBACK_LANGUAGE=en
  */
-class I18nEnvironmentVariables {
-  @Expose()
-  @IsString()
-  @IsOptional()
-  I18N_FALLBACK_LANGUAGE?: string;
-}
+const environmentSchema = z.object({
+  I18N_FALLBACK_LANGUAGE: z.string().optional(),
+});
 
-const i18nConfig = registerEnvAsConfig(
-  'i18n',
-  I18nEnvironmentVariables,
-  (env) => ({
-    fallbackLanguage: env.I18N_FALLBACK_LANGUAGE ?? 'en',
-  }),
-);
+const i18nConfig = registerEnvAsConfig('i18n', environmentSchema, (env) => ({
+  fallbackLanguage: env.I18N_FALLBACK_LANGUAGE ?? 'en',
+}));
 
 export type I18nConfigType = ConfigType<typeof i18nConfig>;
 export default i18nConfig;

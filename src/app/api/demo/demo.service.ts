@@ -53,7 +53,7 @@ export class DemoService {
       cursor,
       order: {
         column: orderColumn ?? 'id',
-        direction: (orderDirection ?? 'desc') as 'asc' | 'desc',
+        direction: orderDirection ?? 'desc',
       },
       filter: filters,
     });
@@ -72,7 +72,7 @@ export class DemoService {
       filter: filters,
       order: {
         column: orderColumn ?? 'id',
-        direction: (orderDirection ?? 'desc') as 'asc' | 'desc',
+        direction: orderDirection ?? 'desc',
       },
     });
   }

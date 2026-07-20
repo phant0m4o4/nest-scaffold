@@ -9,7 +9,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { __Feature__Service } from './__feature__.service';
 import { Create__Feature__RequestDto } from './dtos/create-__feature__-request.dto';
 import { FindMany__Feature__ByCursoredPaginationRequestDto } from './dtos/find-many-__feature__-request.dto';
@@ -29,11 +28,7 @@ export class __Feature__Controller {
   async create(@Body() body: Create__Feature__RequestDto) {
     const id = await this.__featureCamel__Service.create(body);
     return {
-      data: plainToInstance(
-        OnlyIdEntity,
-        { id },
-        { excludeExtraneousValues: true },
-      ),
+      data: OnlyIdEntity.create({ id }),
     };
   }
 
@@ -42,11 +37,7 @@ export class __Feature__Controller {
   async findAll() {
     const rows = await this.__featureCamel__Service.findAll();
     return {
-      data: rows.map((row) =>
-        plainToInstance(__Feature__Entity, row, {
-          excludeExtraneousValues: true,
-        }),
-      ),
+      data: rows.map((row) => __Feature__Entity.create(row)),
     };
   }
 
@@ -58,11 +49,7 @@ export class __Feature__Controller {
     const { data, meta } =
       await this.__featureCamel__Service.findManyByCursorPagination(query);
     return {
-      data: data.map((row) =>
-        plainToInstance(__Feature__Entity, row, {
-          excludeExtraneousValues: true,
-        }),
-      ),
+      data: data.map((row) => __Feature__Entity.create(row)),
       meta,
     };
   }
@@ -72,9 +59,7 @@ export class __Feature__Controller {
   async findOne(@Param('id') id: number) {
     const row = await this.__featureCamel__Service.findOne(id);
     return {
-      data: plainToInstance(__Feature__Entity, row, {
-        excludeExtraneousValues: true,
-      }),
+      data: row ? __Feature__Entity.create(row) : null,
     };
   }
 

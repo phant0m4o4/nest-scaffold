@@ -1,63 +1,46 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import type { ConfigType } from '@nestjs/config';
-import { Expose } from 'class-transformer';
-import {
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateIf,
-} from 'class-validator';
+import { z } from 'zod';
 
 type RedisMode = 'single' | 'sentinel' | 'cluster';
 
-class EnvironmentVariables {
-  @Expose()
-  @IsIn(['single', 'sentinel', 'cluster'])
-  @IsOptional()
-  REDIS_MODE?: RedisMode;
-  @Expose()
-  @IsString()
-  @IsOptional()
-  REDIS_HOST?: string;
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  REDIS_PORT?: number;
-  @Expose()
-  @IsString()
-  @IsOptional()
-  REDIS_PASSWORD?: string;
-  @Expose()
-  @IsInt()
-  @IsOptional()
-  REDIS_DB?: number;
-  @Expose()
-  @IsString()
-  @IsNotEmpty()
-  @ValidateIf(
-    (object: EnvironmentVariables): boolean =>
-      (object.REDIS_MODE ?? 'single') === 'sentinel',
-  )
-  REDIS_SENTINEL_MASTER_NAME?: string;
-  @Expose()
-  @IsNotEmpty()
-  @ValidateIf(
-    (object: EnvironmentVariables): boolean =>
-      (object.REDIS_MODE ?? 'single') === 'sentinel',
-  )
-  @IsString()
-  REDIS_SENTINELS?: string;
-  @Expose()
-  @IsString()
-  @IsNotEmpty()
-  @ValidateIf(
-    (object: EnvironmentVariables): boolean =>
-      (object.REDIS_MODE ?? 'single') === 'cluster',
-  )
-  REDIS_CLUSTER_NODES?: string;
-}
+const environmentSchema = z
+  .object({
+    REDIS_MODE: z.enum(['single', 'sentinel', 'cluster']).optional(),
+    REDIS_HOST: z.string().optional(),
+    REDIS_PORT: z.coerce.number().int().optional(),
+    REDIS_PASSWORD: z.string().optional(),
+    REDIS_DB: z.coerce.number().int().optional(),
+    REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
+    REDIS_SENTINELS: z.string().min(1).optional(),
+    REDIS_CLUSTER_NODES: z.string().min(1).optional(),
+  })
+  .superRefine((env, ctx) => {
+    const mode = env.REDIS_MODE ?? 'single';
+    if (mode === 'sentinel') {
+      if (!env.REDIS_SENTINEL_MASTER_NAME) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['REDIS_SENTINEL_MASTER_NAME'],
+          message: 'sentinel 模式下必填',
+        });
+      }
+      if (!env.REDIS_SENTINELS) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['REDIS_SENTINELS'],
+          message: 'sentinel 模式下必填',
+        });
+      }
+    }
+    if (mode === 'cluster' && !env.REDIS_CLUSTER_NODES) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REDIS_CLUSTER_NODES'],
+        message: 'cluster 模式下必填',
+      });
+    }
+  });
 
 interface IRedisSingleModeConfig {
   readonly mode: 'single';
@@ -111,7 +94,7 @@ function parseHostPortPairs(
 
 const redisConfig = registerEnvAsConfig(
   'redis',
-  EnvironmentVariables,
+  environmentSchema,
   (env): IRedisConfig => {
     const mode: RedisMode = env.REDIS_MODE ?? 'single';
     if (mode === 'single') {

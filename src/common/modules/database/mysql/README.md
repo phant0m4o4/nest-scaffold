@@ -53,7 +53,7 @@ export class AppModule {}
 
 ```typescript
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
-import { demos } from '@/database/mysql/schemas';
+import { demosSchema } from '@/database/mysql/schemas';
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
@@ -62,8 +62,8 @@ export class DemoRepository {
   constructor(private readonly _databaseService: DatabaseService) {}
 
   async findById(id: number) {
-    return await this._databaseService.db.query.demos.findFirst({
-      where: eq(demos.id, id),
+    return await this._databaseService.db.query.demosSchema.findFirst({
+      where: eq(demosSchema.id, id),
     });
   }
 }

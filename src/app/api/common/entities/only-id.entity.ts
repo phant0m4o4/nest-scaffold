@@ -1,9 +1,9 @@
-import { Expose } from 'class-transformer';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class OnlyIdEntity {
-  /**
-   * 主键
-   */
-  @Expose()
-  id: number;
-}
+export class OnlyIdEntity extends createZodDto(
+  z.object({
+    /** 主键 */
+    id: z.number(),
+  }),
+) {}

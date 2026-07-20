@@ -4,10 +4,19 @@ import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { EventEmitter } from 'events';
 import { getLoggerToken, type PinoLogger } from 'nestjs-pino';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mocked,
+} from 'vitest';
 
-jest.mock('../redis.factory', () => ({
-  createRedisClient: jest.fn(),
-  closeRedisClient: jest.fn(async () => await Promise.resolve()),
+vi.mock('../redis.factory', () => ({
+  createRedisClient: vi.fn(),
+  closeRedisClient: vi.fn(async () => await Promise.resolve()),
 }));
 
 import { closeRedisClient, createRedisClient } from '../redis.factory';
@@ -19,7 +28,7 @@ import type { RedisClient } from '../redis.types';
  */
 class MockRedisClient extends EventEmitter {
   public status = 'ready';
-  public ping = jest.fn(async () => await Promise.resolve('PONG'));
+  public ping = vi.fn(async () => await Promise.resolve('PONG'));
 }
 
 /**
@@ -33,33 +42,33 @@ const defaultRedisConfig: RedisConfigType = {
 /**
  * 构造一个仅断言所需方法的 PinoLogger 测试替身
  */
-function buildMockLogger(): jest.Mocked<PinoLogger> {
+function buildMockLogger(): Mocked<PinoLogger> {
   return {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    trace: jest.fn(),
-    fatal: jest.fn(),
-  } as unknown as jest.Mocked<PinoLogger>;
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  } as unknown as Mocked<PinoLogger>;
 }
 
 describe('RedisService', () => {
   let testingModule: TestingModule;
   let redisService: RedisService;
-  let mockConfigService: jest.Mocked<ConfigService>;
-  let mockLogger: jest.Mocked<PinoLogger>;
+  let mockConfigService: Mocked<ConfigService>;
+  let mockLogger: Mocked<PinoLogger>;
   let mockClient: MockRedisClient;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockClient = new MockRedisClient();
-    (createRedisClient as jest.Mock).mockReturnValue(
+    vi.mocked(createRedisClient).mockReturnValue(
       mockClient as unknown as RedisClient,
     );
     mockConfigService = {
-      getOrThrow: jest.fn().mockReturnValue(defaultRedisConfig),
-    } as unknown as jest.Mocked<ConfigService>;
+      getOrThrow: vi.fn().mockReturnValue(defaultRedisConfig),
+    } as unknown as Mocked<ConfigService>;
     mockLogger = buildMockLogger();
     testingModule = await Test.createTestingModule({
       providers: [RedisService],

@@ -27,13 +27,13 @@
 // 错误（普通）
 { "statusCode": 400, "error": "Bad Request", "message": "..." }
 
-// 校验失败
+// 校验失败（全局 ZodValidationPipe + ZodValidationExceptionFilter）
 {
   "statusCode": 422,
-  "message": "Validation failed",
-  "errors": {
-    "email": { "rule": "isEmail", "message": "邮箱格式不正确" }
-  }
+  "message": "Validation Failed",
+  "errors": [
+    { "field": "email", "message": "Invalid email address" }
+  ]
 }
 ```
 
@@ -101,11 +101,30 @@
 | 路径参数 | `<Action><Resource>ParamDto` | `<action>-<resource>-param.dto.ts` |
 | 响应实体 | `<Resource>Entity` 或 `<Resource>ResponseDto` | `<resource>.entity.ts` 或 `<resource>-response.dto.ts` |
 
-实体（响应类）字段加 `@Expose()`，控制器返回前用：
+DTO 与实体（响应类）一律用 `createZodDto`（nestjs-zod + zod）定义：
 
 ```ts
-plainToInstance(MyEntity, raw, { excludeExtraneousValues: true })
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
+
+export class CreateDemoRequestDto extends createZodDto(
+  z.object({
+    name: z.string().min(1),
+    type: z.enum(demoTypes),
+    parentId: z.number().int().optional(),
+  }),
+) {}
 ```
+
+继承/扩展基于 `.schema`：`createZodDto(FindManyByCursoredPaginationDto.schema.extend({ ... }))`；Partial 用 `createZodDto(CreateDemoRequestDto.schema.partial())`。
+
+控制器返回前用：
+
+```ts
+MyEntity.create(raw)
+```
+
+zod 默认剔除 schema 未声明的字段，起到响应净化作用。
 
 ## 控制器示例
 
@@ -118,7 +137,7 @@ export class DemoController {
   async create(@Body() body: CreateDemoRequestDto) {
     const id = await this.demoService.create(body);
     return {
-      data: plainToInstance(OnlyIdEntity, { id }, { excludeExtraneousValues: true }),
+      data: OnlyIdEntity.create({ id }),
     };
   }
 
