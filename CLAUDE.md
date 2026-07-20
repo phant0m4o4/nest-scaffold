@@ -89,7 +89,7 @@
 
 ## 本项目特定规则(Project Rules)
 
-### A. Git 身份与隐私(硬规定,不可妥协)
+### A. Git 规范:身份、隐私与开发工作流(其中隐私为硬规定,不可妥协)
 
 **项目里(包括 git 历史、配置、代码、注释、文档)不得出现任何本机信息或本人个人信息。**
 
@@ -123,3 +123,17 @@
   ```
 
 **3. 提交前自检:**`git log`、`git config --local --list`、以及 diff 中不得出现上述任何本机/个人信息;发现就先清理再提交。
+
+**4. 开发分支规范。**
+
+- 仓库常态**只保留 `main` 一个分支**(本地与远端一致)。小改动直接在 `main` 上提交推送。
+- 成规模的功能/重构才开工作分支,命名 `<type>/<kebab-topic>`(如 `feature/pgsql-support`、`refactor/zod-migration`),`type` 与提交规范的 type 一致。
+- 工作分支**用完即清**:合回 `main`(能 fast-forward 就 fast-forward,不刻意造 merge commit)后,立即删除本地与远端分支及对应 worktree(工作树,同一仓库的另一份检出目录)。
+- **禁止对 `main` 强推**(`push --force`);改历史(rebase / amend)仅限尚未推送的本地提交。
+
+**5. 提交与推送规范。**
+
+- 提交格式:`type(scope): subject`(type/scope 必须英文,subject 可中文),body 必须中文、说清"为什么改"。详见 [.claude/skills/nest-scaffold/reference/git-commit.md](.claude/skills/nest-scaffold/reference/git-commit.md),交互式提交可用 `pnpm commit`。
+- **原子提交**:一次提交只做一件事;因本次改动而需要同步的文档/模板/配置放进同一个提交,不留"文档稍后补"的尾巴。
+- **推送前验证**:`pnpm lint && pnpm build && pnpm test` 必须全绿(改动涉及 e2e 面时加 `pnpm test:e2e`),工作区不留未跟踪的临时文件。
+- 推送后关注 CI 结果;CI 挂了优先修复或回滚,不在红着的 `main` 上继续叠加提交。
