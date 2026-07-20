@@ -9,7 +9,7 @@
 | `<domain>.module.ts` | NestJS 模块定义，`imports: [RepositoryModule.forFeature([<Domain>Repository])]` |
 | `<domain>.controller.ts` | 路由 + 入参校验 + 调用服务 + 组装响应 |
 | `<domain>.service.ts` | 业务逻辑，组合仓储/缓存/锁/队列等 |
-| `dtos/` | 请求/参数 DTO（`@DtoSchema` + class-validator） |
+| `dtos/` | 请求/参数 DTO（class-validator） |
 | `entities/<domain>.entity.ts` | 响应实体（`@Expose` 字段） |
 | `interfaces/` | 业务领域接口（`I*.interface.ts`） |
 | `__tests__/` | `*.spec.ts` 单测 + `*.e2e-spec.ts` E2E |
@@ -23,7 +23,6 @@
 export class <Domain>Controller {
   constructor(protected readonly <domain>Service: <Domain>Service) {}
 
-  @CreatedResponse(OnlyIdEntity)
   @Post()
   async create(@Body() body: Create<Domain>RequestDto) {
     const id = await this.<domain>Service.create(body);
@@ -32,7 +31,6 @@ export class <Domain>Controller {
     };
   }
 
-  @ArrayOkResponse(<Domain>Entity)
   @Get('all')
   async findAll() {
     const rows = await this.<domain>Service.findAll();
@@ -43,7 +41,6 @@ export class <Domain>Controller {
     };
   }
 
-  @CursoredPaginationOkResponse(<Domain>Entity)
   @Get()
   async findManyByCursorPagination(
     @Query() query: FindMany<Domain>ByCursoredPaginationRequestDto,
@@ -58,7 +55,6 @@ export class <Domain>Controller {
     };
   }
 
-  @OkResponse(<Domain>Entity)
   @Get(':id')
   async findOne(@Param('id') id: number) {
     const row = await this.<domain>Service.findOne(id);
@@ -67,13 +63,11 @@ export class <Domain>Controller {
     };
   }
 
-  @OkResponse()
   @Patch(':id')
   async update(@Param('id') id: number, @Body() body: Update<Domain>RequestDto) {
     await this.<domain>Service.update(id, body);
   }
 
-  @OkResponse()
   @Delete(':id')
   async remove(@Param('id') id: number) {
     await this.<domain>Service.delete(id);
@@ -81,13 +75,12 @@ export class <Domain>Controller {
 }
 ```
 
-控制器 5 条核心约束：
+控制器 4 条核心约束：
 
 1. `protected readonly <domain>Service: <Domain>Service` 注入服务。
 2. 入参 DTO + `@Body` / `@Query` / `@Param` 装饰器；不直接读 `req`。
 3. 返回 `{ data?, meta? }`，由全局拦截器套上 `statusCode`。
 4. 单条返回前必须 `plainToInstance(Entity, row, { excludeExtraneousValues: true })`。
-5. 每个方法挂对应 `@OkResponse` / `@CreatedResponse` / `@CursoredPaginationOkResponse` / `@ArrayOkResponse`。
 
 ## 服务写法
 

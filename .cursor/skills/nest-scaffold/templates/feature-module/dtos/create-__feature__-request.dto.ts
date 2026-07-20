@@ -1,7 +1,5 @@
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-@DtoSchema({ name: 'app.api.__features__.dtos.create-__feature__-request.dto' })
 export class Create__Feature__RequestDto {
   /**
    * 名称

@@ -1,6 +1,5 @@
 import { FindManyByCursoredPaginationDto } from '@/app/api/common/dtos/find-many-by-cursored-pagination.dto';
 import { FindManyByPaginationDto } from '@/app/api/common/dtos/find-many-by-pagination.dto';
-import { DtoSchema } from '@/common/decorators/swagger/dto-schema.decorator';
 import { UTC } from '@/common/utils/date-time';
 import { demoTypes } from '@/database/enums/demo-type.enum';
 import { demosSchema } from '@/database/schemas';
@@ -28,9 +27,6 @@ interface IDemoFilterFields {
   updatedAtTo?: Date;
 }
 
-@DtoSchema({
-  name: 'app.api.demo.dtos.find-many-demo-request.dto.find-many-demo-by-cursored-pagination-request',
-})
 export class FindManyDemoByCursoredPaginationRequestDto
   extends FindManyByCursoredPaginationDto
   implements IDemoFilterFields
@@ -91,9 +87,6 @@ export class FindManyDemoByCursoredPaginationRequestDto
   updatedAtTo?: Date;
 }
 
-@DtoSchema({
-  name: 'app.api.demo.dto.find-many-demo-request.dto.find-many-demo-by-pagination-request',
-})
 export class FindManyDemoByPaginationRequestDto
   extends FindManyByPaginationDto
   implements IDemoFilterFields

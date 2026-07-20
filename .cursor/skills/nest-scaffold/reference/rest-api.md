@@ -101,25 +101,11 @@
 | 路径参数 | `<Action><Resource>ParamDto` | `<action>-<resource>-param.dto.ts` |
 | 响应实体 | `<Resource>Entity` 或 `<Resource>ResponseDto` | `<resource>.entity.ts` 或 `<resource>-response.dto.ts` |
 
-DTO 类必须用 `@DtoSchema({ name: 'app.api.<domain>.dtos.<dto-name>' })` 装饰，避免 Swagger 模型重名。
-
 实体（响应类）字段加 `@Expose()`，控制器返回前用：
 
 ```ts
 plainToInstance(MyEntity, raw, { excludeExtraneousValues: true })
 ```
-
-## Swagger 装饰器
-
-控制器方法上挂对应的成功响应装饰器（见 `src/common/decorators/swagger/responses/`）：
-
-| 装饰器 | 用途 |
-|--------|------|
-| `@OkResponse(Entity?)` | 200 单对象 |
-| `@CreatedResponse(Entity?)` | 201 创建成功 |
-| `@ArrayOkResponse(Entity)` | 200 数组（无分页） |
-| `@PaginationOkResponse(Entity)` | 200 普通分页 |
-| `@CursoredPaginationOkResponse(Entity)` | 200 游标分页 |
 
 ## 控制器示例
 
@@ -128,7 +114,6 @@ plainToInstance(MyEntity, raw, { excludeExtraneousValues: true })
 export class DemoController {
   constructor(protected readonly demoService: DemoService) {}
 
-  @CreatedResponse(OnlyIdEntity)
   @Post()
   async create(@Body() body: CreateDemoRequestDto) {
     const id = await this.demoService.create(body);
@@ -137,7 +122,6 @@ export class DemoController {
     };
   }
 
-  @CursoredPaginationOkResponse(DemoEntity)
   @Get()
   async findManyByCursorPagination(
     @Query() query: FindManyDemoByCursoredPaginationRequestDto,
@@ -146,7 +130,6 @@ export class DemoController {
     return { data, meta };
   }
 
-  @OkResponse(DemoEntity)
   @Get(':id')
   async findOne(@Param('id') id: number) {
     const data = await this.demoService.findOne(id);

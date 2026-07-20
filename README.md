@@ -1,6 +1,6 @@
 # Nest Scaffold
 
-基于 NestJS 的后端脚手架项目，集成 Drizzle ORM、BullMQ、Redis、Pino 日志、Swagger 等常用能力。
+基于 NestJS 的后端脚手架项目，集成 Drizzle ORM、BullMQ、Redis、Pino 日志等常用能力。
 
 ## 技术栈
 
@@ -9,7 +9,6 @@
 - **ORM**：Drizzle ORM（MySQL）
 - **缓存/队列**：Redis（ioredis）+ BullMQ
 - **日志**：nestjs-pino + pino-pretty + pino-roll
-- **API 文档**：Swagger（@nestjs/swagger）
 - **测试**：Jest + Vitest + Supertest + Testcontainers
 - **代码规范**：ESLint + Prettier + Commitizen
 

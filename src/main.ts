@@ -1,11 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { join } from 'path';
 import { AppModule } from './app/app.module';
-import { EnvironmentEnum } from './common/enums/environment.enum';
 import { AppConfigType } from './configs/app.config';
 
 async function bootstrap() {
@@ -45,33 +43,12 @@ async function bootstrap() {
     prefix: '/public',
   });
 
-  // 开发环境下启用 Swagger
-  if (process.env.NODE_ENV === EnvironmentEnum.DEVELOPMENT) {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle(`${name} API`)
-      .setDescription(`${name} API文档`)
-      .setVersion('1.0.0')
-      .addBearerAuth()
-      .addCookieAuth('sid')
-      .build();
-    const documentFactory = () =>
-      SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api-docs', app, documentFactory);
-  }
-
   await app.listen(port, address);
   logger.log({ context: 'Main', msg: `环境: ${process.env.NODE_ENV}` });
   logger.log({
     context: 'Main',
     msg: `应用 ${name} 运行在: ${await app.getUrl()}`,
   });
-  // 开发环境下输出 Swagger 文档地址
-  if (process.env.NODE_ENV === EnvironmentEnum.DEVELOPMENT) {
-    logger.log({
-      context: 'Main',
-      msg: `Swagger 文档地址: ${await app.getUrl()}/api-docs`,
-    });
-  }
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();
