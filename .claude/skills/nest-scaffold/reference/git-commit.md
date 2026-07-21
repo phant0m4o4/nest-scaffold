@@ -122,14 +122,37 @@ Implement user list query functionality with pagination support.
 - 合并方式用 **Squash merge**（一个 PR 压成 main 上一个提交，线性历史）；**PR 标题按本规范书写**，它就是合入 `main` 的提交标题。
 - 工作分支**用完即清**：PR 合并后立即删除远端与本地分支及对应 worktree（GitHub 开启 auto-delete head branches 后远端自动删）。
 - **禁止对 `main` 强推**；工作分支在 PR 评审期间可 rebase/强推自己。
-- PR 的创建与合并走 GitHub 网页端（推送分支后 git 会输出 create a pull request 链接），不使用 `gh` CLI。
+- PR 的创建/检查/合并可用 `gh` CLI 或网页；工具分工与 gh 命令见下方「工具分工与 gh 用法」。
 
 ## 提交与推送流程
 
 - **原子提交**：一次提交只做一件事；因本次改动而需要同步的文档/模板/配置放进同一个提交，不留"文档稍后补"的尾巴。
 - **推送前验证**：`pnpm lint && pnpm build && pnpm test` 必须全绿（改动涉及 e2e 面时加 `pnpm test:e2e`），工作区不留未跟踪的临时文件——别把红的推给 CI。
-- 流程：开分支 → 提交 → 推送分支 → 网页创建 PR → CI 全绿 → Squash merge → 删除本地分支。
+- 流程：开分支 → 提交 → 推送分支 → 创建 PR → CI 全绿 → Squash merge → 删除本地分支。
 - 身份与隐私要求（SSH key、noreply 署名、提交内容不得含本机/个人信息）见仓库根 [CLAUDE.md](../../../../CLAUDE.md) 规则 A。
+
+## 工具分工与 gh 用法
+
+| 操作 | 工具 |
+|------|------|
+| 提交 / 推送 / 拉取 / 看历史（git 数据操作） | 原生 `git`（SSH key 认证），**不用 gh** |
+| PR 创建 / 查看检查 / Squash 合并 | `gh` CLI 或 GitHub 网页 |
+| 仓库设置（分支保护 / 合并方式 / auto-delete） | `gh api` 或网页 Settings |
+| 代码审查判断、Environments 发布审批 | **必须人工**（网页），不得由代理代批 |
+
+`gh` 使用前置：**每次使用前先核验登录账号与仓库署名账号一致**，不一致立即停止：
+
+```bash
+gh auth status
+```
+
+PR 全流程的 gh 版本（网页操作的等价替代）：
+
+```bash
+gh pr create --fill              # 以分支提交信息生成 PR 标题/描述（标题须符合提交规范）
+gh pr checks --watch             # 盯 required checks（ci / docker）直到出结果
+gh pr merge --squash --delete-branch   # CI 全绿后 Squash 合并并删除远端分支
+```
 
 ## 验证清单
 
