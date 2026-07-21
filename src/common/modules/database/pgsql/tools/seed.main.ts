@@ -1,6 +1,6 @@
 import { bootstrapTool } from './bootstrap-tool';
 
-void bootstrapTool().catch((error: unknown) => {
+void bootstrapTool('seed').catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });

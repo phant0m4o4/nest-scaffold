@@ -254,6 +254,7 @@ MySQL（默认）：
 | `pnpm db:generate:mysql`  | schema 变更后生成迁移文件（`drizzle/mysql/`，随代码入库） |
 | `pnpm db:migrate:mysql`   | 应用迁移（开发与生产统一的表结构维护方式）       |
 | `pnpm db:seed:mysql`      | 填充种子数据（仅限开发环境）                     |
+| `pnpm db:reset:mysql`     | 重置数据库到迁移基线：删除全部表后重放所有迁移（仅限开发环境，生产会被拒绝） |
 
 **开发与生产都用 migration 维护表结构**（同一套迁移文件保证环境一致）：
 
@@ -262,7 +263,7 @@ MySQL（默认）：
 
 > `drizzle-kit push`（无迁移文件的直接同步）**不提供 npm script**——它只适合一次性实验库的快速原型，确需使用时手动执行 `pnpm exec drizzle-kit push --config drizzle-mysql.config.ts`，不要用于任何需要延续的数据库。
 
-PostgreSQL（可选，与上表一一对应）：`pnpm db:generate:pgsql`、`db:migrate:pgsql`、`db:seed:pgsql`，迁移文件在 `drizzle/pgsql/`。
+PostgreSQL（可选，与上表一一对应）：`pnpm db:generate:pgsql`、`db:migrate:pgsql`、`db:seed:pgsql`、`db:reset:pgsql`，迁移文件在 `drizzle/pgsql/`。
 
 ### 代码质量
 

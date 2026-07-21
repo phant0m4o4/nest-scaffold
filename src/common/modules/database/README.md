@@ -16,7 +16,7 @@
 | `common/utils/unique.ts`                    | `unique` / `uniqueArray`，seed 脚本用的唯一值生成工具         |
 | `common/types/not-empty-array.type.ts`      | 通用非空数组类型（与数据库方言无关）                          |
 
-各方言的 `tools/`（`db:seed:mysql` / `db:seed:pgsql` CLI）复用以上 Token 与接口，绑定各自的 `DatabaseModule`。
+各方言的 `tools/`（`db:seed` / `db:reset` CLI）复用以上 Token 与接口，绑定各自的 `DatabaseModule`。
 
 ## 选择哪一套
 

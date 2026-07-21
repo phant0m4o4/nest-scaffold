@@ -10,20 +10,22 @@ import { ToolsService } from './tools.service';
  * 使用 Nest 默认控制台日志，不做 Pino 与 bufferLogs 等额外编排。
  *
  * 错误处理约定：
- * - 业务执行（seed）的异常会原样向上抛出。
+ * - 业务执行（seed / reset）的异常会原样向上抛出。
  * - 关闭应用上下文本身失败时仅打印警告，**不覆盖**原始业务异常。
  *
  */
-export async function bootstrapTool(): Promise<void> {
-  // seed 填充的是 faker 生成的演示数据，仅限开发/测试环境
+export async function bootstrapTool(
+  action: keyof Pick<ToolsService, 'seed' | 'reset'>,
+): Promise<void> {
+  // seed 填充 faker 演示数据、reset 删表重放迁移，均仅限开发/测试环境
   if (process.env.NODE_ENV === EnvironmentEnum.PRODUCTION) {
-    throw new Error('seed 仅用于开发/测试环境，生产环境禁止填充演示数据');
+    throw new Error(`${action} 仅用于开发/测试环境，生产环境禁止执行`);
   }
   const applicationContext =
     await NestFactory.createApplicationContext(ToolsModule);
   try {
     const toolsService = applicationContext.get(ToolsService);
-    await toolsService.seed();
+    await toolsService[action]();
   } finally {
     try {
       await applicationContext.close();
