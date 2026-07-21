@@ -29,16 +29,26 @@
 { "statusCode": 404, "code": "RECORD_NOT_FOUND", "message": "demos 不存在: {id: 999999}" }
 
 // 校验失败（全局 I18nZodValidationPipe 抛 ZodValidationException）
-// errors[].code 透传 zod issue code（机器可读、不随语言变），message 随请求语言本地化
 {
   "statusCode": 422,
   "code": "VALIDATION_FAILED",
   "message": "Validation Failed",
   "errors": [
-    { "field": "email", "code": "too_small", "message": "数值过小：期望 string >=5 字符" }
+    {
+      "field": "email",
+      "code": "too_small",
+      "params": { "origin": "string", "minimum": 5, "inclusive": true },
+      "message": "数值过小：期望 string >=5 字符"
+    }
   ]
 }
 ```
+
+**校验错误的前后端分工契约**：
+
+- `field` + `code` + `params` 是机器可读、不随语言变化的结构化数据——**终端用户文案由前端渲染**（前端才知道字段的界面名称与 UI 语境），典型做法：`t(`validation.${code}`, { field: fieldLabel, ...params })` → "名称至少 1 个字符"；
+- `message` 是按请求语言渲染的 zod 文案（`Accept-Language` / `?lang=`），定位为**开发调试与无文案表时的兜底展示**，不承诺用户级亲和度；
+- `params` 内容随 `code` 而定（`too_small`→`minimum`、`too_big`→`maximum`、`invalid_value`→`values` 等），原始输入值（`input`）不会外泄。
 
 控制器只负责返回 `{ data?, meta? }`，**不要**手动拼 `statusCode`。
 

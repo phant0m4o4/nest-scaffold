@@ -20,7 +20,12 @@ describe('ZodValidationException', () => {
       statusCode: number;
       message: string;
       code: string;
-      errors: Array<{ field: string; code: string; message: string }>;
+      errors: Array<{
+        field: string;
+        code: string;
+        params?: Record<string, unknown>;
+        message: string;
+      }>;
     };
 
     expect(exception.getStatus()).toBe(422);
@@ -30,6 +35,10 @@ describe('ZodValidationException', () => {
     expect(response.errors).toHaveLength(1);
     expect(response.errors[0].field).toBe('user.email');
     expect(response.errors[0].code).toBe('too_small');
+    // 约束参数透传，供前端 t(`validation.${code}`, params) 模板化渲染用户文案
+    expect(response.errors[0].params).toMatchObject({ minimum: 5 });
+    // input 不得对外泄露
+    expect(response.errors[0].params).not.toHaveProperty('input');
     expect(typeof response.errors[0].message).toBe('string');
   });
 
