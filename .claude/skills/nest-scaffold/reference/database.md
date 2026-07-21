@@ -5,7 +5,7 @@
 
 ## 关键约束
 
-- 表必须有 `id` 整型主键列（MySQL：int unsigned auto-increment；PG：integer generated always as identity），由各自的 `createPrimaryKeyColumn()` 提供。否则 `BaseRepository` 启动会抛错。
+- 表必须有 `id` 整型主键列（MySQL：bigint unsigned auto-increment；PG：bigint generated always as identity（drizzle `mode: 'number'`，JS 侧为普通 number）），由各自的 `createPrimaryKeyColumn()` 提供。否则 `BaseRepository` 启动会抛错。
 - 软删除以 `deletedAt: timestamp()` 列约定，由 `BaseRepository` 自动识别。
 - 所有 schema 在 `src/database/<dialect>/schemas/<table>.schema.ts`（`<dialect>` 为 `mysql` 或 `pgsql`），并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
 - 跨表枚举放 `src/database/enums/`（方言无关，两套 schema 共享），**键和值都用 camelCase**。仅当前文件用就就地定义。
@@ -45,8 +45,8 @@ export const demosSchema = mysqlTable(
 
 | 函数 | 说明 |
 |------|------|
-| `createPrimaryKeyColumn(name?)` | 默认生成 `int unsigned not null auto_increment primary key`，自定义列名时传参 |
-| `createForeignKeyColumn(name?)` | 生成可空的外键列（int unsigned），约束在 schema 第 3 个参数声明 |
+| `createPrimaryKeyColumn(name?)` | 默认生成 `bigint unsigned not null auto_increment primary key`（`mode: 'number'`），自定义列名时传参 |
+| `createForeignKeyColumn(name?)` | 生成可空的外键列（bigint unsigned，与主键类型一致），约束在 schema 第 3 个参数声明 |
 | `createTimestamps()` | `{ createdAt, updatedAt }` 默认 now、`onUpdateNow()` |
 | `createTimestampsWithSoftDelete()` | 额外加 `deletedAt: timestamp()` |
 
@@ -61,7 +61,7 @@ import { foreignKey, pgEnum, pgTable, unique, varchar } from 'drizzle-orm/pg-cor
 export const demoTypeEnum = pgEnum('demo_type', demoTypes);
 
 export const demosSchema = pgTable('demos', {
-  id: createPrimaryKeyColumn(),            // integer generated always as identity
+  id: createPrimaryKeyColumn(),            // bigint generated always as identity
   name: varchar({ length: 100 }).notNull(),
   type: demoTypeEnum().notNull().default(DemoTypeEnum.type1),
   parentId: createForeignKeyColumn(),
