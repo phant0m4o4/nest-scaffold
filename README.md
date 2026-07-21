@@ -161,6 +161,16 @@ gh pr checks --watch                    # 盯 ci / docker 检查直到出结果
 gh pr merge --squash --delete-branch    # 全绿后 Squash 合并并删除远端分支
 ```
 
+### 一次性仓库配置（新项目）
+
+上述分支保护、仅 Squash merge、自动删分支都是 GitHub 平台设置，从脚手架新建项目后执行一次即可（幂等可重跑，需 `gh` 已登录且对仓库有 admin 权限）：
+
+```bash
+bash .claude/skills/nest-scaffold/scripts/setup-github.sh
+```
+
+详见 [.claude/skills/nest-scaffold/scripts/README.md](.claude/skills/nest-scaffold/scripts/README.md)；不便使用 gh 时可按 [CLAUDE.md](CLAUDE.md) 规则 A.4 在网页 Settings 手动配置。
+
 ### 补充约定
 
 - **PR 评审期间更新**：继续向同一分支 push 即可；需要整理提交历史可在自己的工作分支 rebase 后强推（`main` 的强推被禁止，工作分支不受限）。
