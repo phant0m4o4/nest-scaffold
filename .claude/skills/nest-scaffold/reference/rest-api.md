@@ -35,10 +35,10 @@
   "message": "Validation Failed",
   "errors": [
     {
-      "field": "email",
+      "field": "name",
       "code": "too_small",
-      "params": { "origin": "string", "minimum": 5, "inclusive": true },
-      "message": "数值过小：期望 string >=5 字符"
+      "params": { "origin": "string", "minimum": 1, "inclusive": true },
+      "message": "名称至少需要 1 个字符"
     }
   ]
 }
@@ -46,8 +46,8 @@
 
 **校验错误的前后端分工契约**：
 
-- `field` + `code` + `params` 是机器可读、不随语言变化的结构化数据——**终端用户文案由前端渲染**（前端才知道字段的界面名称与 UI 语境），典型做法：`t(`validation.${code}`, { field: fieldLabel, ...params })` → "名称至少 1 个字符"；
-- `message` 是按请求语言渲染的 zod 文案（`Accept-Language` / `?lang=`），定位为**开发调试与无文案表时的兜底展示**，不承诺用户级亲和度；
+- `message` 是**用户级文案**，由后端按请求语言（`?lang=` / `Accept-Language` / `x-lang`）渲染，前端直接展示即可。渲染优先级：schema 显式 `message` > 项目文案目录 `src/i18n/<lang>/validation.json`（错误模板按 zod issue code 组织，支持 `{field}`/`{minimum}` 等参数插值；`fields` 段维护字段界面名称）> zod locale 文案兜底。**新增校验规则/新字段时，在同一 PR 内补充 validation.json 的模板与字段名条目**——文案闭环在后端，前端无需联动改动，也不存在多语言单复数/变量拼接分散在两端的问题；
+- `field` + `code` + `params` 是机器可读、不随语言变化的结构化数据，供需要完全自定义文案或交互（如表单逐字段高亮）的客户端使用：`t(`validation.${code}`, { field: fieldLabel, ...params })`；
 - `params` 内容随 `code` 而定（`too_small`→`minimum`、`too_big`→`maximum`、`invalid_value`→`values` 等），原始输入值（`input`）不会外泄。
 
 控制器只负责返回 `{ data?, meta? }`，**不要**手动拼 `statusCode`。

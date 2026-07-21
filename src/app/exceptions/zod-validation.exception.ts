@@ -24,10 +24,11 @@ function extractIssueParams(
  * `{ statusCode: 422, code: 'VALIDATION_FAILED', message, errors: [{ field, code, params?, message }] }`
  *
  * 字段定位（前后端契约）：
- * - `field` + `code` + `params`：机器可读、不随语言变化——**前端用户文案据此渲染**
- *   （前端知道字段 label 与 UI 语境，如 t(`validation.${code}`, params)）；
- * - `message`：按请求语言渲染的 zod 文案，定位是**开发调试与兜底展示**，
- *   不承诺终端用户级亲和度。
+ * - `message`：**用户级文案**，后端按请求语言渲染（schema 显式 message >
+ *   项目文案目录 src/i18n/<lang>/validation.json > zod locale 兜底），
+ *   前端可直接展示——校验规则与文案在后端同一 PR 内闭环，前端无需联动改动；
+ * - `field` + `code` + `params`：机器可读、不随语言变化的结构化数据，
+ *   供需要完全自定义文案/交互的客户端使用（如 t(`validation.${code}`, params)）。
  */
 export class ZodValidationException extends UnprocessableEntityException {
   constructor(private readonly _zodError: ZodError) {
