@@ -107,7 +107,7 @@
   git config --local core.sshCommand "ssh -i .ssh/id_ed25519 -o IdentitiesOnly=yes"
   ```
 - **项目内没有 `.ssh/id_ed25519` 时,回退使用系统默认的 `~/.ssh`**:不设置 `core.sshCommand`(已设置的要清掉:`git config --local --unset core.sshCommand`),由 ssh 按默认规则取系统 key;**不要**把系统私钥复制进项目。
-- **不使用 `gh` CLI 操作本仓库,一律用配置了上述 SSH key 的原生 `git`。** `gh` 走它自己的登录态(可能不是本项目账号),对本仓库常解析不到(报 `Could not resolve to a Repository`);提交、推送、查看状态、看历史等都用原生 `git`。本项目直推 `main`,不依赖 `gh` 的 PR 流程;确需 PR / issue 时走 GitHub 网页端。
+- **不使用 `gh` CLI 操作本仓库,一律用配置了上述 SSH key 的原生 `git`。** `gh` 走它自己的登录态(可能不是本项目账号),对本仓库常解析不到(报 `Could not resolve to a Repository`);提交、推送、查看状态、看历史等都用原生 `git`。PR 的创建与合并走 GitHub 网页端(见第 4 条)。
 
 **2. 提交 / 推送的署名使用 GitHub 用户名,不用本机/个人信息。本文档不写死用户名——它从 SSH 私钥(项目内的,没有则回退系统的)的注释字段动态读取(项目内私钥已被 [.gitignore](.gitignore) 屏蔽,不进 git)。**
 
@@ -128,16 +128,19 @@
 
 **3. 提交前自检:**`git log`、`git config --local --list`、以及 diff 中不得出现上述任何本机/个人信息;发现就先清理再提交。
 
-**4. 开发分支规范。**
+**4. 开发分支规范(GitHub Flow)。**
 
-- 仓库常态**只保留 `main` 一个分支**(本地与远端一致)。小改动直接在 `main` 上提交推送。
-- 成规模的功能/重构才开工作分支,命名 `<type>/<kebab-topic>`(如 `feature/pgsql-support`、`refactor/zod-migration`),`type` 与提交规范的 type 一致。
-- 工作分支**用完即清**:合回 `main`(能 fast-forward 就 fast-forward,不刻意造 merge commit)后,立即删除本地与远端分支及对应 worktree(工作树,同一仓库的另一份检出目录)。
-- **禁止对 `main` 强推**(`push --force`);改历史(rebase / amend)仅限尚未推送的本地提交。
+- **`main` 受保护,禁止直推**:一切变更(无论大小)都走短命工作分支,经 PR(Pull Request,合并请求)合入 `main`。分支命名 `<type>/<kebab-topic>`(如 `feature/pgsql-support`、`refactor/zod-migration`),`type` 与提交规范的 type 一致。
+- **PR 合并的前提是 CI 全绿**(分支保护的 required status checks(必需状态检查):`ci` 与 `docker`),`main` 因此永远处于可部署状态,持续部署(CD 方案 B)建立在这个保证之上。
+- 合并方式用 **Squash merge**(压缩合并,一个 PR 压成 main 上一个提交,保持线性历史);PR 标题按提交规范书写,它就是合入 main 的提交标题。
+- 工作分支**用完即清**:PR 合并后立即删除远端与本地分支及对应 worktree(工作树,同一仓库的另一份检出目录),仓库常态只保留 `main`。
+- **禁止对 `main` 强推**;工作分支在 PR 评审期间可以 rebase/强推自己(改历史仅限自己的工作分支)。
+- PR 的创建与合并走 GitHub 网页端(推送分支后 git 会输出 create a pull request 链接),不使用 `gh` CLI(见第 1 条)。
+- 首次启用需在 GitHub 网页配置(仅一次):Settings → Branches → Add rule(`main`):Require a pull request before merging、Require status checks to pass(勾选 `ci`、`docker`)、Block force pushes;Settings → General → 勾选 Automatically delete head branches。
 
 **5. 提交与推送规范。**
 
 - 提交格式:`type(scope): subject`(type/scope 必须英文,subject 可中文),body 必须中文、说清"为什么改"。详见 [.claude/skills/nest-scaffold/reference/git-commit.md](.claude/skills/nest-scaffold/reference/git-commit.md),交互式提交可用 `pnpm commit`。
 - **原子提交**:一次提交只做一件事;因本次改动而需要同步的文档/模板/配置放进同一个提交,不留"文档稍后补"的尾巴。
-- **推送前验证**:`pnpm lint && pnpm build && pnpm test` 必须全绿(改动涉及 e2e 面时加 `pnpm test:e2e`),工作区不留未跟踪的临时文件。
-- 推送后关注 CI 结果;CI 挂了优先修复或回滚,不在红着的 `main` 上继续叠加提交。
+- **推送前验证**:`pnpm lint && pnpm build && pnpm test` 必须全绿(改动涉及 e2e 面时加 `pnpm test:e2e`),工作区不留未跟踪的临时文件——别把红的推给 CI。
+- PR 上 CI 全绿由分支保护强制,合并后关注 CD(如已配置)的部署结果。
