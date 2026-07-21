@@ -165,7 +165,10 @@ NODE_ENV=production pnpm start:dist
   - **生产镜像定义**（`Dockerfile`）：多阶段构建，SWC 构建 → 仅生产依赖 → 非 root 用户运行 `node dist/main`，自带迁移文件与 `drizzle-kit`；
   - **持续的可构建性保证**：CI 每次提交都验证该镜像能在干净环境构建成功。
 
-下游项目按部署形态二选一（发版动作相同：`git tag v0.1.0 && git push origin v0.1.0`）：
+下游项目按部署形态二选一，两者的发布节奏本就不同：
+
+- **方案 A（容器镜像）**：打版本标签发版（`git tag v0.1.0 && git push origin v0.1.0`）——镜像是版本化制品，标签给了它版本号与按版本回滚的能力；
+- **方案 B（SSH 直连）**：持续部署——**合入 `main` 且 CI 通过后自动发布**，合并本身就是发布决定，无需额外仪式。
 
 ### 方案 A · 容器镜像（有容器运行时 / K8s / 多实例）
 
@@ -223,24 +226,32 @@ docker run -d --env-file .env.production -e NODE_ENV=production \
 
 ### 方案 B · SSH 直连部署（单机 + 宝塔/1Panel 等面板）
 
-Actions 上构建产物，经 SSH 上传服务器后安装生产依赖、执行迁移、PM2 重启——不要求服务器有容器运行时，与宝塔的「Node 项目」天然兼容（其底层就是 PM2 托管，站点目录即部署目录）。前置条件：服务器预装 Node 22 + pnpm + PM2，仓库 Secrets 配置 `SSH_HOST` / `SSH_USER` / `SSH_KEY`（部署专用私钥）；`.env` 在服务器部署目录内维护，不随部署覆盖。
+Actions 上构建产物，经 SSH 上传服务器后安装生产依赖、执行迁移、PM2 重启——不要求服务器有容器运行时，与宝塔的「Node 项目」天然兼容（其底层就是 PM2 托管，站点目录即部署目录）。触发采用 `workflow_run` 挂在 CI 之后：**只有 CI 全绿的 `main` 提交才会部署**，另保留手动触发用于重新发布。前置条件：服务器预装 Node 22 + pnpm + PM2，仓库 Secrets 配置 `SSH_HOST` / `SSH_USER` / `SSH_KEY`（部署专用私钥）；`.env` 在服务器部署目录内维护，不随部署覆盖。
 
 <details>
-<summary>方案 B 示例 workflow：v* 标签触发，SSH 上传产物并重启</summary>
+<summary>方案 B 示例 workflow：合入 main 且 CI 通过后自动部署</summary>
 
 ```yaml
 # .github/workflows/cd.yml
 name: CD
 on:
-  push:
-    tags: ['v*']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
 env:
   DEPLOY_PATH: /www/wwwroot/my-app # 宝塔站点目录 / 服务器部署目录
 jobs:
   deploy:
+    # 手动触发直接放行；workflow_run 触发时要求 CI 结论为 success
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 部署 CI 验证过的那个提交（workflow_run 默认检出的是最新 main，二者可能不同）
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
