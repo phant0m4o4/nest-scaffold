@@ -21,7 +21,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 2. 改写目标目录的 `package.json` 字段：`name=$APP_NAME`、`version=0.0.1`。
 3. 用目标目录的 `.env.example` 生成 `.env` 并替换 `APP_NAME`。
 4. `git init -b main` + 一条 `chore: bootstrap from nest-scaffold` 提交。
-5. 输出后续手动步骤（pnpm install / docker compose / db:push:mysql / db:init:mysql / db:seed:mysql / start:dev）。
+5. 输出后续手动步骤（pnpm install / docker compose / db:migrate:mysql / db:init:mysql / db:seed:mysql / start:dev）。
 
 约束：
 
@@ -57,7 +57,7 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
    - `src/app/api/<feature>/`（controller / service / module / dtos / entities / __tests__）
    - `src/app/repositories/<feature>.repository.ts`
    - `src/database/mysql/schemas/<features>.schema.ts`（如不存在，从 `templates/schema.ts.tpl` 生成桩）
-4. 输出后续手动步骤（更新 schemas/index.ts、api.module.ts、db:push:mysql、补 TODO、跑测试）。
+4. 输出后续手动步骤（更新 schemas/index.ts、api.module.ts、db:generate:mysql + db:migrate:mysql、补 TODO、跑测试）。
 
 约束：
 
@@ -69,4 +69,4 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
 
 - **`错误: 未找到仓库根目录`**：脚本要求当前工作目录或祖先有 `package.json` + `src/app/`。请进入项目根再跑。
 - **替换后的代码 lint 报错**：先 `pnpm lint --fix`，常见是 import 顺序与 prettier 行尾。
-- **`db:push:mysql` 报表不存在**：确认 `src/database/mysql/schemas/index.ts` 已 `export * from './<features>.schema'`。
+- **`db:generate:mysql` 未检测到新表**：确认 `src/database/mysql/schemas/index.ts` 已 `export * from './<features>.schema'`。

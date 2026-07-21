@@ -123,8 +123,8 @@ cat <<EOF
 
 3. 检查并修改 .env（已基于 .env.example 生成，APP_NAME 已替换）
 
-4. 同步表结构 + 初始化数据：
-   pnpm db:push:mysql
+4. 应用迁移 + 初始化数据：
+   pnpm db:migrate:mysql
    NODE_ENV=development pnpm db:init:mysql
    NODE_ENV=development pnpm db:seed:mysql
 

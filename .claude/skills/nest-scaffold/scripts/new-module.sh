@@ -161,8 +161,9 @@ cat <<EOF
    - src/app/api/$FEATURE_SINGULAR/entities/$FEATURE_SINGULAR.entity.ts
    - src/app/api/$FEATURE_SINGULAR/$FEATURE_SINGULAR.service.ts （_buildFilters 与业务逻辑）
 
-4. 同步数据库：
-   pnpm db:push:mysql
+4. 生成并应用迁移（迁移文件随代码提交）：
+   pnpm db:generate:mysql
+   pnpm db:migrate:mysql
 
 5. 验证：
    pnpm lint && pnpm build

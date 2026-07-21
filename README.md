@@ -100,8 +100,8 @@ QUEUE_DASHBOARD_ROUTE=/queues
 ### 4. 初始化数据库
 
 ```bash
-# 推送表结构到数据库（push 仅限开发环境；生产环境走 migration，见「生产环境部署」）
-pnpm db:push:mysql
+# 应用迁移文件建表（开发与生产同一套迁移，schema 变更见「命令参考 · 数据库」）
+pnpm db:migrate:mysql
 
 # 初始化基础数据
 NODE_ENV=development pnpm db:init:mysql
@@ -142,8 +142,8 @@ pnpm build
 ### 3. 数据库
 
 ```bash
-# 表结构变更一律走 migration，禁止 db:push（push 直接同步表结构，
-# 可能隐式删表删列且无法回滚；迁移文件在开发期用 db:generate:mysql 生成并随代码入库）
+# 应用迁移（迁移文件在开发期用 db:generate:mysql 生成并随代码入库，
+# 开发与生产执行的是同一套迁移文件）
 pnpm db:migrate:mysql
 
 # 初始化基础数据
@@ -258,18 +258,19 @@ MySQL（默认）：
 
 | 命令                | 说明                                             |
 | ------------------- | ------------------------------------------------ |
-| `pnpm db:push:mysql`      | 将 Schema 推送到数据库（**仅限开发**，直接同步、不生成迁移文件，禁止用于生产） |
-| `pnpm db:generate:mysql`  | 生成迁移文件                                     |
-| `pnpm db:migrate:mysql`   | 执行迁移（生产环境表结构变更的唯一方式）         |
+| `pnpm db:generate:mysql`  | schema 变更后生成迁移文件（`drizzle/mysql/`，随代码入库） |
+| `pnpm db:migrate:mysql`   | 应用迁移（开发与生产统一的表结构维护方式）       |
 | `pnpm db:init:mysql`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
 | `pnpm db:seed:mysql`      | 填充种子数据（仅限开发环境）                     |
 
-按环境区分的用法：
+**开发与生产都用 migration 维护表结构**（同一套迁移文件保证环境一致）：
 
-- **开发**：`pnpm db:push:mysql` 同步表结构 → `NODE_ENV=development pnpm db:init:mysql` → `NODE_ENV=development pnpm db:seed:mysql`；
-- **生产**：`pnpm db:migrate:mysql` 执行迁移 → `NODE_ENV=production pnpm db:init:mysql`；**禁止** `db:push`（无迁移文件、不可回滚），`db:seed`（faker 演示数据）在 `NODE_ENV=production` 下会被工具拒绝。
+- **开发**：改 schema → `pnpm db:generate:mysql` 生成迁移（检查生成的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随代码提交；再按需 `NODE_ENV=development pnpm db:init:mysql` / `db:seed:mysql`；
+- **生产**：`pnpm db:migrate:mysql` 应用已入库的迁移 → `NODE_ENV=production pnpm db:init:mysql`；`db:seed`（faker 演示数据）在 `NODE_ENV=production` 下会被工具拒绝。
 
-PostgreSQL（可选，与上表一一对应）：`pnpm db:push:pgsql`、`db:generate:pgsql`、`db:migrate:pgsql`、`db:init:pgsql`、`db:seed:pgsql`。
+> `drizzle-kit push`（无迁移文件的直接同步）**不提供 npm script**——它只适合一次性实验库的快速原型，确需使用时手动执行 `pnpm exec drizzle-kit push --config drizzle-mysql.config.ts`，不要用于任何需要延续的数据库。
+
+PostgreSQL（可选，与上表一一对应）：`pnpm db:generate:pgsql`、`db:migrate:pgsql`、`db:init:pgsql`、`db:seed:pgsql`，迁移文件在 `drizzle/pgsql/`。
 
 ### 代码质量
 
