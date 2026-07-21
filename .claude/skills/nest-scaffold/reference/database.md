@@ -165,6 +165,8 @@ clearUniqueCollections();
 
 ⚠️ `unique` 用模块级 Map 缓存，**仅限 seed 这种一次性 CLI 用**。在长期运行的服务里调用会内存泄漏。
 
+其他要点：seed 已固定随机种子（`faker.seed(42)`），同一批数据可复现；seed 中引用固定 id（如 `parentId: 1`）依赖基础数据迁移插入的行，改动基础数据迁移时同步检查。当表数量多、需要深层关联数据的自动填充时，可评估官方 [drizzle-seed](https://orm.drizzle.team/docs/seed-overview)（确定性生成 + `refine`/`with`，但生成器封闭、无中文 locale），在此之前手写 faker 方案自由度更高。
+
 ## 命令
 
 | 命令（MySQL / PostgreSQL） | 说明 |
