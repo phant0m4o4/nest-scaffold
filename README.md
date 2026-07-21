@@ -165,14 +165,16 @@ NODE_ENV=production pnpm start:dist
   - **生产镜像定义**（`Dockerfile`）：多阶段构建，SWC 构建 → 仅生产依赖 → 非 root 用户运行 `node dist/main`，自带迁移文件与 `drizzle-kit`；
   - **持续的可构建性保证**：CI 每次提交都验证该镜像能在干净环境构建成功。
 
-下游项目接入 CD 只需三步：
+下游项目按部署形态二选一（发版动作相同：`git tag v0.1.0 && git push origin v0.1.0`）：
+
+### 方案 A · 容器镜像（有容器运行时 / K8s / 多实例）
 
 1. **添加工作流**：把下方示例保存为 `.github/workflows/cd.yml`（按需调整触发条件与镜像仓库）。示例用 `ghcr.io` 是因为它对 GitHub 仓库零配置（`GITHUB_TOKEN` 直接可用）且公开镜像免费；**私有项目请评估**——私有镜像的存储/外部流量计入 GitHub 套餐配额（Free 仅 500MB + 1GB/月，本镜像约 440MB）、部署机拉取需 PAT 登录、国内网络可达性差，通常更适合换成云厂商仓库（阿里云 ACR / AWS ECR 等），只需替换 `login-action` 的 `registry`+凭据与 `images` 前缀，其余步骤通用；
-2. **发版**：`git tag v0.1.0 && git push origin v0.1.0`，镜像自动构建并推送到 `ghcr.io/<owner>/<repo>`；
+2. **发版**：打标签推送后镜像自动构建并推送到 `ghcr.io/<owner>/<repo>`；
 3. **部署**：部署机拉取镜像运行（见下方命令），数据库迁移用容器内自带的 `drizzle-kit` 在部署流程中执行。
 
 <details>
-<summary>示例 workflow：v* 标签触发，构建镜像推送 ghcr.io</summary>
+<summary>方案 A 示例 workflow：v* 标签触发，构建镜像推送 ghcr.io</summary>
 
 ```yaml
 # .github/workflows/cd.yml
@@ -219,7 +221,65 @@ docker run -d --env-file .env.production -e NODE_ENV=production \
   -p 3000:3000 ghcr.io/<owner>/<repo>:0.1.0
 ```
 
-> 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在脚手架内约定。
+### 方案 B · SSH 直连部署（单机 + 宝塔/1Panel 等面板）
+
+Actions 上构建产物，经 SSH 上传服务器后安装生产依赖、执行迁移、PM2 重启——不要求服务器有容器运行时，与宝塔的「Node 项目」天然兼容（其底层就是 PM2 托管，站点目录即部署目录）。前置条件：服务器预装 Node 22 + pnpm + PM2，仓库 Secrets 配置 `SSH_HOST` / `SSH_USER` / `SSH_KEY`（部署专用私钥）；`.env` 在服务器部署目录内维护，不随部署覆盖。
+
+<details>
+<summary>方案 B 示例 workflow：v* 标签触发，SSH 上传产物并重启</summary>
+
+```yaml
+# .github/workflows/cd.yml
+name: CD
+on:
+  push:
+    tags: ['v*']
+env:
+  DEPLOY_PATH: /www/wwwroot/my-app # 宝塔站点目录 / 服务器部署目录
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: 打包部署产物
+        run: >-
+          tar -czf release.tgz dist drizzle
+          drizzle-mysql.config.ts drizzle-pgsql.config.ts
+          package.json pnpm-lock.yaml
+      - name: 上传到服务器
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: release.tgz
+          target: ${{ env.DEPLOY_PATH }}
+      - name: 远程发布（解包 → 生产依赖 → 迁移 → 重启）
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+            tar -xzf release.tgz && rm release.tgz
+            pnpm install --prod --frozen-lockfile
+            npx drizzle-kit migrate --config drizzle-mysql.config.ts
+            NODE_ENV=production pm2 restart my-app --update-env \
+              || NODE_ENV=production pm2 start dist/main.js --name my-app
+```
+
+</details>
+
+> 镜像/产物之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在脚手架内约定。
 
 ## 命令参考
 
