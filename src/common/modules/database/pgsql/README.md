@@ -104,8 +104,8 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
 
 | 命令 | 说明 |
 | ---- | ---- |
-| `pnpm db:push:pgsql` | 把 `src/database/pgsql/schemas/` 推到 PostgreSQL（**仅限开发**，无 migration 文件，生产环境走 migration） |
-| `pnpm db:generate:pgsql` / `pnpm db:migrate:pgsql` | migration 生成 / 执行（用户明确要求才用） |
+| `pnpm db:generate:pgsql` | schema 变更后生成 migration（`drizzle/pgsql/`，随代码提交） |
+| `pnpm db:migrate:pgsql` | 应用 migration（开发与生产统一方式） |
 | `NODE_ENV=development pnpm db:init:pgsql` / `NODE_ENV=production pnpm db:init:pgsql` | 跑 `InitService.run()`（`src/database/pgsql/init.ts`） |
 | `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
 

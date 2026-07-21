@@ -9,7 +9,7 @@
 - 软删除以 `deletedAt: timestamp()` 列约定，由 `BaseRepository` 自动识别。
 - 所有 schema 在 `src/database/<dialect>/schemas/<table>.schema.ts`（`<dialect>` 为 `mysql` 或 `pgsql`），并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
 - 跨表枚举放 `src/database/enums/`（方言无关，两套 schema 共享），**键和值都用 camelCase**。仅当前文件用就就地定义。
-- **不主动生成 migration**。开发期 `pnpm db:push:mysql`（MySQL）/ `pnpm db:push:pgsql`（PG）即可。**push 仅限开发**：生产环境的表结构变更一律走 migration（`db:generate:*` 生成并入库 → 生产执行 `db:migrate:*`），禁止对生产库 push。
+- **表结构一律用 migration 维护，开发与生产同一套迁移文件**：schema 变更后 `pnpm db:generate:mysql` 生成迁移（检查 `drizzle/mysql/` 下的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随代码提交;PG 用 `:pgsql` 后缀（迁移在 `drizzle/pgsql/`）。**没有 push 脚本**——`drizzle-kit push` 只是一次性实验库的原型工具（`pnpm exec drizzle-kit push --config drizzle-mysql.config.ts`），不进入日常流程。
 
 ## Schema 写法
 
@@ -169,9 +169,8 @@ clearUniqueCollections();
 
 | 命令（MySQL / PostgreSQL） | 说明 |
 |------|------|
-| `pnpm db:push:mysql` / `pnpm db:push:pgsql` | 把 `src/database/<dialect>/schemas/` 推到数据库（**仅限开发**，无 migration 文件，禁止用于生产） |
-| `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | 生成 migration 文件（**用户明确要求才用**） |
-| `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 执行 migration（**用户明确要求才用**） |
+| `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | schema 变更后生成 migration 文件（`drizzle/<dialect>/`，随代码提交） |
+| `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 应用 migration（开发与生产统一方式） |
 | `NODE_ENV=development pnpm db:init:mysql` / `NODE_ENV=development pnpm db:init:pgsql`（prod 同理） | 跑 `InitService.run()` |
 | `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()` |
 
