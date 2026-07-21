@@ -115,18 +115,20 @@ Implement user list query functionality with pagination support.
    - 关联 issue（可空）
 3. commitizen 会自动拼装并提交，符合规范。
 
-## 分支规范
+## 分支规范（GitHub Flow）
 
-- 仓库常态**只保留 `main` 一个分支**（本地与远端一致）。小改动直接在 `main` 上提交推送。
-- 成规模的功能/重构才开工作分支，命名 `<type>/<kebab-topic>`（如 `feature/pgsql-support`、`refactor/zod-migration`），`type` 与上方提交 type 表一致。
-- 工作分支**用完即清**：合回 `main`（能 fast-forward 就 fast-forward，不刻意造 merge commit）后，立即删除本地与远端分支及对应 worktree（工作树，同一仓库的另一份检出目录）。
-- **禁止对 `main` 强推**（`push --force`）；改历史（rebase / amend）仅限尚未推送的本地提交。
+- **`main` 受保护，禁止直推**：一切变更走短命工作分支，经 PR 合入 `main`。分支命名 `<type>/<kebab-topic>`（如 `feature/pgsql-support`、`refactor/zod-migration`），`type` 与上方提交 type 表一致。
+- **PR 合并的前提是 CI 全绿**（分支保护 required status checks：`ci` 与 `docker`），`main` 永远处于可部署状态。
+- 合并方式用 **Squash merge**（一个 PR 压成 main 上一个提交，线性历史）；**PR 标题按本规范书写**，它就是合入 `main` 的提交标题。
+- 工作分支**用完即清**：PR 合并后立即删除远端与本地分支及对应 worktree（GitHub 开启 auto-delete head branches 后远端自动删）。
+- **禁止对 `main` 强推**；工作分支在 PR 评审期间可 rebase/强推自己。
+- PR 的创建与合并走 GitHub 网页端（推送分支后 git 会输出 create a pull request 链接），不使用 `gh` CLI。
 
 ## 提交与推送流程
 
 - **原子提交**：一次提交只做一件事；因本次改动而需要同步的文档/模板/配置放进同一个提交，不留"文档稍后补"的尾巴。
-- **推送前验证**：`pnpm lint && pnpm build && pnpm test` 必须全绿（改动涉及 e2e 面时加 `pnpm test:e2e`），工作区不留未跟踪的临时文件。
-- 推送后关注 CI 结果；CI 挂了优先修复或回滚，不在红着的 `main` 上继续叠加提交。
+- **推送前验证**：`pnpm lint && pnpm build && pnpm test` 必须全绿（改动涉及 e2e 面时加 `pnpm test:e2e`），工作区不留未跟踪的临时文件——别把红的推给 CI。
+- 流程：开分支 → 提交 → 推送分支 → 网页创建 PR → CI 全绿 → Squash merge → 删除本地分支。
 - 身份与隐私要求（SSH key、noreply 署名、提交内容不得含本机/个人信息）见仓库根 [CLAUDE.md](../../../../CLAUDE.md) 规则 A。
 
 ## 验证清单
@@ -140,4 +142,5 @@ Implement user list query functionality with pagination support.
 - [ ] 不在标题里包含敏感信息（密码、token、内部 URL）
 - [ ] 本次提交只做一件事，连带的文档/模板已在同一提交内
 - [ ] `pnpm lint && pnpm build && pnpm test` 全绿后再推送
+- [ ] 变更经 PR 合入（Squash merge，PR 标题符合提交规范），未直推 `main`
 - [ ] 工作分支合并后已删除本地/远端分支（仓库只剩 `main`）
