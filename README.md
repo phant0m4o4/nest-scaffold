@@ -167,7 +167,7 @@ NODE_ENV=production pnpm start:dist
 
 下游项目接入 CD 只需三步：
 
-1. **添加工作流**：把下方示例保存为 `.github/workflows/cd.yml`（按需调整触发条件与镜像仓库；`ghcr.io` 对 GitHub 仓库零配置，`GITHUB_TOKEN` 直接可用）；
+1. **添加工作流**：把下方示例保存为 `.github/workflows/cd.yml`（按需调整触发条件与镜像仓库）。示例用 `ghcr.io` 是因为它对 GitHub 仓库零配置（`GITHUB_TOKEN` 直接可用）且公开镜像免费；**私有项目请评估**——私有镜像的存储/外部流量计入 GitHub 套餐配额（Free 仅 500MB + 1GB/月，本镜像约 440MB）、部署机拉取需 PAT 登录、国内网络可达性差，通常更适合换成云厂商仓库（阿里云 ACR / AWS ECR 等），只需替换 `login-action` 的 `registry`+凭据与 `images` 前缀，其余步骤通用；
 2. **发版**：`git tag v0.1.0 && git push origin v0.1.0`，镜像自动构建并推送到 `ghcr.io/<owner>/<repo>`；
 3. **部署**：部署机拉取镜像运行（见下方命令），数据库迁移用容器内自带的 `drizzle-kit` 在部署流程中执行。
 
