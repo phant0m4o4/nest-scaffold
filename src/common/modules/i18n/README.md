@@ -91,10 +91,11 @@ DTO 校验不再由本模块处理：请求 DTO 统一用 `createZodDto`（zod�
 ```json
 {
   "statusCode": 422,
+  "code": "VALIDATION_FAILED",
   "message": "Validation Failed",
   "errors": [
-    { "field": "email", "message": "Invalid email address" },
-    { "field": "password", "message": "Too small: expected string to have >=6 characters" }
+    { "field": "email", "code": "invalid_format", "message": "Invalid email address" },
+    { "field": "password", "code": "too_small", "message": "Too small: expected string to have >=6 characters" }
   ]
 }
 ```

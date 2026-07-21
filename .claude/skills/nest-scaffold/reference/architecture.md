@@ -41,7 +41,9 @@ src/
 │   │       ├── entities/
 │   │       └── __tests__/
 │   ├── exceptions/
-│   │   └── zod-validation.exception.ts     # 校验失败异常，自带 422 { field, message }[] 响应体
+│   │   └── zod-validation.exception.ts     # 校验失败异常，自带统一错误信封（含 zod issue code）
+│   ├── filters/
+│   │   └── global-exception.filter.ts      # 全局异常过滤器：统一 { statusCode, code, message, errors? }，仓储异常映射 404/409/400/503
 │   ├── pipes/
 │   │   └── i18n-zod-validation.pipe.ts     # 全局 zod 校验管道（消息按请求语言本地化）
 │   ├── interceptors/
@@ -93,7 +95,8 @@ src/
 4. `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`
 5. `ApiModule`（业务聚合）
 6. `GlobalResponseInterceptor` 通过 `APP_INTERCEPTOR` Provider 注册
-7. `I18nZodValidationPipe`（`app/pipes/`，基于 zod，校验消息按请求语言本地化）通过 `APP_PIPE` 注册 —— DTO 校验全局生效；校验失败抛 `ZodValidationException`（`app/exceptions/`，自带 422 响应体，无需异常过滤器）
+7. `I18nZodValidationPipe`（`app/pipes/`，基于 zod，校验消息按请求语言本地化）通过 `APP_PIPE` 注册 —— DTO 校验全局生效
+8. `GlobalExceptionFilter`（`app/filters/`）通过 `APP_FILTER` 注册 —— 所有异常统一为 `{ statusCode, code, message, errors? }` 信封，仓储异常映射语义化状态码（404/409/400/503），未知异常 500 并记录日志
 
 ## main.ts 启动要点
 

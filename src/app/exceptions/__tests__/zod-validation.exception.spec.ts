@@ -19,14 +19,17 @@ describe('ZodValidationException', () => {
     const response = exception.getResponse() as {
       statusCode: number;
       message: string;
-      errors: Array<{ field: string; message: string }>;
+      code: string;
+      errors: Array<{ field: string; code: string; message: string }>;
     };
 
     expect(exception.getStatus()).toBe(422);
     expect(response.statusCode).toBe(422);
     expect(response.message).toBe('Validation Failed');
+    expect(response.code).toBe('VALIDATION_FAILED');
     expect(response.errors).toHaveLength(1);
     expect(response.errors[0].field).toBe('user.email');
+    expect(response.errors[0].code).toBe('too_small');
     expect(typeof response.errors[0].message).toBe('string');
   });
 

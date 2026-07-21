@@ -8,8 +8,9 @@ import { RedisModule } from '@/common/modules/redis/redis.module';
 import appConfig from '@/configs/app.config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ApiModule } from '@/app/api/api.module';
+import { GlobalExceptionFilter } from '@/app/filters/global-exception.filter';
 import { I18nZodValidationPipe } from '@/app/pipes/i18n-zod-validation.pipe';
 import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.interceptor';
 
@@ -45,10 +46,16 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
       useClass: GlobalResponseInterceptor,
     },
     // 全局 zod 校验管道（对使用 createZodDto 的 DTO 自动校验 body/query/param，
-    // 错误消息按请求语言本地化；失败抛出的 ZodValidationException 自带 422 响应体）
+    // 错误消息按请求语言本地化；失败抛出的 ZodValidationException 自带统一错误信封）
     {
       provide: APP_PIPE,
       useClass: I18nZodValidationPipe,
+    },
+    // 全局异常过滤器：所有异常统一为 { statusCode, code, message, errors? } 信封，
+    // 仓储异常映射为语义化状态码（404/409/400/503），未知异常 500 并记录日志
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
     },
   ],
 })

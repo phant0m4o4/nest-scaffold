@@ -24,20 +24,36 @@
 // 删除 / 无返回
 // 控制器方法返回 void → { statusCode: 200 }
 
-// 错误（普通）
-{ "statusCode": 400, "error": "Bad Request", "message": "..." }
+// 错误：所有非 2xx 都是统一信封（GlobalExceptionFilter 保证）
+// { statusCode, code, message, errors?: [{ field, code, message }] }
+{ "statusCode": 404, "code": "RECORD_NOT_FOUND", "message": "demos 不存在: {id: 999999}" }
 
-// 校验失败（全局 I18nZodValidationPipe，ZodValidationException 自带 422 响应体）
+// 校验失败（全局 I18nZodValidationPipe 抛 ZodValidationException）
+// errors[].code 透传 zod issue code（机器可读、不随语言变），message 随请求语言本地化
 {
   "statusCode": 422,
+  "code": "VALIDATION_FAILED",
   "message": "Validation Failed",
   "errors": [
-    { "field": "email", "message": "Invalid email address" }
+    { "field": "email", "code": "too_small", "message": "数值过小：期望 string >=5 字符" }
   ]
 }
 ```
 
 控制器只负责返回 `{ data?, meta? }`，**不要**手动拼 `statusCode`。
+
+仓储异常由 `GlobalExceptionFilter` 映射为语义化状态码（业务代码只需抛出，不要 try-catch 转 HTTP）：
+
+| 仓储异常 | HTTP | code |
+|---------|------|------|
+| `RecordNotFoundException` | 404 | `RECORD_NOT_FOUND` |
+| `RecordAlreadyExistsException` | 409 | `RECORD_ALREADY_EXISTS` |
+| `ForeignKeyConstraintViolationException` | 409 | `FOREIGN_KEY_CONSTRAINT_VIOLATION` |
+| `DataIntegrityViolationException` | 400 | `DATA_INTEGRITY_VIOLATION` |
+| `DeadlockDetectedException` | 409 | `DEADLOCK_DETECTED` |
+| `LockWaitTimeoutException` | 503 | `LOCK_WAIT_TIMEOUT` |
+| `RepositoryException`（兜底） | 500 | `REPOSITORY_ERROR`（隐藏细节并记日志） |
+| 未知异常 | 500 | `INTERNAL_SERVER_ERROR`（隐藏细节并记日志） |
 
 ## 分页
 
