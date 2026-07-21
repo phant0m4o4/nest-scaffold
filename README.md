@@ -100,17 +100,14 @@ QUEUE_DASHBOARD_ROUTE=/queues
 ### 4. 初始化数据库
 
 ```bash
-# 应用迁移文件建表（开发与生产同一套迁移，schema 变更见「命令参考 · 数据库」）
+# 应用迁移文件建表并写入基础数据（开发与生产同一套迁移，schema 变更见「命令参考 · 数据库」）
 pnpm db:migrate:mysql
-
-# 初始化基础数据
-NODE_ENV=development pnpm db:init:mysql
 
 # 填充种子数据
 NODE_ENV=development pnpm db:seed:mysql
 ```
 
-> `db:init:mysql` / `db:seed:mysql` 不内置环境，`NODE_ENV` 由调用方传入（Windows PowerShell 用 `$env:NODE_ENV="development"; pnpm db:init:mysql`）。
+> `db:seed:mysql` 不内置环境，`NODE_ENV` 由调用方传入（Windows PowerShell 用 `$env:NODE_ENV="development"; pnpm db:seed:mysql`）。
 
 ### 5. 启动开发服务
 
@@ -143,11 +140,8 @@ pnpm build
 
 ```bash
 # 应用迁移（迁移文件在开发期用 db:generate:mysql 生成并随代码入库，
-# 开发与生产执行的是同一套迁移文件）
+# 开发与生产执行的是同一套迁移文件，表结构与基础数据一次性完成）
 pnpm db:migrate:mysql
-
-# 初始化基础数据
-NODE_ENV=production pnpm db:init:mysql
 ```
 
 > seed 填充的是 faker 演示数据，仅限开发环境，`NODE_ENV=production` 下执行会被工具拒绝。
@@ -158,11 +152,10 @@ NODE_ENV=production pnpm db:init:mysql
 NODE_ENV=production pnpm start:dist
 ```
 
-> **仅安装生产依赖的机器**：`pnpm db:init:mysql` 走 `nest start` 现场编译，依赖 `@nestjs/cli`（devDependencies）。若生产机器用 `pnpm install --prod` 只装了生产依赖，请直接运行构建产物：
+> **仅安装生产依赖的机器**：`drizzle-kit` 在生产依赖中，直接执行迁移即可（不再依赖 `@nestjs/cli`）：
 >
 > ```bash
-> NODE_ENV=production node dist/common/modules/database/mysql/tools/init.main
-> # PostgreSQL 对应 dist/common/modules/database/pgsql/tools/init.main
+> npx drizzle-kit migrate --config drizzle-mysql.config.ts
 > ```
 
 ## CI / CD
@@ -218,7 +211,7 @@ docker run -d --env-file .env.production -e NODE_ENV=production \
   -p 3000:3000 ghcr.io/<owner>/<repo>:0.1.0
 ```
 
-> 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在仓库内约定。数据库迁移在部署流程中执行：容器内含 `drizzle-kit` 与 `dist/` 下的 init 工具（见 Dockerfile 尾部注释）。
+> 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在仓库内约定。数据库迁移在部署流程中执行：容器内含 `drizzle-kit`（见 Dockerfile 尾部注释）。
 
 ## 命令参考
 
@@ -260,17 +253,16 @@ MySQL（默认）：
 | ------------------- | ------------------------------------------------ |
 | `pnpm db:generate:mysql`  | schema 变更后生成迁移文件（`drizzle/mysql/`，随代码入库） |
 | `pnpm db:migrate:mysql`   | 应用迁移（开发与生产统一的表结构维护方式）       |
-| `pnpm db:init:mysql`      | 初始化基础数据（`NODE_ENV` 由调用方传入）        |
 | `pnpm db:seed:mysql`      | 填充种子数据（仅限开发环境）                     |
 
 **开发与生产都用 migration 维护表结构**（同一套迁移文件保证环境一致）：
 
-- **开发**：改 schema → `pnpm db:generate:mysql` 生成迁移（检查生成的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随代码提交；再按需 `NODE_ENV=development pnpm db:init:mysql` / `db:seed:mysql`；
-- **生产**：`pnpm db:migrate:mysql` 应用已入库的迁移 → `NODE_ENV=production pnpm db:init:mysql`；`db:seed`（faker 演示数据）在 `NODE_ENV=production` 下会被工具拒绝。
+- **开发**：改 schema → `pnpm db:generate:mysql` 生成迁移（检查生成的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随代码提交；基础数据用自定义数据迁移维护（`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移后手写 SQL，示例 `drizzle/mysql/0001_base-data.sql`）；再按需 `NODE_ENV=development pnpm db:seed:mysql`；
+- **生产**：`pnpm db:migrate:mysql` 应用已入库的迁移（含基础数据）；`db:seed`（faker 演示数据）在 `NODE_ENV=production` 下会被工具拒绝。
 
 > `drizzle-kit push`（无迁移文件的直接同步）**不提供 npm script**——它只适合一次性实验库的快速原型，确需使用时手动执行 `pnpm exec drizzle-kit push --config drizzle-mysql.config.ts`，不要用于任何需要延续的数据库。
 
-PostgreSQL（可选，与上表一一对应）：`pnpm db:generate:pgsql`、`db:migrate:pgsql`、`db:init:pgsql`、`db:seed:pgsql`，迁移文件在 `drizzle/pgsql/`。
+PostgreSQL（可选，与上表一一对应）：`pnpm db:generate:pgsql`、`db:migrate:pgsql`、`db:seed:pgsql`，迁移文件在 `drizzle/pgsql/`。
 
 ### 代码质量
 
@@ -310,7 +302,6 @@ src/
     ├── mysql/              # MySQL 侧（默认装配）
     │   ├── schemas/        # Drizzle 表定义（index.ts 聚合导出）
     │   ├── utils/          # 建列工具（主键/时间戳/外键）
-    │   ├── init.ts         # 初始化逻辑
     │   └── seed.ts         # 种子数据
     └── pgsql/              # PostgreSQL 侧（可选，结构与 mysql/ 平行）
 ```

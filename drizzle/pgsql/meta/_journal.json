@@ -8,6 +8,13 @@
       "when": 1784623927210,
       "tag": "0000_natural_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784624916513,
+      "tag": "0001_base-data",
+      "breakpoints": true
     }
   ]
 }
