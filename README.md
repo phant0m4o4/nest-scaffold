@@ -161,10 +161,18 @@ NODE_ENV=production pnpm start:dist
 ## CI / CD
 
 - **CI**（`.github/workflows/ci.yml`）：push 到 `main` 或 PR 时自动运行两个并行任务——① `pnpm install --frozen-lockfile` → `lint:check` → 构建 → 单元测试 → E2E（testcontainers 使用 runner 自带 Docker）；② 生产镜像构建验证（`Dockerfile` 只构建不推送）。
-- **CD**：本仓库是脚手架，没有交付语义，**不内置 CD 工作流**；脚手架提供的是生产镜像 `Dockerfile`（多阶段构建——全量依赖 SWC 构建 → 仅生产依赖 → 以非 root 用户运行 `node dist/main`）。下游业务项目按自己的发布流程添加 CD，参考示例：
+- **CD**：脚手架不内置 CD 工作流——发布节奏、触发时机与部署目标是业务项目的决策，预置的流程终究会被改写或删除。脚手架交付的是 CD 真正依赖的底座：
+  - **生产镜像定义**（`Dockerfile`）：多阶段构建，SWC 构建 → 仅生产依赖 → 非 root 用户运行 `node dist/main`，自带迁移文件与 `drizzle-kit`；
+  - **持续的可构建性保证**：CI 每次提交都验证该镜像能在干净环境构建成功。
+
+下游项目接入 CD 只需三步：
+
+1. **添加工作流**：把下方示例保存为 `.github/workflows/cd.yml`（按需调整触发条件与镜像仓库；`ghcr.io` 对 GitHub 仓库零配置，`GITHUB_TOKEN` 直接可用）；
+2. **发版**：`git tag v0.1.0 && git push origin v0.1.0`，镜像自动构建并推送到 `ghcr.io/<owner>/<repo>`；
+3. **部署**：部署机拉取镜像运行（见下方命令），数据库迁移用容器内自带的 `drizzle-kit` 在部署流程中执行。
 
 <details>
-<summary>下游项目 CD 示例：v* 标签触发，构建镜像推送 ghcr.io</summary>
+<summary>示例 workflow：v* 标签触发，构建镜像推送 ghcr.io</summary>
 
 ```yaml
 # .github/workflows/cd.yml
@@ -211,7 +219,7 @@ docker run -d --env-file .env.production -e NODE_ENV=production \
   -p 3000:3000 ghcr.io/<owner>/<repo>:0.1.0
 ```
 
-> 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在仓库内约定。数据库迁移在部署流程中执行：容器内含 `drizzle-kit`（见 Dockerfile 尾部注释）。
+> 镜像之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在脚手架内约定。
 
 ## 命令参考
 
