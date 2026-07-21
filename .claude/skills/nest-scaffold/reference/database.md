@@ -174,6 +174,7 @@ clearUniqueCollections();
 | `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | schema 变更后生成 migration 文件（`drizzle/<dialect>/`，随代码提交） |
 | `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 应用 migration（开发与生产统一方式） |
 | `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()` |
+| `NODE_ENV=development pnpm db:reset:mysql` / `NODE_ENV=development pnpm db:reset:pgsql`（仅开发，生产环境会被拒绝） | 重置到迁移基线：删除全部表（含迁移记录）后重放所有迁移，恢复表结构与基础数据；演示数据按需再跑 seed |
 
 ## .env
 

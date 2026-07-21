@@ -3,24 +3,17 @@ import { DatabaseService } from '@/common/modules/database/mysql/database.servic
 import { ISeeder } from '@/common/modules/database/interfaces/seeder.interface';
 import { Injectable } from '@nestjs/common';
 import inquirer from 'inquirer';
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { demoTypes } from '../enums/demo-type.enum';
 import { demosSchema } from './schemas';
 import { fakerZH_CN as faker } from '@faker-js/faker';
-import Sleep from '@/common/utils/sleep';
 /**
  * 数据库种子数据服务
  * 实现 ISeeder，用于执行数据填充
  */
 @Injectable()
 export class SeedService implements ISeeder {
-  constructor(
-    private readonly databaseService: DatabaseService,
-    @InjectPinoLogger(SeedService.name) private readonly logger: PinoLogger,
-  ) {}
+  constructor(private readonly databaseService: DatabaseService) {}
   async run() {
-    // 等待2秒，让日志输出完成
-    await Sleep(2000);
     const answer = await inquirer.prompt([
       {
         type: 'confirm',
@@ -30,10 +23,10 @@ export class SeedService implements ISeeder {
       },
     ]);
     if (!answer.continue) {
-      this.logger.info('填充 Seed 数据已取消');
+      console.log('填充 Seed 数据已取消');
       return;
     }
-    this.logger.info('========== 填充 Seed 数据 ==========');
+    console.log('========== 填充 Seed 数据 ==========');
     // 固定随机种子：同一批 seed 数据可复现，便于调试与测试对齐
     faker.seed(42);
 
@@ -51,6 +44,6 @@ export class SeedService implements ISeeder {
     }
     await this.databaseService.db.insert(demosSchema).values(demos);
 
-    this.logger.info('========== 填充 Seed 数据完成 ==========');
+    console.log('========== 填充 Seed 数据完成 ==========');
   }
 }
