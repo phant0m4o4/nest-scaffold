@@ -291,6 +291,8 @@ jobs:
 </details>
 
 > 镜像/产物之后的部署编排（K8s / Docker Swarm / 裸机 systemd 等）依基础设施而定，不在脚手架内约定。
+>
+> **多环境 / 手动发布闸门**：不建议用常驻环境分支（`release`/`prod` 分支）触发 CD——分支可变、会漂移，与本仓库"常态只保留 main"的分支模型冲突。需要审批或多环境（预发/生产）时，用 **GitHub Environments**：部署 job 声明 `environment: production` 并在仓库设置里配置 required reviewers（必需审批人），即可获得发布审批、环境专属 Secrets 与部署历史，无需任何额外分支。
 
 ## 命令参考
 
