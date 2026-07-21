@@ -143,11 +143,33 @@ git checkout main && git pull
 git branch -d feature/user-profile
 ```
 
-补充约定：
+### 工具分工：git / gh / 网页
+
+| 操作 | 工具 | 说明 |
+| --- | --- | --- |
+| 提交 / 推送 / 拉取 / 看历史 | 原生 `git`（SSH key） | git 数据操作不走 gh |
+| PR 创建 / 查看检查 / Squash 合并 | `gh` CLI **或** 网页 | gh 用前先 `gh auth status` 核验登录账号 |
+| 仓库设置（分支保护 / 合并方式 / auto-delete） | `gh api` **或** 网页 Settings | 一次性配置 |
+| 代码审查判断、Environments 发布审批 | **必须人工**（网页） | 不可自动化的部分 |
+
+上面五步流程中第 3 步之后的 PR 环节，`gh` 版等价操作：
+
+```bash
+gh auth status                          # 核验登录账号（每次使用 gh 前）
+gh pr create --fill                     # 以分支提交信息生成 PR（标题须符合提交规范）
+gh pr checks --watch                    # 盯 ci / docker 检查直到出结果
+gh pr merge --squash --delete-branch    # 全绿后 Squash 合并并删除远端分支
+```
+
+### 补充约定
 
 - **PR 评审期间更新**：继续向同一分支 push 即可；需要整理提交历史可在自己的工作分支 rebase 后强推（`main` 的强推被禁止，工作分支不受限）。
 - **提交规范**：`type(scope): subject`（type/scope 英文，body 中文），详见 [.claude/skills/nest-scaffold/reference/git-commit.md](.claude/skills/nest-scaffold/reference/git-commit.md)。
 - **合并即发布**：若配置了 CD 方案 B（见「CI / CD」），合入 `main` 且 CI 通过后会自动部署——合并动作请以"可上线"为标准。
+
+### 开发生命周期
+
+以上是 git/PR 的通用流程；**不同任务类型（新项目 / 新功能 / 修改既有功能 / 修 bug / 数据库变更 / 文档）的端到端工作流**（准备 → 实施 → 验证 → 交付）见 [.claude/skills/nest-scaffold/reference/workflows.md](.claude/skills/nest-scaffold/reference/workflows.md)。
 
 ## 生产环境部署
 

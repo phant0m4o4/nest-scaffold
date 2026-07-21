@@ -107,7 +107,8 @@
   git config --local core.sshCommand "ssh -i .ssh/id_ed25519 -o IdentitiesOnly=yes"
   ```
 - **项目内没有 `.ssh/id_ed25519` 时,回退使用系统默认的 `~/.ssh`**:不设置 `core.sshCommand`(已设置的要清掉:`git config --local --unset core.sshCommand`),由 ssh 按默认规则取系统 key;**不要**把系统私钥复制进项目。
-- **不使用 `gh` CLI 操作本仓库,一律用配置了上述 SSH key 的原生 `git`。** `gh` 走它自己的登录态(可能不是本项目账号),对本仓库常解析不到(报 `Could not resolve to a Repository`);提交、推送、查看状态、看历史等都用原生 `git`。PR 的创建与合并走 GitHub 网页端(见第 4 条)。
+- **git 数据操作(提交/推送/拉取/看历史)一律用配置了上述 SSH key 的原生 `git`**,不要用 `gh` 做这些。
+- **`gh` CLI 仅限 GitHub 平台操作**(PR 的创建/查看检查/Squash 合并、仓库设置类 `gh api`),且**每次使用前必须先 `gh auth status` 核验登录账号与本仓库署名账号一致**——`gh` 走自己的登录态,账号不一致立即停止并告知用户。工具分工速查见第 4 条与 [reference/git-commit.md](.claude/skills/nest-scaffold/reference/git-commit.md)。
 
 **2. 提交 / 推送的署名使用 GitHub 用户名,不用本机/个人信息。本文档不写死用户名——它从 SSH 私钥(项目内的,没有则回退系统的)的注释字段动态读取(项目内私钥已被 [.gitignore](.gitignore) 屏蔽,不进 git)。**
 
@@ -135,7 +136,7 @@
 - 合并方式用 **Squash merge**(压缩合并,一个 PR 压成 main 上一个提交,保持线性历史);PR 标题按提交规范书写,它就是合入 main 的提交标题。
 - 工作分支**用完即清**:PR 合并后立即删除远端与本地分支及对应 worktree(工作树,同一仓库的另一份检出目录),仓库常态只保留 `main`。
 - **禁止对 `main` 强推**;工作分支在 PR 评审期间可以 rebase/强推自己(改历史仅限自己的工作分支)。
-- PR 的创建与合并走 GitHub 网页端(推送分支后 git 会输出 create a pull request 链接),不使用 `gh` CLI(见第 1 条)。
+- PR 的创建/检查/合并可用 `gh`(`gh pr create` / `gh pr checks` / `gh pr merge --squash`,使用前按第 1 条核验账号)或 GitHub 网页;**代码审查的判断与 Environments 发布审批必须人工完成**(网页操作),不得由代理代批。
 - 首次启用需在 GitHub 网页配置(仅一次):Settings → Branches → Add rule(`main`):Require a pull request before merging、Require status checks to pass(勾选 `ci`、`docker`)、Block force pushes;Settings → General → 勾选 Automatically delete head branches。
 
 **5. 提交与推送规范。**
