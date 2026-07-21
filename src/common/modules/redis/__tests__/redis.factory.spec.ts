@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import type { RedisModuleConfig } from '@/configs/redis.config';
 import type { EventEmitter } from 'events';
 import type { PinoLogger } from 'nestjs-pino';

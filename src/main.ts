@@ -48,5 +48,4 @@ async function bootstrap() {
     msg: `应用 ${name} 运行在: ${await app.getUrl()}`,
   });
 }
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-bootstrap();
+void bootstrap();
