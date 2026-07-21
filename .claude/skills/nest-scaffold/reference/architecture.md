@@ -69,7 +69,7 @@ src/
 │   │   ├── logger/                         # nestjs-pino + pino-roll
 │   │   ├── queue/                          # BullMQ + Bull Board (dev)
 │   │   └── redis/                          # ioredis 共享单例（single/sentinel/cluster）
-│   └── utils/                              # date-time / hash / random / sleep / register-env-as-config 等
+│   └── utils/                              # date-time / hash / random / zod / register-env-as-config 等
 ├── configs/                                # registerEnvAsConfig 注册的各模块配置
 └── database/
     ├── enums/                              # 跨表枚举（方言无关，两套 schema 共享）
@@ -79,7 +79,7 @@ src/
     │   └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:mysql）
     └── pgsql/                              # PostgreSQL 业务库（pg-core，与 mysql/ 平行）
         ├── schemas/                        # 同上（pgTable / pgEnum）
-        ├── utils/                          # 同上（integer identity / $onUpdate）
+        ├── utils/                          # 同上（bigint identity / $onUpdate）
         └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:pgsql）
 ```
 
