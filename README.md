@@ -120,6 +120,21 @@ git checkout main && git pull && git branch -d feature/user-profile
 
 不同任务类型（新功能 / 修改 / 修 bug / 数据库变更等）的端到端流程见 [workflows.md](.claude/skills/nest-scaffold/reference/workflows.md)。
 
+### 仓库设置（PR 门禁清单）
+
+以上约束全部来自 GitHub 仓库设置。新项目执行一次 `bash .claude/skills/nest-scaffold/scripts/setup-github.sh` 即可自动配好（幂等可重跑，需 gh 已登录且有 admin 权限）；也可按下表在网页手动配置：
+
+| 设置项 | 值 | 网页路径 |
+| --- | --- | --- |
+| Require a pull request before merging | 开启（required approvals 设 0，合并门禁交给 CI；团队协作可调高） | Settings → Branches → Add rule（`main`） |
+| Require status checks to pass | 勾选 `ci`、`docker` | 同上 |
+| Do not allow bypassing the above settings | 开启（enforce admins，管理员同样不能直推） | 同上 |
+| Block force pushes / Allow deletions | 禁强推、禁删除 | 同上 |
+| 合并方式 | **仅保留 Squash merge**；默认标题取 PR 标题（`Default to pull request title`）、正文取 PR 描述 | Settings → General → Pull Requests |
+| Automatically delete head branches | 开启（合并即删远端分支） | Settings → General |
+
+> 必需检查 `ci` / `docker` 需要 CI 至少跑过一次才会出现在网页候选列表中（新仓库先推送一次代码触发）；用脚本配置不受此限制。
+
 <details>
 <summary>工具分工（git / gh / 网页）与补充约定</summary>
 
