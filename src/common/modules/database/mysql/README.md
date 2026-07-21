@@ -1,6 +1,6 @@
 # DatabaseModule（MySQL）
 
-基于 Drizzle ORM + MySQL2 的数据库模块，提供连接管理与 Schema 绑定；init/seed CLI 由 `ToolsModule` 单独组合，不通过本模块注册。
+基于 Drizzle ORM + MySQL2 的数据库模块，提供连接管理与 Schema 绑定；seed CLI 由 `ToolsModule` 单独组合，不通过本模块注册。
 与 [`../pgsql`](../pgsql/README.md) 是平行的两套实现，见 [`../README.md`](../README.md) 了解共享部分。
 
 ## 功能特性
@@ -9,7 +9,7 @@
 - 连接池生命周期管理：启动时自动验证连接、销毁时优雅关闭
 - 开发环境自动输出参数化 SQL 查询日志
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
-- CLI 工具脚本（`ToolsModule`）：`db:init:mysql` / `db:seed:mysql`，在工具模块内注册 `InitService` / `SeedService` 与 Token
+- CLI 工具脚本（`ToolsModule`）：`db:seed:mysql`，在工具模块内注册 `SeedService` 与 Token
 - Seed 专用工具函数：`unique` / `uniqueArray` 确保生成唯一值
 
 ## 依赖
@@ -85,10 +85,6 @@ async transferFunds(fromId: number, toId: number, amount: number) {
 ## CLI 工具
 
 ```bash
-# 数据库结构初始化
-NODE_ENV=development pnpm db:init:mysql    # 开发环境
-NODE_ENV=production pnpm db:init:mysql   # 生产环境
-
 # 种子数据填充（faker 演示数据，仅限开发环境，NODE_ENV=production 会被拒绝）
 NODE_ENV=development pnpm db:seed:mysql
 
@@ -97,21 +93,13 @@ pnpm db:generate:mysql   # schema 变更后生成迁移（drizzle/mysql/，随�
 pnpm db:migrate:mysql    # 应用迁移
 ```
 
-### init/seed 实现约定
+### 基础数据与 seed 约定
 
-初始化器和种子器需实现对应接口：
+基础数据（初始角色、系统配置等）用**自定义数据迁移**维护：`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移文件后手写 INSERT 等 SQL（示例见 `drizzle/mysql/0001_base-data.sql`），随 `pnpm db:migrate:mysql` 一并应用。
+
+种子器需实现对应接口：
 
 ```typescript
-// src/database/mysql/init.ts
-import type { IInitInitializer } from '@/common/modules/database/interfaces/init-initializer.interface';
-
-@Injectable()
-export class InitService implements IInitInitializer {
-  async run(): Promise<void> {
-    // 创建初始角色、权限等基础数据
-  }
-}
-
 // src/database/mysql/seed.ts
 import type { ISeeder } from '@/common/modules/database/interfaces/seeder.interface';
 
@@ -170,7 +158,7 @@ clearUniqueCollections();
 │    - onModuleInit: ping 验证                              │
 │    - onModuleDestroy: pool.end()                         │
 │                                                         │
-│  （init/seed Token 与 ToolsService 由 ToolsModule 注册，见 tools/） │
+│  （seed Token 与 ToolsService 由 ToolsModule 注册，见 tools/） │
 │                                                         │
 │  exports: [DatabaseService]                             │
 └───────────────────────────────────────────────────────┘

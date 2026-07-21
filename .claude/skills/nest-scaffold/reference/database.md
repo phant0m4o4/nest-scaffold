@@ -1,6 +1,6 @@
 # 数据库（Drizzle ORM + MySQL / PostgreSQL）
 
-> 项目提供 MySQL（`src/common/modules/database/mysql/`）与 PostgreSQL（`src/common/modules/database/pgsql/`）两套平行、各自完整的实现（连接层 + 业务 Schema + 仓储基类 + init/seed CLI），按需二选一或同时导入，见 `src/common/modules/database/README.md`。**脚手架默认启用 MySQL**（`AppModule` 导入的是 mysql 版 `DatabaseModule`）。
+> 项目提供 MySQL（`src/common/modules/database/mysql/`）与 PostgreSQL（`src/common/modules/database/pgsql/`）两套平行、各自完整的实现（连接层 + 业务 Schema + 仓储基类 + seed CLI），按需二选一或同时导入，见 `src/common/modules/database/README.md`。**脚手架默认启用 MySQL**（`AppModule` 导入的是 mysql 版 `DatabaseModule`）。
 > 本文以 MySQL 版为主线，PG 版差异集中在「PostgreSQL 版差异」一节。
 
 ## 关键约束
@@ -75,7 +75,7 @@ export const demosSchema = pgTable('demos', {
 - `updatedAt` 用 Drizzle `$onUpdate` 在应用层写入（PG 无 `ON UPDATE CURRENT_TIMESTAMP`）。
 - 仓储基类：`src/app/repositories/common/pgsql/base.repository.ts`（API 与 MySQL 版完全一致）；错误映射走 PG SQLSTATE（`mapPgsqlErrorAndThrow`：23505 唯一冲突、23503 外键、40P01 死锁、55P03 锁不可用、23502/22001/22P02 数据完整性）。
 - 事务类型：`PgsqlTransactionType`（`@/common/modules/database/pgsql/common/types/pgsql-transaction.type`）。
-- init/seed：`src/database/pgsql/init.ts` / `seed.ts`，命令为 `NODE_ENV=development pnpm db:init:pgsql` / `NODE_ENV=development pnpm db:seed:pgsql`。
+- seed：`src/database/pgsql/seed.ts`，命令为 `NODE_ENV=development pnpm db:seed:pgsql`；基础数据用自定义数据迁移（`pnpm db:generate:pgsql --custom --name=<name>`，示例 `drizzle/pgsql/0001_base-data.sql`）。
 - Drizzle Kit：`drizzle-pgsql.config.ts`，命令统一带 `:pgsql` 后缀（见下方命令表）。
 - `.env`：`PGSQL_HOST` / `PGSQL_PORT` / `PGSQL_DATABASE` / `PGSQL_USER` / `PGSQL_PASSWORD`（`${APP_NAME}` 占位同样生效）。
 
@@ -133,13 +133,13 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 
 业务调用方只需 catch 这些类。
 
-## init / seed
+## 基础数据（数据迁移）/ seed
 
-`src/database/mysql/init.ts` 实现 `IInitInitializer.run()`，由 `NODE_ENV=development pnpm db:init:mysql`（开发） / `NODE_ENV=production pnpm db:init:mysql`（生产，需先 `pnpm build`）触发。用于：基础数据、必备角色、系统配置等。
+**基础数据（必备角色、系统配置等）用自定义数据迁移维护**：`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移文件，在其中手写 INSERT 等 SQL（示例：`drizzle/mysql/0001_base-data.sql`；PG 用 `:pgsql` 后缀，示例 `drizzle/pgsql/0001_base-data.sql`）。`pnpm db:migrate:mysql` 一次性完成表结构与基础数据。
 
 `src/database/mysql/seed.ts` 实现 `ISeeder.run()`，由 `pnpm db:seed:*` 触发，用于演示/测试数据。**仅限开发/测试环境**：`NODE_ENV=production` 下 `bootstrapTool` 会直接拒绝执行。
 
-两者都通过 inquirer 二次确认：
+seed 通过 inquirer 二次确认：
 
 ```ts
 const answer = await inquirer.prompt([
@@ -171,7 +171,6 @@ clearUniqueCollections();
 |------|------|
 | `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | schema 变更后生成 migration 文件（`drizzle/<dialect>/`，随代码提交） |
 | `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 应用 migration（开发与生产统一方式） |
-| `NODE_ENV=development pnpm db:init:mysql` / `NODE_ENV=development pnpm db:init:pgsql`（prod 同理） | 跑 `InitService.run()` |
 | `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()` |
 
 ## .env

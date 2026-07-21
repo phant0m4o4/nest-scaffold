@@ -123,9 +123,8 @@ cat <<EOF
 
 3. 检查并修改 .env（已基于 .env.example 生成，APP_NAME 已替换）
 
-4. 应用迁移 + 初始化数据：
+4. 应用迁移（含基础数据）+ 填充演示数据：
    pnpm db:migrate:mysql
-   NODE_ENV=development pnpm db:init:mysql
    NODE_ENV=development pnpm db:seed:mysql
 
 5. 启动开发服务：

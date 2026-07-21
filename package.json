@@ -23,11 +23,9 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:e2e": "vitest run --config ./vitest-e2e.config.ts",
-    "db:init:mysql": "nest start --entryFile ./common/modules/database/mysql/tools/init.main",
     "db:seed:mysql": "nest start --entryFile ./common/modules/database/mysql/tools/seed.main",
     "db:generate:mysql": "drizzle-kit generate --config drizzle-mysql.config.ts",
     "db:migrate:mysql": "drizzle-kit migrate --config drizzle-mysql.config.ts",
-    "db:init:pgsql": "nest start --entryFile ./common/modules/database/pgsql/tools/init.main",
     "db:seed:pgsql": "nest start --entryFile ./common/modules/database/pgsql/tools/seed.main",
     "db:generate:pgsql": "drizzle-kit generate --config drizzle-pgsql.config.ts",
     "db:migrate:pgsql": "drizzle-kit migrate --config drizzle-pgsql.config.ts"

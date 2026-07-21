@@ -21,7 +21,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 2. 改写目标目录的 `package.json` 字段：`name=$APP_NAME`、`version=0.0.1`。
 3. 用目标目录的 `.env.example` 生成 `.env` 并替换 `APP_NAME`。
 4. `git init -b main` + 一条 `chore: bootstrap from nest-scaffold` 提交。
-5. 输出后续手动步骤（pnpm install / docker compose / db:migrate:mysql / db:init:mysql / db:seed:mysql / start:dev）。
+5. 输出后续手动步骤（pnpm install / docker compose / db:migrate:mysql / db:seed:mysql / start:dev）。
 
 约束：
 

@@ -63,7 +63,7 @@ src/
 │   ├── modules/                            # 全部 @Global() 基础设施模块
 │   │   ├── bottleneck/                     # 进程内速率限流
 │   │   ├── cache/                          # 基于 RedisService 的缓存
-│   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(init/seed CLI)
+│   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(seed CLI)
 │   │   ├── distributed-lock/               # Redlock
 │   │   ├── i18n/                           # nestjs-i18n（项目实际不强依赖）
 │   │   ├── logger/                         # nestjs-pino + pino-roll
@@ -76,12 +76,10 @@ src/
     ├── mysql/                              # MySQL 业务库（mysql-core）
     │   ├── schemas/                        # Drizzle 表（每张表一个文件）+ index.ts 聚合 export *
     │   ├── utils/                          # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-    │   ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init:mysql）
     │   └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:mysql）
     └── pgsql/                              # PostgreSQL 业务库（pg-core，与 mysql/ 平行）
         ├── schemas/                        # 同上（pgTable / pgEnum）
         ├── utils/                          # 同上（integer identity / $onUpdate）
-        ├── init.ts                         # InitService（NODE_ENV=development pnpm db:init:pgsql）
         └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:pgsql）
 ```
 

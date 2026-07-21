@@ -59,7 +59,6 @@ src/
 │   ├── mysql/                  # MySQL 侧（默认装配）
 │   │   ├── schemas/            # Drizzle 表定义（每张表 *.schema.ts，index.ts 聚合导出）
 │   │   ├── utils/              # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
-│   │   ├── init.ts             # InitService（NODE_ENV=development pnpm db:init:mysql）
 │   │   └── seed.ts             # SeedService（NODE_ENV=development pnpm db:seed:mysql）
 │   └── pgsql/                  # PostgreSQL 侧（可选，结构与 mysql/ 平行，命令后缀 :pgsql）
 └── main.ts                     # 启用 enableShutdownHooks、Pino logger、CORS
@@ -128,9 +127,9 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
    - 时间戳用 `...createTimestamps()`，需要软删除则 `...createTimestampsWithSoftDelete()`（自动生成 `deletedAt`，`BaseRepository` 会识别）。
    - 外键用 `createForeignKeyColumn()`。
 3. 在 `src/database/mysql/schemas/index.ts` 重导出新 schema。
-4. 必要时更新 `src/database/mysql/init.ts`（基础数据）和 `src/database/mysql/seed.ts`（演示数据，使用 `unique()` 工具 + `@faker-js/faker` 中文 locale）。
+4. 基础数据用自定义数据迁移维护（`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移后手写 SQL，示例 `drizzle/mysql/0001_base-data.sql`）；演示数据更新 `src/database/mysql/seed.ts`（使用 `unique()` 工具 + `@faker-js/faker` 中文 locale）。
 5. 迁移：`pnpm db:generate:mysql` 生成迁移文件（检查 `drizzle/mysql/` 下新生成的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随本次代码一起提交。
-6. 按需初始化数据：`NODE_ENV=development pnpm db:init:mysql` → `NODE_ENV=development pnpm db:seed:mysql`。
+6. 按需填充演示数据：`NODE_ENV=development pnpm db:seed:mysql`。
 7. 若项目使用 PostgreSQL：在 `src/database/pgsql/schemas/` 下用 pg-core（`pgTable` / `pgEnum`）做同样的事，工具函数来自 `@/database/pgsql/utils/*`，命令换成 `:pgsql` 后缀（迁移文件在 `drizzle/pgsql/`）。
 
 `templates/schema.ts.tpl` 提供模板。详见 `reference/database.md`。
@@ -150,7 +149,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 1. 把当前仓库（除 `node_modules` / `dist` / `coverage` / `.tmp` / `logs` / `.git`）拷贝到 `<target-dir>`。
 2. 在目标目录里替换 `package.json` 的 `name`、`.env.example` 的 `APP_NAME` 等占位。
 3. 重新 `git init`（不带原有提交历史）。
-4. 输出后续手动步骤：`pnpm install` → `cp .env.example .env` → `docker compose up -d` → `pnpm db:migrate:mysql` → `NODE_ENV=development pnpm db:init:mysql` → `NODE_ENV=development pnpm db:seed:mysql` → `pnpm start:dev`。
+4. 输出后续手动步骤：`pnpm install` → `cp .env.example .env` → `docker compose up -d` → `pnpm db:migrate:mysql` → `NODE_ENV=development pnpm db:seed:mysql` → `pnpm start:dev`。
 
 详见 `scripts/README.md`。
 
@@ -164,7 +163,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 | `reference/coding-standards.md` | TypeScript / 命名 / 函数 / 类 / 异常 / 接口规范 |
 | `reference/module-development.md` | 业务模块组成、控制器/服务/仓储约定 |
 | `reference/rest-api.md` | RESTful 规范、统一响应、CRUD 与 DTO 命名 |
-| `reference/database.md` | Drizzle schema、BaseRepository、init/seed、事务 |
+| `reference/database.md` | Drizzle schema、BaseRepository、基础数据（数据迁移）/seed、事务 |
 | `reference/infra-modules.md` | Cache / Queue / DistributedLock / Redis / Logger 用法 |
 | `reference/testing.md` | Vitest / Testcontainers / useMocker / overrideProvider |
 | `reference/git-commit.md` | Commitizen 风格、type/scope/body 语言规则、分支与推送规范 |
