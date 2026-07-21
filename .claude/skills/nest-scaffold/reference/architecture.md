@@ -63,7 +63,7 @@ src/
 │   ├── modules/                            # 全部 @Global() 基础设施模块
 │   │   ├── bottleneck/                     # 进程内速率限流
 │   │   ├── cache/                          # 基于 RedisService 的缓存
-│   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(seed CLI)
+│   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(seed/reset CLI)
 │   │   ├── distributed-lock/               # Redlock
 │   │   ├── i18n/                           # nestjs-i18n（项目实际不强依赖）
 │   │   ├── logger/                         # nestjs-pino + pino-roll
