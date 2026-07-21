@@ -34,6 +34,8 @@ export class SeedService implements ISeeder {
       return;
     }
     this.logger.info('========== 填充 Seed 数据 ==========');
+    // 固定随机种子：同一批 seed 数据可复现，便于调试与测试对齐
+    faker.seed(42);
 
     // 1. 批量添加demo数据
     const demos: (typeof demosSchema.$inferInsert)[] = [];
@@ -42,6 +44,7 @@ export class SeedService implements ISeeder {
       const type = faker.helpers.arrayElement(demoTypes);
       demos.push({
         name,
+        // 依赖基础数据迁移(drizzle/mysql/0001_base-data.sql)插入的 demos0 行(id=1)
         parentId: 1,
         type,
       });
