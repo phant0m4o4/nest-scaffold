@@ -70,6 +70,7 @@ src/
 
 | 用户意图 | 工作流 | 详细参考 |
 |---------|-------|---------|
+| 任意任务的端到端流程（新项目/新功能/修改/修 bug/数据库变更/文档） | 见 `reference/workflows.md`（准备→实施→验证→交付） | `reference/workflows.md` |
 | 新增业务模块（含 controller/service/dto/repository/tests） | 见下方"工作流 A" | `reference/module-development.md` + `reference/rest-api.md` |
 | 新增一张数据库表 | 见下方"工作流 B" | `reference/database.md` |
 | 写/改测试（Vitest） | 见 `reference/testing.md` | `reference/testing.md` |
@@ -159,6 +160,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 
 | 文件 | 内容 |
 |------|------|
+| `reference/workflows.md` | 开发生命周期工作流：新项目/新功能/修改/修 bug/数据库/文档六个场景的端到端流程 |
 | `reference/architecture.md` | 项目目录、模块依赖图、AppModule 装配顺序 |
 | `reference/coding-standards.md` | TypeScript / 命名 / 函数 / 类 / 异常 / 接口规范 |
 | `reference/module-development.md` | 业务模块组成、控制器/服务/仓储约定 |
