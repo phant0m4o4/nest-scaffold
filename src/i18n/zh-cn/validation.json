@@ -1,10 +1,28 @@
 {
-  "isNotEmpty": "不能为空",
-  "isString": "必须是字符串",
-  "maxLength": "长度不能超过 {constraints.0} 个字符",
-  "isEnum": "必须是有效的枚举值",
-  "isInt": "必须是整数",
-  "min": "最小值为 {constraints.0}",
-  "max": "最大值为 {constraints.0}",
-  "isIn": "必须是以下值之一：{constraints.0}"
+  "default": "{field}校验未通过",
+  "required": "{field}为必填项",
+  "invalid_type": "{field}格式不正确",
+  "invalid_format": "{field}格式不正确",
+  "invalid_value": "{field}必须是以下值之一：{values}",
+  "too_small_string": "{field}至少需要 {minimum} 个字符",
+  "too_small_number": "{field}不能小于 {minimum}",
+  "too_small_int": "{field}不能小于 {minimum}",
+  "too_small_array": "{field}至少需要 {minimum} 项",
+  "too_big_string": "{field}不能超过 {maximum} 个字符",
+  "too_big_number": "{field}不能大于 {maximum}",
+  "too_big_int": "{field}不能大于 {maximum}",
+  "too_big_array": "{field}不能超过 {maximum} 项",
+  "unrecognized_keys": "包含不支持的字段：{keys}",
+  "fields": {
+    "id": "ID",
+    "name": "名称",
+    "type": "类型",
+    "parentId": "父级",
+    "cursor": "分页游标",
+    "limit": "每页条数",
+    "page": "页码",
+    "pageSize": "每页条数",
+    "orderColumn": "排序字段",
+    "orderDirection": "排序方向"
+  }
 }

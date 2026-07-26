@@ -19,14 +19,26 @@ describe('ZodValidationException', () => {
     const response = exception.getResponse() as {
       statusCode: number;
       message: string;
-      errors: Array<{ field: string; message: string }>;
+      code: string;
+      errors: Array<{
+        field: string;
+        code: string;
+        params?: Record<string, unknown>;
+        message: string;
+      }>;
     };
 
     expect(exception.getStatus()).toBe(422);
     expect(response.statusCode).toBe(422);
     expect(response.message).toBe('Validation Failed');
+    expect(response.code).toBe('VALIDATION_FAILED');
     expect(response.errors).toHaveLength(1);
     expect(response.errors[0].field).toBe('user.email');
+    expect(response.errors[0].code).toBe('too_small');
+    // 约束参数透传，供前端 t(`validation.${code}`, params) 模板化渲染用户文案
+    expect(response.errors[0].params).toMatchObject({ minimum: 5 });
+    // input 不得对外泄露
+    expect(response.errors[0].params).not.toHaveProperty('input');
     expect(typeof response.errors[0].message).toBe('string');
   });
 

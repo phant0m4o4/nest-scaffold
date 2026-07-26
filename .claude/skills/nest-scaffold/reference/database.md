@@ -122,16 +122,18 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 
 仓储调用 `mapMysqlErrorAndThrow(error)` 自动把 mysql2 `code` 翻译成：
 
-| MySQL 错误 | 业务异常 |
-|-----------|---------|
-| `ER_DUP_ENTRY` (1062) | `RecordAlreadyExistsException` |
-| `ER_NO_REFERENCED_ROW` (1452) / `ER_ROW_IS_REFERENCED` (1451) | `ForeignKeyConstraintViolationException` |
-| `ER_LOCK_DEADLOCK` (1213) | `DeadlockDetectedException` |
-| `ER_LOCK_WAIT_TIMEOUT` (1205) | `LockWaitTimeoutException` |
-| 非空/长度/非法值 (1048/1366/1406) | `DataIntegrityViolationException` |
-| 其他 | `RepositoryException` |
+| MySQL 错误 | 业务异常 | HTTP（GlobalExceptionFilter 映射） |
+|-----------|---------|------|
+| `ER_DUP_ENTRY` (1062) | `RecordAlreadyExistsException` | 409 `RECORD_ALREADY_EXISTS` |
+| `ER_NO_REFERENCED_ROW` (1452) / `ER_ROW_IS_REFERENCED` (1451) | `ForeignKeyConstraintViolationException` | 409 `FOREIGN_KEY_CONSTRAINT_VIOLATION` |
+| `ER_LOCK_DEADLOCK` (1213) | `DeadlockDetectedException` | 409 `DEADLOCK_DETECTED` |
+| `ER_LOCK_WAIT_TIMEOUT` (1205) | `LockWaitTimeoutException` | 503 `LOCK_WAIT_TIMEOUT` |
+| 非空/长度/非法值 (1048/1366/1406) | `DataIntegrityViolationException` | 400 `DATA_INTEGRITY_VIOLATION` |
+| 其他 | `RepositoryException` | 500 `REPOSITORY_ERROR` |
 
-业务调用方只需 catch 这些类。
+（`RecordNotFoundException` 由仓储在 update/delete 未命中时抛出，映射 404 `RECORD_NOT_FOUND`。）
+
+业务调用方通常**无需 catch**——`GlobalExceptionFilter` 会把这些异常转成统一错误信封与语义化状态码;只有需要改变默认语义（如冲突时重试）才捕获处理。
 
 ## 基础数据（数据迁移）/ seed
 

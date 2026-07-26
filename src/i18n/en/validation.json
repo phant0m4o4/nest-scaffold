@@ -1,10 +1,28 @@
 {
-  "isNotEmpty": "Must not be empty",
-  "isString": "Must be a string",
-  "maxLength": "Must be at most {constraints.0} characters",
-  "isEnum": "Must be a valid enum value",
-  "isInt": "Must be an integer",
-  "min": "Must be at least {constraints.0}",
-  "max": "Must be at most {constraints.0}",
-  "isIn": "Must be one of the following values: {constraints.0}"
+  "default": "{field} is invalid",
+  "required": "{field} is required",
+  "invalid_type": "{field} has an invalid format",
+  "invalid_format": "{field} has an invalid format",
+  "invalid_value": "{field} must be one of: {values}",
+  "too_small_string": "{field} must be at least {minimum} character(s)",
+  "too_small_number": "{field} must be no less than {minimum}",
+  "too_small_int": "{field} must be no less than {minimum}",
+  "too_small_array": "{field} must contain at least {minimum} item(s)",
+  "too_big_string": "{field} must be at most {maximum} character(s)",
+  "too_big_number": "{field} must be no greater than {maximum}",
+  "too_big_int": "{field} must be no greater than {maximum}",
+  "too_big_array": "{field} must contain at most {maximum} item(s)",
+  "unrecognized_keys": "Contains unsupported fields: {keys}",
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "type": "Type",
+    "parentId": "Parent",
+    "cursor": "Cursor",
+    "limit": "Page size",
+    "page": "Page",
+    "pageSize": "Page size",
+    "orderColumn": "Order column",
+    "orderDirection": "Order direction"
+  }
 }

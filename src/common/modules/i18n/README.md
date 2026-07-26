@@ -9,7 +9,7 @@
 - 开发环境自动 watch 翻译文件变更（热更新）
 - 完整的 TypeScript 类型安全（翻译键自动补全）
 
-> **注意**：DTO 校验已迁移至 zod（全局 `I18nZodValidationPipe`，见 `AppModule` 与 `src/app/pipes/i18n-zod-validation.pipe.ts`）。本模块不再提供 `I18nValidationPipe` / `I18nValidationExceptionFilter`，只负责业务文案翻译。校验错误消息仍按请求语言本地化：`I18nZodValidationPipe` 读取 `I18nContext` 解析出的语言（Query `?lang=` / Accept-Language / x-lang），选用 zod 官方 locale 渲染（中文 `zhCN`，默认英文）；schema 中显式书写的自定义消息优先。
+> **注意**：DTO 校验已迁移至 zod（全局 `I18nZodValidationPipe`，见 `AppModule` 与 `src/app/pipes/i18n-zod-validation.pipe.ts`）。本模块不再提供 `I18nValidationPipe` / `I18nValidationExceptionFilter`。校验错误文案按请求语言（Query `?lang=` / Accept-Language / x-lang）本地化，优先级从高到低：schema 显式 `message` > 本模块的 `validation.json` 文案目录（用户级文案：错误模板按 zod issue code 组织 + `fields` 字段界面名称）> zod 官方 locale 兜底（中文 `zhCN`，默认英文）。
 
 ## 依赖
 
@@ -91,15 +91,28 @@ DTO 校验不再由本模块处理：请求 DTO 统一用 `createZodDto`（zod�
 ```json
 {
   "statusCode": 422,
+  "code": "VALIDATION_FAILED",
   "message": "Validation Failed",
   "errors": [
-    { "field": "email", "message": "Invalid email address" },
-    { "field": "password", "message": "Too small: expected string to have >=6 characters" }
+    {
+      "field": "name",
+      "code": "too_small",
+      "params": { "origin": "string", "minimum": 1, "inclusive": true },
+      "message": "名称至少需要 1 个字符"
+    }
   ]
 }
 ```
 
-本模块只负责业务文案翻译（`I18nService.t()`），不参与校验流程。
+### 5. 校验错误的用户级文案（validation.json）
+
+`errors[].message` 是**用户级文案**，由 `I18nZodValidationPipe` 用本模块的 `validation.json` 目录渲染：
+
+- 错误模板按 zod issue code 命名（`too_small_string`、`invalid_value`、`required` 等），支持 `{field}`、`{minimum}`、`{values}` 等参数插值；
+- `fields` 段维护字段的界面名称（如 `name` → 名称）；
+- 未命中目录时降级为 zod 官方 locale 文案。
+
+**新增校验规则或新字段时，在同一 PR 内补充 `src/i18n/*/validation.json` 对应条目**——文案闭环在后端，前端直接展示 `message` 即可，无需联动改动。
 
 ## 类型安全
 
