@@ -36,7 +36,7 @@
 | `QUEUE_REDIS_HOST`      | BullMQ 专用 Redis 主机（single 模式）        | —（必填）         |
 | `QUEUE_REDIS_PORT`      | BullMQ 专用 Redis 端口（single 模式）        | —（必填）         |
 | `QUEUE_REDIS_PASSWORD`  | BullMQ 专用 Redis 密码（可选）               | —                 |
-| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB，禁止与缓存/锁共用      | —（必填，推荐 `2`）|
+| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB，禁止与缓存/锁共用（cluster 模式禁止设置，会启动报错） | —（必填，推荐 `2`）|
 | `QUEUE_REDIS_SENTINEL_MASTER_NAME` / `QUEUE_REDIS_SENTINELS` | sentinel 模式必填 | — |
 | `QUEUE_REDIS_CLUSTER_NODES` | cluster 模式必填，`host:port,host:port`  | —                 |
 | `QUEUE_KEY_PREFIX`      | 队列 key 前缀                                | `queue`           |

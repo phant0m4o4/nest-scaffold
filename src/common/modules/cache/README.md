@@ -29,7 +29,7 @@
 | `CACHE_REDIS_HOST`   | string | —（必填） | Redis 主机（single 模式） |
 | `CACHE_REDIS_PORT`   | number | —（必填） | Redis 端口（single 模式） |
 | `CACHE_REDIS_PASSWORD` | string | —      | 鉴权密码（可选）     |
-| `CACHE_REDIS_DB`     | number | —（必填） | 缓存专用 Redis DB，禁止与锁/队列共用（cluster 模式无效，需独立集群） |
+| `CACHE_REDIS_DB`     | number | —（必填） | 缓存专用 Redis DB，禁止与锁/队列共用（cluster 模式禁止设置，会启动报错；隔离需独立集群） |
 | `CACHE_REDIS_SENTINEL_MASTER_NAME` / `CACHE_REDIS_SENTINELS` | string | — | sentinel 模式必填 |
 | `CACHE_REDIS_CLUSTER_NODES` | string | — | cluster 模式必填，`host:port,host:port` |
 

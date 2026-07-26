@@ -80,7 +80,7 @@ export default myConfig;
 | `<P>_MODE` | — | `single`（默认）/ `sentinel` / `cluster` |
 | `<P>_HOST` / `<P>_PORT` | single | 必填 |
 | `<P>_PASSWORD` | 全部 | 可选 |
-| `<P>_DB` | single/sentinel | 必填，模块专用 DB（互相禁止共用） |
+| `<P>_DB` | single/sentinel | 必填，模块专用 DB（互相禁止共用；cluster 模式禁止设置，会启动报错） |
 | `<P>_SENTINEL_MASTER_NAME` / `<P>_SENTINELS` | sentinel | 必填，`host:port,host:port` |
 | `<P>_CLUSTER_NODES` | cluster | 必填，`host:port,host:port` |
 
