@@ -61,25 +61,26 @@ PGSQL_DATABASE=${APP_NAME}
 PGSQL_USER=postgres
 PGSQL_PASSWORD=root_password
 
-# Redis（全应用共享连接，Cache / DistributedLock 基于此；Queue 独立配置见下）
+# Redis 基础连接（仅地址/密码/拓扑；缓存/锁/队列各自建连并用各自的 *_REDIS_DB 指定独立 DB）
 REDIS_MODE=single
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
-REDIS_DB=0
 
 # Log
 LOG_FILE_ENABLE=true
 LOG_FILE_PATH=./logs/app.log
 
-# Cache
+# Cache（独立 DB，缓存可随时清空，禁止与锁/队列共用）
 CACHE_TTL_SECONDS=604800 # 7 days
 CACHE_KEY_PREFIX=cache
+CACHE_REDIS_DB=1
 
-# Distributed Lock
+# Distributed Lock（独立 DB，锁数据不可丢）
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
+DISTRIBUTED_LOCK_REDIS_DB=0
 
-# Queue（BullMQ 需独享连接，默认复用全局 Redis，可按需指向独立实例/DB）
+# Queue（BullMQ 需独享连接，默认复用上方 REDIS_* 地址，可按需指向独立实例/DB）
 QUEUE_REDIS_HOST=${REDIS_HOST}
 QUEUE_REDIS_PORT=${REDIS_PORT}
 QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -368,7 +369,7 @@ src/
 ├── common/
 │   ├── enums/
 │   ├── modules/            # 通用基础设施模块（全部 @Global()）
-│   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/ redis/
+│   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/
 │   └── utils/              # 工具函数（date-time / zod / register-env-as-config 等）
 ├── configs/                # 环境变量校验与映射（zod schema）
 └── database/

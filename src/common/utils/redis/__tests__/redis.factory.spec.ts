@@ -1,4 +1,4 @@
-import type { RedisModuleConfig } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/configs/redis.config';
 import { EventEmitter } from 'events';
 import type { PinoLogger } from 'nestjs-pino';
 import {
@@ -79,7 +79,7 @@ describe('redis.factory', () => {
 
   describe('createRedisClient', () => {
     it('在 single 模式下应使用 Redis 构造函数透传 host/port/password/db', () => {
-      const inputConfig: RedisModuleConfig = {
+      const inputConfig: RedisConnectionConfig = {
         mode: 'single',
         single: {
           host: '10.0.0.1',
@@ -107,7 +107,7 @@ describe('redis.factory', () => {
     });
 
     it('在 sentinel 模式下应使用 Redis 构造函数透传 name/sentinels/password/db', () => {
-      const inputConfig: RedisModuleConfig = {
+      const inputConfig: RedisConnectionConfig = {
         mode: 'sentinel',
         sentinel: {
           masterName: 'mymaster',
@@ -140,7 +140,7 @@ describe('redis.factory', () => {
     });
 
     it('在 cluster 模式下应使用 Cluster 构造函数透传 nodes 与 redisOptions.password', () => {
-      const inputConfig: RedisModuleConfig = {
+      const inputConfig: RedisConnectionConfig = {
         mode: 'cluster',
         cluster: {
           nodes: [
@@ -170,7 +170,7 @@ describe('redis.factory', () => {
     });
 
     it('在客户端 emit error 事件时应通过 logger.error 输出结构化日志', () => {
-      const inputConfig: RedisModuleConfig = {
+      const inputConfig: RedisConnectionConfig = {
         mode: 'single',
         single: { host: '127.0.0.1', port: 6379, db: 0 },
       };
@@ -193,7 +193,7 @@ describe('redis.factory', () => {
     });
 
     it('在客户端 emit ready 事件时应通过 logger.info 输出连接就绪日志', () => {
-      const inputConfig: RedisModuleConfig = {
+      const inputConfig: RedisConnectionConfig = {
         mode: 'single',
         single: { host: '127.0.0.1', port: 6379, db: 0 },
       };

@@ -1,5 +1,5 @@
 import { normalizeError } from '@/common/utils/normalize-error';
-import type { RedisModuleConfig } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/configs/redis.config';
 import { Cluster, Redis } from 'ioredis';
 import type { PinoLogger } from 'nestjs-pino';
 
@@ -10,7 +10,7 @@ import type { RedisClient } from './redis.types';
  */
 interface ICreateRedisClientParams {
   /** 由 ConfigService 加载的 Redis 配置（已包含 mode 与对应分支） */
-  readonly config: RedisModuleConfig;
+  readonly config: RedisConnectionConfig;
   /** PinoLogger 实例，用于挂载 connect / ready / error / close 事件日志 */
   readonly logger: PinoLogger;
 }
@@ -64,7 +64,7 @@ function attachClientEventListeners(
  * @private
  */
 function createSingleClient(
-  config: Extract<RedisModuleConfig, { mode: 'single' }>,
+  config: Extract<RedisConnectionConfig, { mode: 'single' }>,
 ): Redis {
   const { host, port, password, db } = config.single;
   return new Redis({
@@ -80,7 +80,7 @@ function createSingleClient(
  * @private
  */
 function createSentinelClient(
-  config: Extract<RedisModuleConfig, { mode: 'sentinel' }>,
+  config: Extract<RedisConnectionConfig, { mode: 'sentinel' }>,
 ): Redis {
   const { masterName, sentinels, password, db } = config.sentinel;
   return new Redis({
@@ -96,7 +96,7 @@ function createSentinelClient(
  * @private
  */
 function createClusterClient(
-  config: Extract<RedisModuleConfig, { mode: 'cluster' }>,
+  config: Extract<RedisConnectionConfig, { mode: 'cluster' }>,
 ): Cluster {
   const { nodes, password } = config.cluster;
   return new Cluster(

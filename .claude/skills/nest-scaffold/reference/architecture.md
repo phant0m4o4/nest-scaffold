@@ -64,14 +64,13 @@ src/
 │   ├── enums/environment.enum.ts           # development / test / production
 │   ├── modules/                            # 全部 @Global() 基础设施模块
 │   │   ├── bottleneck/                     # 进程内速率限流
-│   │   ├── cache/                          # 基于 RedisService 的缓存
+│   │   ├── cache/                          # 缓存（独立 Redis 连接，CACHE_REDIS_DB）
 │   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(seed/reset CLI)
-│   │   ├── distributed-lock/               # Redlock
+│   │   ├── distributed-lock/               # Redlock（独立 Redis 连接，DISTRIBUTED_LOCK_REDIS_DB）
 │   │   ├── i18n/                           # nestjs-i18n（项目实际不强依赖）
 │   │   ├── logger/                         # nestjs-pino + pino-roll
-│   │   ├── queue/                          # BullMQ + Bull Board (dev)
-│   │   └── redis/                          # ioredis 共享单例（single/sentinel/cluster）
-│   └── utils/                              # date-time / hash / random / zod / register-env-as-config 等
+│   │   └── queue/                          # BullMQ + Bull Board (dev)（独立 Redis 连接，QUEUE_REDIS_*）
+│   └── utils/                              # date-time / hash / random / zod / register-env-as-config / redis(连接工厂) 等
 ├── configs/                                # registerEnvAsConfig 注册的各模块配置
 └── database/
     ├── enums/                              # 跨表枚举（方言无关，两套 schema 共享）
@@ -91,9 +90,8 @@ src/
 
 1. `ConfigModule.forRoot({ cache: true, expandVariables: true, load: [appConfig] })`
 2. `LoggerModule.forRoot({ name: 'app' })`
-3. `RedisModule`（`@Global()`）
-4. `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`
-5. `ApiModule`（业务聚合）
+3. `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`（需要 Redis 的模块各自建连，无共享 Redis 模块）
+4. `ApiModule`（业务聚合）
 6. `GlobalResponseInterceptor` 通过 `APP_INTERCEPTOR` Provider 注册
 7. `I18nZodValidationPipe`（`app/pipes/`，基于 zod，校验消息按请求语言本地化）通过 `APP_PIPE` 注册 —— DTO 校验全局生效
 8. `GlobalExceptionFilter`（`app/filters/`）通过 `APP_FILTER` 注册 —— 所有异常统一为 `{ statusCode, code, message, errors? }` 信封，仓储异常映射语义化状态码（404/409/400/503），未知异常 500 并记录日志
@@ -101,7 +99,7 @@ src/
 ## main.ts 启动要点
 
 - `NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bufferLogs: true, cors: { origin: true, credentials: true, ... } })`
-- `app.enableShutdownHooks()` —— 必须，否则 `RedisService.onModuleDestroy()` 不会触发，连接不能优雅关闭。
+- `app.enableShutdownHooks()` —— 必须，否则各模块的 `onModuleDestroy()`（缓存/锁关闭各自的 Redis 连接等）不会触发，连接不能优雅关闭。
 - `app.useLogger(app.get(PinoLogger))` + `app.flushLogs()` —— 接管 Nest 内置 logger。
 - `app.set('trust proxy', true)` —— 反代/负载均衡场景下取真实 IP。
 - 静态资源：`app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' })`。
@@ -117,6 +115,6 @@ src/
 
 下列模块均使用 `@Global()`，在 `AppModule` 注册一次即可全应用注入，**业务模块不要重复 `imports`**：
 
-- `LoggerModule` / `RedisModule` / `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`
+- `LoggerModule` / `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`
 
 `QueueModule.registerQueue(...)` / `RepositoryModule.forFeature(...)` 是按业务模块注册的，需要在对应业务 module 的 `imports` 中声明。

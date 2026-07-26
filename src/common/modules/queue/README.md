@@ -24,7 +24,7 @@
 
 ## 环境变量
 
-> BullMQ 的 Worker 需要 blocking / subscribe 等专用连接，必须独享 Redis 连接，不能直接共享 [`RedisModule`](../redis/README.md) 的全局 client；因此 QueueModule 的 Redis 连接参数独立声明。
+> BullMQ 的 Worker 需要 blocking / subscribe 等专用连接，必须独享 Redis 连接（这也是本项目"每个模块自建 Redis 连接"约定的一部分）；因此 QueueModule 的 Redis 连接参数独立声明。
 >
 > **默认复用全局 Redis 的地址**：`.env` 中使用 `${REDIS_HOST}` 等变量引用即可（框架启用了 `expandVariables`）；如果希望队列走独立 Redis 实例或独立 DB，只需要改这里的 `QUEUE_REDIS_*` 值。
 >

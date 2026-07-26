@@ -19,7 +19,7 @@ async function bootstrap() {
     bufferLogs: true, // 缓存日志
   });
   // 启用进程信号优雅关闭：使 SIGTERM/SIGINT 触发 app.close()，
-  // 进而执行各模块的 onModuleDestroy（如 RedisService 关闭连接）
+  // 进而执行各模块的 onModuleDestroy（如各模块关闭各自的 Redis 连接）
   app.enableShutdownHooks();
   // 如果在代理服务器后面或者使用了负载均衡，需要设置这个保证获取到真实的客户端IP
   app.set('trust proxy', true);

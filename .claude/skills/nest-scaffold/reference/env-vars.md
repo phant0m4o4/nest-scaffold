@@ -69,13 +69,12 @@ export default myConfig;
 | `PGSQL_USER` | — | |
 | `PGSQL_PASSWORD` | — | |
 
-## Redis（RedisModule，全局共享）
+## Redis 基础连接（无共享客户端，缓存/锁/队列各自建连复用地址）
 
 | 变量 | 模式 | 默认 | 说明 |
 |------|------|------|------|
 | `REDIS_MODE` | — | `single` | `single` / `sentinel` / `cluster` |
 | `REDIS_PASSWORD` | 全部 | — | 鉴权 |
-| `REDIS_DB` | single/sentinel | `0` | DB 编号 |
 | `REDIS_HOST` | single | `127.0.0.1` | |
 | `REDIS_PORT` | single | `6379` | |
 | `REDIS_SENTINEL_MASTER_NAME` | sentinel | — | 必填 |
@@ -90,11 +89,12 @@ export default myConfig;
 | `CACHE_KEY_PREFIX` | `cache` | 键前缀 |
 | `CACHE_REDIS_DB` | `1` | 缓存专用 Redis DB。缓存可随时清空，禁止与锁/队列等共用一个 DB（cluster 模式无 DB 概念，需独立集群） |
 
-## DistributedLockModule
+## DistributedLockModule（独立 Redis 连接）
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `DISTRIBUTED_LOCK_KEY_PREFIX` | `distributed-lock` | 锁键前缀 |
+| `DISTRIBUTED_LOCK_REDIS_DB` | `0` | 锁专用 Redis DB。锁数据不可丢，禁止与缓存等可清空数据共用（cluster 模式无 DB 概念，需独立实例） |
 
 ## QueueModule（独享 Redis 连接）
 
@@ -151,12 +151,11 @@ PGSQL_DATABASE=${APP_NAME}
 PGSQL_USER=postgres
 PGSQL_PASSWORD=root_password
 
-#Redis（全应用共享）
+#Redis 基础连接（仅地址/密码/拓扑，各模块自建连接）
 REDIS_MODE=single
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
-REDIS_DB=0
 
 #Log
 LOG_FILE_ENABLE=true
@@ -167,8 +166,9 @@ CACHE_TTL_SECONDS=604800
 CACHE_KEY_PREFIX=cache
 CACHE_REDIS_DB=1
 
-#Distributed Lock
+#Distributed Lock（独立连接与独立 DB）
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
+DISTRIBUTED_LOCK_REDIS_DB=0
 
 #Queue（独立连接，默认引用上方 REDIS_*）
 QUEUE_REDIS_HOST=${REDIS_HOST}

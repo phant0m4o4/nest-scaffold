@@ -1,6 +1,6 @@
 # CacheModule
 
-提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**（`CACHE_REDIS_DB`，默认 `1`；地址/密码复用 [`RedisModule`](../redis/README.md) 的 `REDIS_*` 配置）。
+提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**（`CACHE_REDIS_DB`，默认 `1`；地址/密码/拓扑复用 `REDIS_*` 基础连接配置，见 `.env.example`）。
 
 > ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。本模块默认已用 `CACHE_REDIS_DB=1` 与共享连接（`REDIS_DB=0`）隔离；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
 
@@ -19,7 +19,7 @@
 
 ## 环境变量
 
-> Redis 连接相关环境变量（`REDIS_MODE` / `REDIS_HOST` / `REDIS_PORT` 等）由 [`RedisModule`](../redis/README.md) 维护，本模块仅保留缓存相关配置。
+> Redis 地址/密码/拓扑相关环境变量（`REDIS_MODE` / `REDIS_HOST` / `REDIS_PORT` 等）为全应用共用的基础连接配置（见 `.env.example`），本模块仅保留缓存相关配置。
 
 | 变量                 | 类型   | 默认值   | 说明                 |
 | -------------------- | ------ | -------- | -------------------- |
@@ -142,7 +142,7 @@ CacheModule
 └── cache.service.ts         # 缓存服务（Redis 封装）
 
 configs/
-└── cache.config.ts          # 配置（TTL + 键前缀 + 缓存专用 DB，地址/密码复用 RedisModule 配置）
+└── cache.config.ts          # 配置（TTL + 键前缀 + 缓存专用 DB，地址/密码复用 REDIS_* 基础配置）
 ```
 
 ## 键名规则

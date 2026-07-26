@@ -4,13 +4,20 @@ import { z } from 'zod';
 
 type RedisMode = 'single' | 'sentinel' | 'cluster';
 
+/**
+ * Redis 基础连接配置（地址 / 鉴权 / 拓扑）
+ *
+ * 本项目**没有共享 Redis 客户端**：每个需要 Redis 的模块（缓存、锁、队列等）
+ * 复用这里的地址/密码/拓扑，通过 `@/common/utils/redis/redis.factory` 自建连接，
+ * 并用各自的 `*_REDIS_DB` 环境变量指定独立 DB（`db` 字段在此仅作默认值 0，
+ * 由使用方按模块覆写）。
+ */
 const environmentSchema = z
   .object({
     REDIS_MODE: z.enum(['single', 'sentinel', 'cluster']).optional(),
     REDIS_HOST: z.string().optional(),
     REDIS_PORT: z.coerce.number().int().optional(),
     REDIS_PASSWORD: z.string().optional(),
-    REDIS_DB: z.coerce.number().int().optional(),
     REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
     REDIS_SENTINELS: z.string().min(1).optional(),
     REDIS_CLUSTER_NODES: z.string().min(1).optional(),
@@ -104,7 +111,7 @@ const redisConfig = registerEnvAsConfig(
           host: env.REDIS_HOST ?? '127.0.0.1',
           port: env.REDIS_PORT ?? 6379,
           password: env.REDIS_PASSWORD ?? undefined,
-          db: env.REDIS_DB ?? 0,
+          db: 0, // 默认值，各使用方（缓存/锁等）按模块的 *_REDIS_DB 覆写
         },
       };
     }
@@ -115,7 +122,7 @@ const redisConfig = registerEnvAsConfig(
           masterName: env.REDIS_SENTINEL_MASTER_NAME!,
           sentinels: parseHostPortPairs(env.REDIS_SENTINELS),
           password: env.REDIS_PASSWORD ?? undefined,
-          db: env.REDIS_DB ?? 0,
+          db: 0, // 默认值，各使用方（缓存/锁等）按模块的 *_REDIS_DB 覆写
         },
       };
     }
@@ -130,5 +137,5 @@ const redisConfig = registerEnvAsConfig(
 );
 
 export default redisConfig;
-export type RedisModuleConfig = IRedisConfig;
+export type RedisConnectionConfig = IRedisConfig;
 export type RedisConfigType = ConfigType<typeof redisConfig>;

@@ -6,7 +6,7 @@ import { z } from 'zod';
  * 队列配置（BullMQ）
  *
  * BullMQ 的 worker 会使用 blocking / subscribe 等专用连接，必须独享 Redis 连接，
- * 因此队列的 Redis 连接参数在这里独立声明，与 `RedisService` 的共享连接隔离。
+ * 因此队列的 Redis 连接参数在这里独立声明，与其他模块的 Redis 连接隔离。
  *
  * 如果希望复用全局 Redis 的地址/端口/密码，可以在 `.env` 中直接引用变量，例如：
  *   QUEUE_REDIS_HOST=${REDIS_HOST}

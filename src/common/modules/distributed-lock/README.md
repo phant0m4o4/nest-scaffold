@@ -32,7 +32,7 @@
 - 缓存的运维操作（如 `FLUSHDB` 清缓存）会连带清掉同 DB 内的锁键。
 - 存放锁的 Redis 必须使用 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`），这与缓存 Redis 的推荐配置天然冲突，同一个 DB / 实例无法同时满足两者。
 
-脚手架**默认已做 DB 隔离**：缓存走独立连接与独立 DB（`CACHE_REDIS_DB`，默认 `1`），锁使用共享连接（`REDIS_DB`，默认 `0`）。部署时仍需注意：
+脚手架**每个模块各自持有独立的 Redis 连接与独立 DB**：锁为 `DISTRIBUTED_LOCK_REDIS_DB`（默认 `0`），缓存为 `CACHE_REDIS_DB`（默认 `1`），队列为 `QUEUE_REDIS_DB`。部署时仍需注意：
 
 - **single / sentinel 模式**：保持缓存与锁的 DB 编号不同即可；锁所在 DB 不要再放其他可随时清空的数据；
 - **cluster 模式**：Redis Cluster 只支持 db 0，无法靠 DB 编号隔离，**必须为缓存（或锁）部署独立实例/集群**；
@@ -49,11 +49,12 @@
 
 ## 环境变量
 
-Redis 连接相关环境变量（`REDIS_MODE` / `REDIS_HOST` / `REDIS_PORT` 等）由 [`RedisModule`](../redis/README.md) 维护。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖；本模块仅保留键前缀一项：
+锁持有**独立的 Redis 连接**：地址/密码/拓扑复用 `REDIS_*` 基础连接配置（见 `.env.example`），DB 编号由本模块指定。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖：
 
 ```env
 # 可选（有默认值）
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
+DISTRIBUTED_LOCK_REDIS_DB=0
 ```
 
 ## 快速开始

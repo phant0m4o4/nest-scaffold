@@ -1,4 +1,5 @@
 import distributedLockConfig from '@/configs/distributed-lock.config';
+import redisConfig from '@/configs/redis.config';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DistributedLockService } from './distributed-lock.service';
@@ -12,7 +13,10 @@ import { DistributedLockService } from './distributed-lock.service';
  */
 @Global()
 @Module({
-  imports: [ConfigModule.forFeature(distributedLockConfig)],
+  imports: [
+    ConfigModule.forFeature(distributedLockConfig),
+    ConfigModule.forFeature(redisConfig),
+  ],
   providers: [DistributedLockService],
   exports: [DistributedLockService],
 })

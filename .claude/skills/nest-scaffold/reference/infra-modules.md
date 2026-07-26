@@ -4,20 +4,26 @@
 
 详细 README 在每个模块目录下；本文给出"何时用、怎么用、避坑"的速查。
 
-## RedisModule
+## Redis 连接约定（无共享客户端）
 
-**何时用**：业务直接需要 Redis 客户端（操作 Hash、List、Set、Sorted Set、Streams 等原生数据结构）。
+**本项目没有共享 Redis 客户端/模块**：每个需要 Redis 的模块（缓存、锁、队列）复用 `REDIS_*` 基础连接配置（地址/密码/拓扑），通过 `@/common/utils/redis/redis.factory` 自建连接，并用各自的 `*_REDIS_DB` 指定独立 DB——一个使用方的行为（阻塞命令、FLUSHDB、被淘汰）不会影响其他使用方。
+
+业务直接需要 Redis 原生数据结构（Hash、List、Sorted Set、Streams 等）时，参照缓存/锁的做法自建连接：
 
 ```ts
-constructor(private readonly _redisService: RedisService) {}
-const client = this._redisService.getClient(); // Redis | Cluster
+import { createRedisClient, closeRedisClient } from '@/common/utils/redis/redis.factory';
+import type { RedisConnectionConfig } from '@/configs/redis.config';
+
+// onModuleInit：基于 REDIS_* 基础配置 + 业务自己的 DB 建连；onModuleDestroy：closeRedisClient
+const client = createRedisClient({ config: myConfig, logger: this._logger });
 ```
 
 支持三种模式（`REDIS_MODE`）：`single` / `sentinel` / `cluster`。
 
 **避坑**：
 
-- 不要把这个 client 直接共享给 BullMQ。BullMQ Worker 需要 blocking subscribe 连接，框架已经在 `QueueModule` 里独立维护连接（`QUEUE_REDIS_*` 环境变量）。
+- 不要与其他模块共用 DB；新业务连接用自己的 `*_REDIS_DB` 环境变量（cluster 模式无 DB 概念，需独立实例）。
+- 不要把自建 client 共享给 BullMQ。BullMQ Worker 需要 blocking subscribe 连接，框架已经在 `QueueModule` 里独立维护连接（`QUEUE_REDIS_*` 环境变量）。
 - `Cluster` 与 `Redis` 部分命令行为不同，必要时 `instanceof Cluster` 收窄。
 
 ## CacheModule
@@ -161,7 +167,6 @@ this._logger.info({ event: 'user_query', userId: '1' }, '查询用户');
 import { CacheService } from '@/common/modules/cache/cache.service';
 import { DistributedLockService } from '@/common/modules/distributed-lock/distributed-lock.service';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service'; // pgsql 版见 database/pgsql/database.service
-import { RedisService } from '@/common/modules/redis/redis.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 ```

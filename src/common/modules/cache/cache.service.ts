@@ -1,11 +1,11 @@
 import {
   closeRedisClient,
   createRedisClient,
-} from '@/common/modules/redis/redis.factory';
-import type { RedisClient } from '@/common/modules/redis/redis.types';
+} from '@/common/utils/redis/redis.factory';
+import type { RedisClient } from '@/common/utils/redis/redis.types';
 import { normalizeError } from '@/common/utils/normalize-error';
 import { CacheConfigType } from '@/configs/cache.config';
-import type { RedisModuleConfig } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/configs/redis.config';
 import {
   Injectable,
   type OnModuleDestroy,
@@ -36,7 +36,7 @@ interface IBatchResult<T> {
  * - Lua 脚本执行
  *
  * 缓存持有自己的连接与独立 DB（`CACHE_REDIS_DB`，默认 1，地址/密码复用
- * `RedisModule` 配置）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
+ * `REDIS_*` 基础配置）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
  * 服务共用一个 DB。cluster 模式无 DB 概念，隔离需部署独立集群。
  *
  * @see README.md 查看完整使用示例与配置说明
@@ -64,7 +64,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     const redisConfig =
-      this._configService.getOrThrow<RedisModuleConfig>('redis');
+      this._configService.getOrThrow<RedisConnectionConfig>('redis');
     this._redis = createRedisClient({
       config: this._buildCacheRedisConfig(redisConfig),
       logger: this._logger,
@@ -101,7 +101,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
    * （生产环境应为缓存部署独立集群）。
    * @private
    */
-  private _buildCacheRedisConfig(config: RedisModuleConfig): RedisModuleConfig {
+  private _buildCacheRedisConfig(
+    config: RedisConnectionConfig,
+  ): RedisConnectionConfig {
     if (config.mode === 'single') {
       return { ...config, single: { ...config.single, db: this._redisDb } };
     }
