@@ -95,7 +95,7 @@ services:
 
   phpRedisAdmin:
     container_name: ${APP_NAME}-phpRedisAdmin
-    image: erikdubbelboer/phpredisadmin
+    image: erikdubbelboer/phpredisadmin:1.26
     restart: always
     ports:
       - '8080:80'

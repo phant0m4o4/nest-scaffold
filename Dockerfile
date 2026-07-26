@@ -29,7 +29,6 @@ COPY package.json ./
 # 非 root 运行
 USER node
 EXPOSE 3000
-# 数据库迁移/初始化按需在部署流程中执行（drizzle-kit 在生产依赖中）：
+# 数据库迁移按需在部署流程中执行（drizzle-kit 在生产依赖中，含表结构与基础数据）：
 #   npx drizzle-kit migrate --config drizzle-mysql.config.ts
-#   node dist/common/modules/database/mysql/tools/init.main
 CMD ["node", "dist/main"]

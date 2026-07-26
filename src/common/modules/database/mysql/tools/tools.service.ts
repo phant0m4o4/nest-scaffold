@@ -48,14 +48,19 @@ export class ToolsService {
 
     const db = this._databaseService.db;
     const [rows] = (await db.execute(
-      sql`SELECT table_name AS tableName FROM information_schema.tables WHERE table_schema = DATABASE()`,
+      sql`SELECT table_name AS tableName FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`,
     )) as unknown as [Array<{ tableName: string }>, unknown];
 
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
-    for (const { tableName } of rows) {
-      await db.execute(sql.raw(`DROP TABLE IF EXISTS \`${tableName}\``));
-    }
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+    // SET FOREIGN_KEY_CHECKS 是会话级变量，必须与 DROP 在同一连接上执行；
+    // db 绑定的是连接池，用事务确保整段语句共享同一连接
+    // （MySQL DDL 会隐式提交，事务在此只为连接亲和，不为原子性）
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
+      for (const { tableName } of rows) {
+        await tx.execute(sql.raw(`DROP TABLE IF EXISTS \`${tableName}\``));
+      }
+      await tx.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+    });
     console.log(`已删除 ${rows.length} 张表`);
 
     await migrate(db, { migrationsFolder: 'drizzle/mysql' });

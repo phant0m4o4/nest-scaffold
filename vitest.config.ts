@@ -7,12 +7,19 @@ export default defineConfig({
     include: ['src/**/*.spec.ts'],
     root: './',
     env: {
-      // 设置测试环境变量 Jest 会自动设置但是 Vitest 不会
+      // Vitest 不会自动注入 NODE_ENV，显式设为 test
       NODE_ENV: 'test',
     },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
+      // 防倒退基线（当前约 10%/4%/11%/10%），随覆盖提升逐步上调
+      thresholds: {
+        statements: 9,
+        branches: 4,
+        functions: 10,
+        lines: 9,
+      },
       include: ['src/**/*.ts'],
       exclude: [
         'src/**/*.spec.ts',

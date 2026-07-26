@@ -33,8 +33,6 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const appConfig = configService.getOrThrow<AppConfigType>('app');
   const { port, address, name } = appConfig;
-  // 如果在代理服务器后面或者使用了负载均衡，需要设置这个保证获取到真实的客户端IP
-  app.set('trust proxy', true);
   // 设置全局前缀 会触发warn 所以暂时注释
   // app.setGlobalPrefix('api');
 
@@ -50,5 +48,4 @@ async function bootstrap() {
     msg: `应用 ${name} 运行在: ${await app.getUrl()}`,
   });
 }
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-bootstrap();
+void bootstrap();

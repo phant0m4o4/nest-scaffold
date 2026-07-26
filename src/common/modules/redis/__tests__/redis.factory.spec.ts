@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import type { RedisModuleConfig } from '@/configs/redis.config';
-import type { EventEmitter } from 'events';
+import { EventEmitter } from 'events';
 import type { PinoLogger } from 'nestjs-pino';
 import {
   beforeEach,
@@ -12,18 +11,32 @@ import {
   type Mocked,
 } from 'vitest';
 
-import { MockRedisClient } from './support/mock-redis-client';
+/**
+ * 用 EventEmitter 充当 ioredis 的 Redis / Cluster 实例
+ *
+ * 暴露：
+ * - status：模拟客户端连接状态
+ * - quit / disconnect：vi mock，便于断言关闭分支
+ * - constructorArgs：保留构造时透传的参数，用于断言配置映射
+ */
+class MockRedisClient extends EventEmitter {
+  public status = 'ready';
+  public readonly quit = vi.fn(async () => await Promise.resolve('OK'));
+  public readonly disconnect = vi.fn();
+  public constructor(public readonly constructorArgs: unknown[] = []) {
+    super();
+  }
+}
 
 const { redisInstances, clusterInstances } = vi.hoisted(() => ({
   redisInstances: [] as unknown[],
   clusterInstances: [] as unknown[],
 }));
 
-vi.mock('ioredis', async () => {
-  // 显式标注类型：动态 import 在部分类型解析场景下会退化为 any
-  const { MockRedisClient } = (await import('./support/mock-redis-client')) as {
-    MockRedisClient: typeof import('./support/mock-redis-client').MockRedisClient;
-  };
+vi.mock('ioredis', () => {
+  // 工厂在 'ioredis' 首次被导入时才执行（惰性）；ESM 按声明顺序求值，
+  // 顶层的 MockRedisClient 类定义先于下方 'ioredis' 导入完成初始化，
+  // 此处可安全引用，无需动态 import
   // 注意：实现必须是普通 function（可被 new 调用），箭头函数不可作为构造函数
   return {
     Redis: vi.fn(function (...args: unknown[]) {
