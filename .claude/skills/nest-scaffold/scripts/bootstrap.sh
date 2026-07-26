@@ -133,6 +133,7 @@ cat <<EOF
 6. 访问：
    - API:     http://localhost:3000
    - Bull Board (dev): http://localhost:3000/queues
-   - phpMyAdmin:    http://localhost:8080
-   - phpRedisAdmin: http://localhost:8081
+   - phpMyAdmin:    http://localhost:8081
+   - pgAdmin:       http://localhost:8082
+   - phpRedisAdmin: http://localhost:8080
 EOF

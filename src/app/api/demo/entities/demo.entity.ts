@@ -1,4 +1,5 @@
 import { createZodDto } from '@/common/utils/zod/create-zod-dto';
+import { demoTypes } from '@/database/enums/demo-type.enum';
 import { z } from 'zod';
 
 export class DemoEntity extends createZodDto(
@@ -8,7 +9,7 @@ export class DemoEntity extends createZodDto(
     /** 名称，例如 'demo name' */
     name: z.string(),
     /** 类型，例如 'TYPE_1' */
-    type: z.string(),
+    type: z.enum(demoTypes),
     /** 父级ID，例如 1 */
     parentId: z.number().nullable(),
     /** 创建时间，例如 '2025-01-01 00:00:00' */

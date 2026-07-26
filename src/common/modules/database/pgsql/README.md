@@ -12,7 +12,7 @@
 
 ## 与 MySQL 版本的差异
 
-- **主键**：`integer GENERATED ALWAYS AS IDENTITY`（MySQL 为 `int unsigned auto_increment`），见 `src/database/pgsql/utils/create-primary-key.ts`。
+- **主键**：`bigint GENERATED ALWAYS AS IDENTITY`（MySQL 为 `bigint unsigned auto_increment`），见 `src/database/pgsql/utils/create-primary-key.ts`。
 - **updatedAt**：PostgreSQL 没有 `ON UPDATE CURRENT_TIMESTAMP`，由 Drizzle 的 `$onUpdate` 在应用层写入（仅经由 Drizzle 的更新生效）。
 - **枚举**：`pgEnum` 是独立的数据库类型（`CREATE TYPE`），需要在 schema 文件中声明并导出。
 - **返回 id**：插入用 `.returning()`（MySQL 为 `$returningId()`），已在 `src/app/repositories/common/pgsql/base.repository.ts` 中封装。

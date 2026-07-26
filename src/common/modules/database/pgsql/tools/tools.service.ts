@@ -31,6 +31,9 @@ export class ToolsService {
    * 重建 public schema（连同表与自定义类型一并删除），并删除存放迁移记录的
    * drizzle schema（PG 的 __drizzle_migrations 在独立 schema，不删会导致重放被跳过），
    * 然后重放所有迁移，恢复表结构与基础数据；演示数据按需再跑 seed。
+   *
+   * 适用边界：只重置 public schema（其他 schema 中的对象不受影响）；
+   * CREATE SCHEMA 不会恢复原有属主与默认 GRANT；需要连接角色对 public 有属主/删除权限。
    */
   async reset(): Promise<void> {
     const answer = await inquirer.prompt([
