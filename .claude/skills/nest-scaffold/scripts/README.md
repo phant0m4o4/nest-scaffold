@@ -65,6 +65,26 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
 - 同名模块/仓储已存在时拒绝执行（保护）。
 - 默认复数推导是简单加 `s`，对 `category`→`categorys` 等不规则名词需手动传第 2 参数（`category categories`）。
 
+## setup-github.sh
+
+为当前仓库一次性启用 GitHub 工程约束（GitHub Flow 所需的平台设置），幂等可重跑：
+
+```bash
+bash .claude/skills/nest-scaffold/scripts/setup-github.sh
+```
+
+做三件事（等价于网页 Settings 手动配置）：
+
+1. **main 分支保护**：必须走 PR、必需状态检查 `ci`/`docker`、管理员同样受限（enforce_admins）、禁强推/删除；
+2. **仅 Squash merge**：squash 提交标题取 PR 标题、正文取 PR 描述（禁用 merge commit 与 rebase 合并）；
+3. **auto-delete head branches**：PR 合并后自动删除远端分支。
+
+前置与约束：
+
+- 需要 `gh` 已登录（脚本先核验并显示登录账号，与仓库 owner 不一致时提示确认——组织仓库属正常，但须有 admin 权限）；
+- `origin` 必须是 SSH 形式 `git@github.com:<owner>/<repo>.git`；
+- 必需检查 `ci`/`docker` 要等 CI 至少跑过一次才会在网页设置里可见，新仓库先推送一次代码即可（不影响配置生效）。
+
 ## 故障排查
 
 - **`错误: 未找到仓库根目录`**：脚本要求当前工作目录或祖先有 `package.json` + `src/app/`。请进入项目根再跑。

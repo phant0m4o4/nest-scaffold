@@ -41,7 +41,7 @@ git checkout main && git pull && git branch -d <branch>
 1. 生成项目：`bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>`（详见 [scripts/README.md](../scripts/README.md)）。
 2. 本地跑通：`pnpm install` → `cp .env.example .env` → `docker compose up -d` → `pnpm db:migrate:mysql` → `NODE_ENV=development pnpm db:seed:mysql` → `pnpm start:dev`。
 3. 建远端仓库并推送 `main`（remote 用 SSH 形式）。
-4. 启用工程约束（一次性）：分支保护（required checks：`ci`/`docker`、禁直推/强推）、仅 Squash merge、auto-delete head branches——可网页配置，或用 `gh api`（先 `gh auth status` 核验账号）。
+4. 启用工程约束（一次性）：`bash .claude/skills/nest-scaffold/scripts/setup-github.sh`——gh 自动完成分支保护（required checks：`ci`/`docker`、禁直推/强推）、仅 Squash merge、auto-delete head branches（详见 [scripts/README.md](../scripts/README.md)；也可按 CLAUDE.md 规则 A.4 网页手动配置）。
 5. 按需添加 CD（README「CI / CD」的方案 A/B 示例）。
 
 ## 场景 2：新功能 / 新业务模块

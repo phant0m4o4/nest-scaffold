@@ -137,7 +137,7 @@
 - 工作分支**用完即清**:PR 合并后立即删除远端与本地分支及对应 worktree(工作树,同一仓库的另一份检出目录),仓库常态只保留 `main`。
 - **禁止对 `main` 强推**;工作分支在 PR 评审期间可以 rebase/强推自己(改历史仅限自己的工作分支)。
 - PR 的创建/检查/合并可用 `gh`(`gh pr create` / `gh pr checks` / `gh pr merge --squash`,使用前按第 1 条核验账号)或 GitHub 网页;**代码审查的判断与 Environments 发布审批必须人工完成**(网页操作),不得由代理代批。
-- 首次启用需在 GitHub 网页配置(仅一次):Settings → Branches → Add rule(`main`):Require a pull request before merging、Require status checks to pass(勾选 `ci`、`docker`)、Block force pushes;Settings → General → 勾选 Automatically delete head branches。
+- 首次启用(仅一次):运行 `bash .claude/skills/nest-scaffold/scripts/setup-github.sh`(gh 自动完成分支保护、仅 Squash merge、auto-delete head branches);或网页手动:Settings → Branches → Add rule(`main`):Require a pull request before merging、Require status checks to pass(勾选 `ci`、`docker`)、Block force pushes;Settings → General → Pull Requests 仅保留 Squash、勾选 Automatically delete head branches。
 
 **5. 提交与推送规范。**
 
