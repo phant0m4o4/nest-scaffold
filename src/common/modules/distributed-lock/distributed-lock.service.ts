@@ -5,7 +5,6 @@ import {
 } from '@/common/utils/redis/redis.factory';
 import type { RedisClient } from '@/common/utils/redis/redis.types';
 import { DistributedLockConfigType } from '@/configs/distributed-lock.config';
-import type { RedisConnectionConfig } from '@/configs/redis.config';
 import {
   Injectable,
   type OnModuleDestroy,
@@ -54,7 +53,7 @@ export type DistributedLockUsingOptions = Partial<RedlockSettings> & {
  * 分布式锁服务
  *
  * 基于 Redlock 算法实现分布式锁。锁持有**独立的 Redis 连接**
- * （`DISTRIBUTED_LOCK_REDIS_DB`，默认 0；地址/密码复用 `REDIS_*` 基础配置），
+ * （只读取 `DISTRIBUTED_LOCK_*` 自己的配置，连接项缺失直接启动报错），
  * 与缓存等可随时清空的数据隔离，避免共享客户端被其他使用方影响。
  *
  * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化；
@@ -70,7 +69,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   private _client!: RedisClient;
   private _redlock!: Redlock;
   private readonly _keyPrefix: string;
-  private readonly _redisDb: number;
+  private readonly _connection: DistributedLockConfigType['connection'];
 
   constructor(
     private readonly _configService: ConfigService,
@@ -82,14 +81,18 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
         'distributedLock',
       );
     this._keyPrefix = distributedLockConfig.keyPrefix;
-    this._redisDb = distributedLockConfig.redisDb;
+    this._connection = distributedLockConfig.connection;
   }
 
   async onModuleInit(): Promise<void> {
-    const redisConfig =
-      this._configService.getOrThrow<RedisConnectionConfig>('redis');
+    if (this._connection.mode === 'cluster') {
+      this._logger.warn(
+        { event: 'lock_cluster_no_db_isolation' },
+        'cluster 模式无 DB 概念，锁无法通过 DB 与其他服务隔离，生产环境请为锁部署独立实例/集群',
+      );
+    }
     this._client = createRedisClient({
-      config: this._buildLockRedisConfig(redisConfig),
+      config: this._connection,
       logger: this._logger,
     });
     try {
@@ -121,7 +124,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
       );
     });
     this._logger.info(
-      { event: 'lock_ready', db: this._redisDb },
+      { event: 'lock_ready', db: this._resolveDbLabel() },
       '分布式锁服务初始化完成（独立 Redis 连接）',
     );
   }
@@ -134,29 +137,17 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 将共享 Redis 基础配置改写为锁专用配置（独立 DB）
-   *
-   * cluster 模式没有 DB 概念，无法用 DB 隔离，原样返回并输出告警
-   * （生产环境应为锁部署独立实例/集群）。
+   * 取当前连接的 DB 编号用于日志（cluster 模式无 DB 概念，返回 undefined）
    * @private
    */
-  private _buildLockRedisConfig(
-    config: RedisConnectionConfig,
-  ): RedisConnectionConfig {
-    if (config.mode === 'single') {
-      return { ...config, single: { ...config.single, db: this._redisDb } };
+  private _resolveDbLabel(): number | undefined {
+    if (this._connection.mode === 'single') {
+      return this._connection.single.db;
     }
-    if (config.mode === 'sentinel') {
-      return {
-        ...config,
-        sentinel: { ...config.sentinel, db: this._redisDb },
-      };
+    if (this._connection.mode === 'sentinel') {
+      return this._connection.sentinel.db;
     }
-    this._logger.warn(
-      { event: 'lock_cluster_no_db_isolation' },
-      'cluster 模式无 DB 概念，锁无法通过 DB 与其他服务隔离，生产环境请为锁部署独立实例/集群',
-    );
-    return config;
+    return undefined;
   }
 
   /**

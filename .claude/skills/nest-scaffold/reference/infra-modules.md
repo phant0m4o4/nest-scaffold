@@ -6,19 +6,19 @@
 
 ## Redis 连接约定（无共享客户端）
 
-**本项目没有共享 Redis 客户端/模块**：每个需要 Redis 的模块（缓存、锁、队列）复用 `REDIS_*` 基础连接配置（地址/密码/拓扑），通过 `@/common/utils/redis/redis.factory` 自建连接，并用各自的 `*_REDIS_DB` 指定独立 DB——一个使用方的行为（阻塞命令、FLUSHDB、被淘汰）不会影响其他使用方。
+**本项目没有共享 Redis 客户端/模块**：每个需要 Redis 的模块（缓存、锁、队列）只读取**自己命名空间**的连接配置（如 `CACHE_REDIS_*`），通过 `resolveRedisConnection` 解析（必填缺失直接启动报错，不回退读其他模块的配置）、`redis.factory` 自建连接——一个使用方的行为（阻塞命令、FLUSHDB、被淘汰）不会影响其他使用方。`.env` 中的 `REDIS_HOST` 等是纯锚点变量，仅供 `${...}` 引用避免重复书写地址。
 
-业务直接需要 Redis 原生数据结构（Hash、List、Sorted Set、Streams 等）时，参照缓存/锁的做法自建连接：
+业务直接需要 Redis 原生数据结构（Hash、List、Sorted Set、Streams 等）时，参照缓存/锁的做法：在自己的 config 里声明 `<MY>_REDIS_*` 环境变量并解析、自建连接：
 
 ```ts
+import { resolveRedisConnection } from '@/common/utils/redis/redis-connection';
 import { createRedisClient, closeRedisClient } from '@/common/utils/redis/redis.factory';
-import type { RedisConnectionConfig } from '@/configs/redis.config';
 
-// onModuleInit：基于 REDIS_* 基础配置 + 业务自己的 DB 建连；onModuleDestroy：closeRedisClient
-const client = createRedisClient({ config: myConfig, logger: this._logger });
+// config 内：connection = resolveRedisConnection({ envPrefix: 'MY_REDIS', host: env.MY_REDIS_HOST, ... })
+// onModuleInit：createRedisClient({ config: connection, logger })；onModuleDestroy：closeRedisClient
 ```
 
-支持三种模式（`REDIS_MODE`）：`single` / `sentinel` / `cluster`。
+支持三种模式（`<PREFIX>_MODE`）：`single` / `sentinel` / `cluster`。
 
 **避坑**：
 

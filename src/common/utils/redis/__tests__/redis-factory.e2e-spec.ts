@@ -1,4 +1,4 @@
-import type { RedisConfigType } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/common/utils/redis/redis-connection';
 import type { PinoLogger } from 'nestjs-pino';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -31,7 +31,7 @@ describe('redis.factory (e2e)', () => {
   let redisContainer: StartedTestContainer;
   let client: RedisClient;
 
-  function buildSingleConfig(db: number): RedisConfigType {
+  function buildSingleConfig(db: number): RedisConnectionConfig {
     return {
       mode: 'single',
       single: {

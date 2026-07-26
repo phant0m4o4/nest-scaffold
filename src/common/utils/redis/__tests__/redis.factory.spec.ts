@@ -1,4 +1,4 @@
-import type { RedisConnectionConfig } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/common/utils/redis/redis-connection';
 import { EventEmitter } from 'events';
 import type { PinoLogger } from 'nestjs-pino';
 import {

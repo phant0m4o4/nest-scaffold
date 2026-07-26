@@ -61,8 +61,7 @@ PGSQL_DATABASE=${APP_NAME}
 PGSQL_USER=postgres
 PGSQL_PASSWORD=root_password
 
-# Redis 基础连接（仅地址/密码/拓扑；缓存/锁/队列各自建连并用各自的 *_REDIS_DB 指定独立 DB）
-REDIS_MODE=single
+# Redis 公共锚点变量（应用不直接读取，仅供下方各模块的 *_REDIS_* 引用；每个模块只读自己的连接配置）
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
@@ -71,13 +70,19 @@ REDIS_PASSWORD=redis_password
 LOG_FILE_ENABLE=true
 LOG_FILE_PATH=./logs/app.log
 
-# Cache（独立 DB，缓存可随时清空，禁止与锁/队列共用）
+# Cache（自带连接配置，独立 DB：缓存可随时清空，禁止与锁/队列共用）
 CACHE_TTL_SECONDS=604800 # 7 days
 CACHE_KEY_PREFIX=cache
+CACHE_REDIS_HOST=${REDIS_HOST}
+CACHE_REDIS_PORT=${REDIS_PORT}
+CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
 CACHE_REDIS_DB=1
 
-# Distributed Lock（独立 DB，锁数据不可丢）
+# Distributed Lock（自带连接配置，独立 DB：锁数据不可丢）
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
+DISTRIBUTED_LOCK_REDIS_HOST=${REDIS_HOST}
+DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}
+DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
 DISTRIBUTED_LOCK_REDIS_DB=0
 
 # Queue（BullMQ 需独享连接，默认复用上方 REDIS_* 地址，可按需指向独立实例/DB）

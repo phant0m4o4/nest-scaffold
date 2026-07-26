@@ -5,7 +5,6 @@ import {
 import type { RedisClient } from '@/common/utils/redis/redis.types';
 import { normalizeError } from '@/common/utils/normalize-error';
 import { CacheConfigType } from '@/configs/cache.config';
-import type { RedisConnectionConfig } from '@/configs/redis.config';
 import {
   Injectable,
   type OnModuleDestroy,
@@ -35,8 +34,8 @@ interface IBatchResult<T> {
  * - 原始字符串操作
  * - Lua 脚本执行
  *
- * 缓存持有自己的连接与独立 DB（`CACHE_REDIS_DB`，默认 1，地址/密码复用
- * `REDIS_*` 基础配置）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
+ * 缓存持有自己的连接与独立 DB（只读取 `CACHE_*` 自己的配置，连接项缺失
+ * 直接启动报错）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
  * 服务共用一个 DB。cluster 模式无 DB 概念，隔离需部署独立集群。
  *
  * @see README.md 查看完整使用示例与配置说明
@@ -49,7 +48,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   private _redis!: RedisClient;
   private readonly _defaultTtlSeconds: number;
   private readonly _keyPrefix: string;
-  private readonly _redisDb: number;
+  private readonly _connection: CacheConfigType['connection'];
 
   constructor(
     private readonly _configService: ConfigService,
@@ -59,14 +58,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       this._configService.getOrThrow<CacheConfigType>('cache');
     this._defaultTtlSeconds = cacheConfig.ttlSeconds;
     this._keyPrefix = cacheConfig.keyPrefix;
-    this._redisDb = cacheConfig.redisDb;
+    this._connection = cacheConfig.connection;
   }
 
   async onModuleInit(): Promise<void> {
-    const redisConfig =
-      this._configService.getOrThrow<RedisConnectionConfig>('redis');
+    if (this._connection.mode === 'cluster') {
+      this._logger.warn(
+        { event: 'cache_cluster_no_db_isolation' },
+        'cluster 模式无 DB 概念，缓存无法通过 DB 与其他服务隔离，生产环境请为缓存部署独立集群',
+      );
+    }
     this._redis = createRedisClient({
-      config: this._buildCacheRedisConfig(redisConfig),
+      config: this._connection,
       logger: this._logger,
     });
     try {
@@ -82,7 +85,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       throw error;
     }
     this._logger.info(
-      { event: 'cache_ready', db: this._redisDb },
+      { event: 'cache_ready', db: this._resolveDbLabel() },
       '缓存服务初始化完成（独立 Redis 连接）',
     );
   }
@@ -95,29 +98,17 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 将共享 Redis 配置改写为缓存专用配置（独立 DB）
-   *
-   * cluster 模式没有 DB 概念，无法用 DB 隔离，原样返回并输出告警
-   * （生产环境应为缓存部署独立集群）。
+   * 取当前连接的 DB 编号用于日志（cluster 模式无 DB 概念，返回 undefined）
    * @private
    */
-  private _buildCacheRedisConfig(
-    config: RedisConnectionConfig,
-  ): RedisConnectionConfig {
-    if (config.mode === 'single') {
-      return { ...config, single: { ...config.single, db: this._redisDb } };
+  private _resolveDbLabel(): number | undefined {
+    if (this._connection.mode === 'single') {
+      return this._connection.single.db;
     }
-    if (config.mode === 'sentinel') {
-      return {
-        ...config,
-        sentinel: { ...config.sentinel, db: this._redisDb },
-      };
+    if (this._connection.mode === 'sentinel') {
+      return this._connection.sentinel.db;
     }
-    this._logger.warn(
-      { event: 'cache_cluster_no_db_isolation' },
-      'cluster 模式无 DB 概念，缓存无法通过 DB 与其他服务隔离，生产环境请为缓存部署独立集群',
-    );
-    return config;
+    return undefined;
   }
 
   /**

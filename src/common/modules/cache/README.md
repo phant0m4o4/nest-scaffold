@@ -19,13 +19,19 @@
 
 ## 环境变量
 
-> Redis 地址/密码/拓扑相关环境变量（`REDIS_MODE` / `REDIS_HOST` / `REDIS_PORT` 等）为全应用共用的基础连接配置（见 `.env.example`），本模块仅保留缓存相关配置。
+> 缓存的连接配置完全自带（`CACHE_REDIS_*` 命名空间），必填项缺失直接启动报错，不会回退读取其他模块的配置。`.env` 中的 `REDIS_HOST` 等是纯锚点变量，仅供 `${REDIS_HOST}` 引用避免重复书写地址（见 `.env.example`）。
 
 | 变量                 | 类型   | 默认值   | 说明                 |
 | -------------------- | ------ | -------- | -------------------- |
 | `CACHE_TTL_SECONDS`  | number | `604800` | 默认 TTL（秒），7 天 |
 | `CACHE_KEY_PREFIX`   | string | `cache`  | 键前缀               |
-| `CACHE_REDIS_DB`     | number | `1`      | 缓存专用 Redis DB，禁止与锁/队列共用（cluster 模式无效，需独立集群） |
+| `CACHE_REDIS_MODE`   | string | `single` | `single` / `sentinel` / `cluster` |
+| `CACHE_REDIS_HOST`   | string | —（必填） | Redis 主机（single 模式） |
+| `CACHE_REDIS_PORT`   | number | —（必填） | Redis 端口（single 模式） |
+| `CACHE_REDIS_PASSWORD` | string | —      | 鉴权密码（可选）     |
+| `CACHE_REDIS_DB`     | number | —（必填） | 缓存专用 Redis DB，禁止与锁/队列共用（cluster 模式无效，需独立集群） |
+| `CACHE_REDIS_SENTINEL_MASTER_NAME` / `CACHE_REDIS_SENTINELS` | string | — | sentinel 模式必填 |
+| `CACHE_REDIS_CLUSTER_NODES` | string | — | cluster 模式必填，`host:port,host:port` |
 
 ## 快速开始
 
@@ -142,7 +148,7 @@ CacheModule
 └── cache.service.ts         # 缓存服务（Redis 封装）
 
 configs/
-└── cache.config.ts          # 配置（TTL + 键前缀 + 缓存专用 DB，地址/密码复用 REDIS_* 基础配置）
+└── cache.config.ts          # 配置（TTL + 键前缀 + 自带 CACHE_REDIS_* 连接配置）
 ```
 
 ## 键名规则

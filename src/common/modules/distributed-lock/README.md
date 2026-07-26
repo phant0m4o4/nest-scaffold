@@ -49,12 +49,15 @@
 
 ## 环境变量
 
-锁持有**独立的 Redis 连接**：地址/密码/拓扑复用 `REDIS_*` 基础连接配置（见 `.env.example`），DB 编号由本模块指定。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖：
+锁的连接配置完全自带（`DISTRIBUTED_LOCK_REDIS_*` 命名空间），必填项缺失直接启动报错，不会回退读取其他模块的配置；`.env` 中的 `REDIS_HOST` 等是纯锚点变量，仅供 `${...}` 引用避免重复书写地址。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖：
 
 ```env
-# 可选（有默认值）
-DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
-DISTRIBUTED_LOCK_REDIS_DB=0
+DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock   # 可选，默认 distributed-lock
+DISTRIBUTED_LOCK_REDIS_HOST=${REDIS_HOST}      # 必填
+DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}      # 必填
+DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
+DISTRIBUTED_LOCK_REDIS_DB=0                    # 必填
+# sentinel / cluster 模式：DISTRIBUTED_LOCK_REDIS_MODE + 对应的 SENTINEL_* / CLUSTER_NODES 变量
 ```
 
 ## 快速开始

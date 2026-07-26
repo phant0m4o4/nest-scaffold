@@ -1,5 +1,5 @@
 import { normalizeError } from '@/common/utils/normalize-error';
-import type { RedisConnectionConfig } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/common/utils/redis/redis-connection';
 import { Cluster, Redis } from 'ioredis';
 import type { PinoLogger } from 'nestjs-pino';
 
