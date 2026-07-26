@@ -2,7 +2,7 @@
 
 提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**：连接配置完全自带（`CACHE_REDIS_*` 命名空间，`HOST`/`PORT`/`DB` 必填，缺失直接启动报错并指明变量名，见 `.env.example`）。
 
-> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。`.env.example` 的推荐分配为缓存 `CACHE_REDIS_DB=1`、锁 `DISTRIBUTED_LOCK_REDIS_DB=0`、队列 `QUEUE_REDIS_DB=2`；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
+> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。`.env.example` 的推荐分配为缓存 `CACHE_REDIS_DB=0`、锁 `DISTRIBUTED_LOCK_REDIS_DB=1`、队列 `QUEUE_REDIS_DB=2`；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
 
 ## 功能特性
 

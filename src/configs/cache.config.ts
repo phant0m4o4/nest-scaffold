@@ -18,7 +18,7 @@ import { z } from 'zod';
  * CACHE_REDIS_HOST=${REDIS_HOST}
  * CACHE_REDIS_PORT=${REDIS_PORT}
  * CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
- * CACHE_REDIS_DB=1
+ * CACHE_REDIS_DB=0
  */
 const environmentSchema = z.object({
   CACHE_TTL_SECONDS: z.coerce.number().int().optional(),
