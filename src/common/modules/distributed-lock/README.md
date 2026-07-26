@@ -32,10 +32,11 @@
 - 缓存的运维操作（如 `FLUSHDB` 清缓存）会连带清掉同 DB 内的锁键。
 - 存放锁的 Redis 必须使用 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`），这与缓存 Redis 的推荐配置天然冲突，同一个 DB / 实例无法同时满足两者。
 
-当前脚手架默认单连接单 DB（`RedisService` 共享连接，开发环境便利优先）。**生产部署时必须做隔离**：
+脚手架**默认已做 DB 隔离**：缓存走独立连接与独立 DB（`CACHE_REDIS_DB`，默认 `1`），锁使用共享连接（`REDIS_DB`，默认 `0`）。部署时仍需注意：
 
-- **single / sentinel 模式**：为锁使用独立的 `REDIS_DB`（或独立实例），需要为锁模块建立独立的 Redis 连接配置（业务项目按需从共享连接拆分）；
-- **cluster 模式**：Redis Cluster 只支持 db 0，无法靠 DB 编号隔离，**必须为锁部署独立实例/集群**。
+- **single / sentinel 模式**：保持缓存与锁的 DB 编号不同即可；锁所在 DB 不要再放其他可随时清空的数据；
+- **cluster 模式**：Redis Cluster 只支持 db 0，无法靠 DB 编号隔离，**必须为缓存（或锁）部署独立实例/集群**；
+- 存放锁的实例应配置 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`）。
 
 ## 依赖
 
