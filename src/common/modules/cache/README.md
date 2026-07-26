@@ -2,6 +2,8 @@
 
 基于共享 `RedisService` 的缓存模块，提供类型安全的缓存读写服务。Redis 连接由 [`RedisModule`](../redis/README.md) 统一管理，本模块不再自建连接。
 
+> ⚠️ 生产部署：缓存与分布式锁不得共用同一个 Redis DB（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉锁键），至少分 DB、建议分实例，详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
+
 ## 功能特性
 
 - **JSON 序列化/反序列化** — `get<T>` / `set<T>` 自动处理，支持所有 JSON 可序列化类型
