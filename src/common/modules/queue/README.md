@@ -32,20 +32,29 @@
 
 | 变量名                  | 说明                                         | 默认值            |
 | ----------------------- | -------------------------------------------- | ----------------- |
-| `QUEUE_REDIS_HOST`      | BullMQ 专用 Redis 主机                       | `127.0.0.1`       |
-| `QUEUE_REDIS_PORT`      | BullMQ 专用 Redis 端口                       | `6379`            |
-| `QUEUE_REDIS_PASSWORD`  | BullMQ 专用 Redis 密码                       | 无                |
-| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB                         | `0`               |
+| `QUEUE_REDIS_MODE`      | 连接拓扑：`single` / `sentinel` / `cluster`  | `single`          |
+| `QUEUE_REDIS_HOST`      | BullMQ 专用 Redis 主机（single 模式）        | —（必填）         |
+| `QUEUE_REDIS_PORT`      | BullMQ 专用 Redis 端口（single 模式）        | —（必填）         |
+| `QUEUE_REDIS_PASSWORD`  | BullMQ 专用 Redis 密码（可选）               | —                 |
+| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB，禁止与缓存/锁共用      | —（必填，推荐 `2`）|
+| `QUEUE_REDIS_SENTINEL_MASTER_NAME` / `QUEUE_REDIS_SENTINELS` | sentinel 模式必填 | — |
+| `QUEUE_REDIS_CLUSTER_NODES` | cluster 模式必填，`host:port,host:port`  | —                 |
 | `QUEUE_KEY_PREFIX`      | 队列 key 前缀                                | `queue`           |
 | `QUEUE_DASHBOARD_ROUTE` | Bull Board 仪表盘路由                        | `/queues`         |
 
-**.env 示例（复用全局 Redis 地址）：**
+**.env 示例（引用公共锚点变量，见 `.env.example`）：**
 
 ```dotenv
 QUEUE_REDIS_HOST=${REDIS_HOST}
 QUEUE_REDIS_PORT=${REDIS_PORT}
 QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
-QUEUE_REDIS_DB=0
+QUEUE_REDIS_DB=2
+# sentinel / cluster 模式：
+# QUEUE_REDIS_MODE=sentinel
+# QUEUE_REDIS_SENTINEL_MASTER_NAME=${REDIS_SENTINEL_MASTER_NAME}
+# QUEUE_REDIS_SENTINELS=${REDIS_SENTINELS}
+# QUEUE_REDIS_MODE=cluster
+# QUEUE_REDIS_CLUSTER_NODES=${REDIS_CLUSTER_NODES}
 ```
 
 ## 使用方式
