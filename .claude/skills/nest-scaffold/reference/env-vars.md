@@ -129,10 +129,7 @@ export default myConfig;
 |------|------|------|
 | `BOTTLENECK_MODE` | `memory` | `memory` / `redis` |
 | `BOTTLENECK_REDIS_KEY_PREFIX` | `bottleneck` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_HOST` | `127.0.0.1` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_PORT` | `6379` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_PASSWORD` | — | 仅 redis 模式，可空 |
-| `BOTTLENECK_REDIS_DB` | `0` | 仅 redis 模式 |
+| `BOTTLENECK_REDIS_*` | 见上文通用形态 | 仅 redis 模式；自带连接配置（HOST/PORT/DB 必填，推荐 DB `3`），支持 single/sentinel/cluster |
 
 ## .env 完整示例
 

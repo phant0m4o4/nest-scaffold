@@ -28,7 +28,7 @@
 >
 > **连接配置自带且必填**：`QUEUE_REDIS_HOST`/`PORT`/`DB` 缺失直接启动报错。`.env` 中可用 `${REDIS_HOST}` 等锚点变量引用公共地址（框架启用了 `expandVariables`）；队列走独立 Redis 实例或独立 DB 时改这里的 `QUEUE_REDIS_*` 值即可（`.env.example` 推荐 `QUEUE_REDIS_DB=2`，与锁 0、缓存 1 互不共用）。
 >
-> 当前连接选项面向 `single` / `sentinel` 场景；`cluster` 模式需按 BullMQ 官方文档扩展 `buildBullMqConnection`。
+> 支持 `single` / `sentinel` / `cluster` 三种模式（`QUEUE_REDIS_MODE`，默认 single；sentinel/cluster 通过 `QUEUE_REDIS_SENTINEL_MASTER_NAME`/`QUEUE_REDIS_SENTINELS`/`QUEUE_REDIS_CLUSTER_NODES` 配置）。cluster 模式下 BullMQ 只接受现成的 `Cluster` 实例，由模块创建并随进程存续。
 
 | 变量名                  | 说明                                         | 默认值            |
 | ----------------------- | -------------------------------------------- | ----------------- |
