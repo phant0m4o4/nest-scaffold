@@ -88,6 +88,7 @@ export default myConfig;
 |------|------|------|
 | `CACHE_TTL_SECONDS` | `604800`（7 天） | 默认 TTL |
 | `CACHE_KEY_PREFIX` | `cache` | 键前缀 |
+| `CACHE_REDIS_DB` | `1` | 缓存专用 Redis DB。缓存可随时清空，禁止与锁/队列等共用一个 DB（cluster 模式无 DB 概念，需独立集群） |
 
 ## DistributedLockModule
 
@@ -164,6 +165,7 @@ LOG_FILE_PATH=./logs/app.log
 #Cache
 CACHE_TTL_SECONDS=604800
 CACHE_KEY_PREFIX=cache
+CACHE_REDIS_DB=1
 
 #Distributed Lock
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock

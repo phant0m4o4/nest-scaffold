@@ -1,7 +1,16 @@
-import { RedisService } from '@/common/modules/redis/redis.service';
+import {
+  closeRedisClient,
+  createRedisClient,
+} from '@/common/modules/redis/redis.factory';
 import type { RedisClient } from '@/common/modules/redis/redis.types';
+import { normalizeError } from '@/common/utils/normalize-error';
 import { CacheConfigType } from '@/configs/cache.config';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import type { RedisModuleConfig } from '@/configs/redis.config';
+import {
+  Injectable,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
@@ -17,7 +26,7 @@ interface IBatchResult<T> {
 /**
  * 缓存服务
  *
- * 基于共享 `RedisService` 的缓存封装，支持：
+ * 基于独立 Redis 连接的缓存封装，支持：
  * - JSON 序列化/反序列化（支持所有 JSON 可序列化类型）
  * - TTL 管理（秒级，-1 表示永不过期）
  * - 键前缀管理（自动添加 `{keyPrefix}:` 前缀）
@@ -26,35 +35,87 @@ interface IBatchResult<T> {
  * - 原始字符串操作
  * - Lua 脚本执行
  *
- * Redis 连接的创建与生命周期由 `RedisService` 统一负责，本服务不再自建连接。
+ * 缓存持有自己的连接与独立 DB（`CACHE_REDIS_DB`，默认 1，地址/密码复用
+ * `RedisModule` 配置）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
+ * 服务共用一个 DB。cluster 模式无 DB 概念，隔离需部署独立集群。
  *
  * @see README.md 查看完整使用示例与配置说明
  */
 @Injectable()
-export class CacheService implements OnModuleInit {
+export class CacheService implements OnModuleInit, OnModuleDestroy {
   /** 键名最大长度限制 */
   private static readonly _MAX_KEY_LENGTH = 250;
 
   private _redis!: RedisClient;
   private readonly _defaultTtlSeconds: number;
   private readonly _keyPrefix: string;
+  private readonly _redisDb: number;
 
   constructor(
     private readonly _configService: ConfigService,
-    private readonly _redisService: RedisService,
     @InjectPinoLogger(CacheService.name) private readonly _logger: PinoLogger,
   ) {
     const cacheConfig =
       this._configService.getOrThrow<CacheConfigType>('cache');
     this._defaultTtlSeconds = cacheConfig.ttlSeconds;
     this._keyPrefix = cacheConfig.keyPrefix;
+    this._redisDb = cacheConfig.redisDb;
   }
 
-  onModuleInit(): void {
-    // RedisService 已在自身的 onModuleInit 完成连接与健康检查，
-    // 此处仅需要取回共享 client 引用即可
-    this._redis = this._redisService.getClient();
-    this._logger.info('缓存服务初始化完成');
+  async onModuleInit(): Promise<void> {
+    const redisConfig =
+      this._configService.getOrThrow<RedisModuleConfig>('redis');
+    this._redis = createRedisClient({
+      config: this._buildCacheRedisConfig(redisConfig),
+      logger: this._logger,
+    });
+    try {
+      const reply = await this._redis.ping();
+      if (reply !== 'PONG') {
+        throw new Error(`缓存 Redis PING 响应异常: ${String(reply)}`);
+      }
+    } catch (error: unknown) {
+      this._logger.error(
+        { event: 'cache_redis_ping_failed', error: normalizeError(error) },
+        '缓存 Redis 健康检查失败',
+      );
+      throw error;
+    }
+    this._logger.info(
+      { event: 'cache_ready', db: this._redisDb },
+      '缓存服务初始化完成（独立 Redis 连接）',
+    );
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (!this._redis) {
+      return;
+    }
+    await closeRedisClient({ client: this._redis, logger: this._logger });
+  }
+
+  /**
+   * 将共享 Redis 配置改写为缓存专用配置（独立 DB）
+   *
+   * cluster 模式没有 DB 概念，无法用 DB 隔离，原样返回并输出告警
+   * （生产环境应为缓存部署独立集群）。
+   * @private
+   */
+  private _buildCacheRedisConfig(config: RedisModuleConfig): RedisModuleConfig {
+    if (config.mode === 'single') {
+      return { ...config, single: { ...config.single, db: this._redisDb } };
+    }
+    if (config.mode === 'sentinel') {
+      return {
+        ...config,
+        sentinel: { ...config.sentinel, db: this._redisDb },
+      };
+    }
+    this._logger.warn(
+      { event: 'cache_cluster_no_db_isolation' },
+      'cluster 模式无 DB 概念，缓存无法通过 DB 与其他服务隔离，生产环境请为缓存部署独立集群',
+    );
+    return config;
   }
 
   /**
@@ -341,10 +402,10 @@ export class CacheService implements OnModuleInit {
   }
 
   /**
-   * 清空所有缓存
+   * 清空缓存专用 DB 中的所有数据（FLUSHDB，不影响其他 DB）
    */
   public async flush(): Promise<void> {
-    const result = await this._redis.flushall();
+    const result = await this._redis.flushdb();
     if (result !== 'OK') {
       throw new Error('缓存清空失败');
     }

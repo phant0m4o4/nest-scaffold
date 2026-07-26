@@ -1,8 +1,8 @@
 # CacheModule
 
-基于共享 `RedisService` 的缓存模块，提供类型安全的缓存读写服务。Redis 连接由 [`RedisModule`](../redis/README.md) 统一管理，本模块不再自建连接。
+提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**（`CACHE_REDIS_DB`，默认 `1`；地址/密码复用 [`RedisModule`](../redis/README.md) 的 `REDIS_*` 配置）。
 
-> ⚠️ 生产部署：缓存与分布式锁不得共用同一个 Redis DB（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉锁键），至少分 DB、建议分实例，详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
+> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。本模块默认已用 `CACHE_REDIS_DB=1` 与共享连接（`REDIS_DB=0`）隔离；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
 
 ## 功能特性
 
@@ -15,7 +15,7 @@
 - **Lua 脚本** — `executeScript` 支持自定义脚本执行
 - **键管理** — `exists` / `getTtl` / `expire` / `persist` / `rename` / `flush`
 - **健康检查** — `isHealthy()` 基于 `PING/PONG` 校验连接
-- **共享连接** — 复用 `RedisService.getClient()`，避免多套连接池
+- **独立连接与独立 DB** — 缓存专用连接（`CACHE_REDIS_DB`），与锁等不可丢数据的服务隔离
 
 ## 环境变量
 
@@ -25,6 +25,7 @@
 | -------------------- | ------ | -------- | -------------------- |
 | `CACHE_TTL_SECONDS`  | number | `604800` | 默认 TTL（秒），7 天 |
 | `CACHE_KEY_PREFIX`   | string | `cache`  | 键前缀               |
+| `CACHE_REDIS_DB`     | number | `1`      | 缓存专用 Redis DB，禁止与锁/队列共用（cluster 模式无效，需独立集群） |
 
 ## 快速开始
 
@@ -141,7 +142,7 @@ CacheModule
 └── cache.service.ts         # 缓存服务（Redis 封装）
 
 configs/
-└── cache.config.ts          # 配置（TTL + 键前缀，Redis 连接由 RedisModule 管理）
+└── cache.config.ts          # 配置（TTL + 键前缀 + 缓存专用 DB，地址/密码复用 RedisModule 配置）
 ```
 
 ## 键名规则
@@ -154,6 +155,6 @@ configs/
 ## 注意事项
 
 - `setBatch` 使用 Redis Pipeline 一次性提交所有写入，相比逐条写入性能更优
-- `flush()` 会执行 `FLUSHALL`，清空整个 Redis 数据库，**请谨慎使用**
+- `flush()` 会执行 `FLUSHDB`，清空**缓存专用 DB** 内的所有数据（不影响其他 DB；但 cluster 模式下无 DB 隔离，等同清空整个集群键空间，**请谨慎使用**）
 - TTL 为 `0` 时会抛出异常（Redis 不支持 0 秒过期），使用 `-1` 表示永不过期
 - 模块启动时会自动执行 `PING` 健康检查，失败则阻止应用启动
