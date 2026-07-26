@@ -35,7 +35,7 @@
 脚手架**每个模块各自持有独立的 Redis 连接与独立 DB**：缓存为 `CACHE_REDIS_DB`、锁为 `DISTRIBUTED_LOCK_REDIS_DB`、队列为 `QUEUE_REDIS_DB`（均**必填**，缺失直接启动报错；`.env.example` 推荐分配缓存 `0` / 锁 `1` / 队列 `2`）。部署时仍需注意：
 
 - **single / sentinel 模式**：保持缓存与锁的 DB 编号不同即可；锁所在 DB 不要再放其他可随时清空的数据；
-- **cluster 模式**：Redis Cluster 只支持 db 0，无法靠 DB 编号隔离，**必须为缓存（或锁）部署独立实例/集群**；
+- **cluster 模式**：Redis Cluster 无 DB 概念，无法靠 DB 编号隔离，**必须为缓存（或锁）部署独立实例/集群**；为防「隔离已生效」的假象，cluster 模式下显式设置 `*_REDIS_DB` 会**启动即报错**；
 - 存放锁的实例应配置 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`）。
 
 ## 依赖
@@ -57,7 +57,7 @@ DISTRIBUTED_LOCK_REDIS_HOST=${REDIS_HOST}      # 必填
 DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}      # 必填
 DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
 DISTRIBUTED_LOCK_REDIS_DB=1                    # 必填
-# sentinel / cluster 模式：DISTRIBUTED_LOCK_REDIS_MODE + 对应的 SENTINEL_* / CLUSTER_NODES 变量
+# sentinel / cluster 模式：DISTRIBUTED_LOCK_REDIS_MODE + 对应的 SENTINEL_* / CLUSTER_NODES 变量（cluster 须移除 DB，否则启动报错）
 ```
 
 ## 快速开始

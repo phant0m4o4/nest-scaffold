@@ -91,6 +91,17 @@ describe('resolveRedisConnection', () => {
     ).toThrowError('MY_REDIS_CLUSTER_NODES');
   });
 
+  it('cluster 模式下显式设置 db 应报错（静默丢弃会制造隔离已生效的假象）', () => {
+    expect(() =>
+      resolveRedisConnection({
+        envPrefix: 'MY_REDIS',
+        mode: 'cluster',
+        clusterNodes: '10.0.0.1:7000,10.0.0.2:7001',
+        db: 7,
+      }),
+    ).toThrowError('MY_REDIS_DB 在 cluster 模式下无效');
+  });
+
   it('cluster 模式应解析节点列表且无 db 字段', () => {
     const actual = resolveRedisConnection({
       envPrefix: 'MY_REDIS',

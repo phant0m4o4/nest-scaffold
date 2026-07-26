@@ -144,6 +144,13 @@ export function resolveRedisConnection(
       },
     };
   }
+  // cluster 无 DB 概念:显式设置 DB 却被静默丢弃会制造「已隔离」的假象
+  // (实际同处一个 keyspace,只剩键前缀),必须启动即报错
+  if (input.db !== undefined) {
+    throw new Error(
+      `Redis 连接配置冲突: 环境变量 ${envPrefix}_DB 在 cluster 模式下无效——Redis Cluster 无 DB 概念,无法用 DB 隔离。请移除该变量,并为本模块部署独立集群来实现隔离`,
+    );
+  }
   return {
     mode,
     cluster: {
