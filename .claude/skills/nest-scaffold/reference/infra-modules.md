@@ -43,7 +43,7 @@ API 速查（更全见 `src/common/modules/cache/README.md`）：
 - `getBatch` / `setBatch` / `deleteBatch` / `existsBatch`
 - `exists` / `getTtl` / `expire` / `persist` / `rename`
 - `increment` / `decrement` / `executeScript`
-- `flush()` —— 对缓存专用 DB 执行 **FLUSHDB**（cluster 模式无 DB 隔离，等同清空集群键空间），禁止业务里调用。
+- `flush()` —— 对缓存专用 DB 执行 **FLUSHDB**（cluster 模式直接抛错拒绝），禁止业务里调用。
 - `isHealthy()` —— 启动时已自动 PING 校验。
 
 **键规则**：自动添加 `${CACHE_KEY_PREFIX}:` 前缀；不能含换行；带前缀总长 ≤ 250。

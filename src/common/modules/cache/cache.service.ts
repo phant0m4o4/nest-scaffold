@@ -82,6 +82,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         { event: 'cache_redis_ping_failed', error: normalizeError(error) },
         '缓存 Redis 健康检查失败',
       );
+      // init 抛错后 Nest 不会执行 onModuleDestroy,必须就地关闭,
+      // 否则 ioredis 的无限重连定时器会泄漏并挂住进程/测试
+      await closeRedisClient({ client: this._redis, logger: this._logger });
       throw error;
     }
     this._logger.info(
@@ -396,8 +399,16 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * 清空缓存专用 DB 中的所有数据（FLUSHDB，不影响其他 DB）
+   *
+   * cluster 模式下直接拒绝：Cluster 无 DB 隔离，且 FLUSHDB 只会发到
+   * 单个节点，语义既危险又不完整。
    */
   public async flush(): Promise<void> {
+    if (this._connection.mode === 'cluster') {
+      throw new Error(
+        'cluster 模式不支持 flush()：无 DB 隔离且 FLUSHDB 仅作用于单个节点',
+      );
+    }
     const result = await this._redis.flushdb();
     if (result !== 'OK') {
       throw new Error('缓存清空失败');

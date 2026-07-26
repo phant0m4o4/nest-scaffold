@@ -105,6 +105,9 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
         { event: 'lock_redis_ping_failed', error: normalizeError(error) },
         '分布式锁 Redis 健康检查失败',
       );
+      // init 抛错后 Nest 不会执行 onModuleDestroy,必须就地关闭,
+      // 否则 ioredis 的无限重连定时器会泄漏并挂住进程/测试
+      await closeRedisClient({ client: this._client, logger: this._logger });
       throw error;
     }
     this._redlock = new Redlock([this._client], DEFAULT_REDLOCK_SETTINGS);

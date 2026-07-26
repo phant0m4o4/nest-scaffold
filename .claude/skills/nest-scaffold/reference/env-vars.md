@@ -99,14 +99,14 @@ export default myConfig;
 | `DISTRIBUTED_LOCK_KEY_PREFIX` | `distributed-lock` | 锁键前缀 |
 | `DISTRIBUTED_LOCK_REDIS_*` | 见上文通用形态 | 自带连接配置（HOST/PORT/DB 必填）。锁数据不可丢，禁止与缓存等可清空数据共用 DB（cluster 模式无 DB 概念，需独立实例） |
 
-## QueueModule（独享 Redis 连接）
+## QueueModule（独享 Redis 连接，自带配置）
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `QUEUE_REDIS_HOST` | `${REDIS_HOST}` | BullMQ 专用主机 |
-| `QUEUE_REDIS_PORT` | `${REDIS_PORT}` | |
-| `QUEUE_REDIS_PASSWORD` | `${REDIS_PASSWORD}` | |
-| `QUEUE_REDIS_DB` | `0` | |
+| `QUEUE_REDIS_HOST` | —（必填） | BullMQ 专用主机，可引用 `${REDIS_HOST}` 锚点 |
+| `QUEUE_REDIS_PORT` | —（必填） | |
+| `QUEUE_REDIS_PASSWORD` | — | 可选 |
+| `QUEUE_REDIS_DB` | —（必填） | 队列专用 DB，禁止与缓存/锁共用（推荐 `2`） |
 | `QUEUE_KEY_PREFIX` | `queue` | 队列 key 前缀 |
 | `QUEUE_DASHBOARD_ROUTE` | `/queues` | Bull Board 路由（仅开发环境） |
 
@@ -178,11 +178,11 @@ DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}
 DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
 DISTRIBUTED_LOCK_REDIS_DB=0
 
-#Queue（独立连接，默认引用上方 REDIS_*）
+#Queue（自带连接配置，独立 DB）
 QUEUE_REDIS_HOST=${REDIS_HOST}
 QUEUE_REDIS_PORT=${REDIS_PORT}
 QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
-QUEUE_REDIS_DB=0
+QUEUE_REDIS_DB=2
 QUEUE_KEY_PREFIX=queue
 QUEUE_DASHBOARD_ROUTE=/queues
 

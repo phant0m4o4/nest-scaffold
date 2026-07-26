@@ -1,5 +1,6 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
 import { resolveRedisConnection } from '@/common/utils/redis/redis-connection';
+import { optionalEnvInt } from '@/common/utils/zod/optional-env-int';
 import { ConfigType } from '@nestjs/config';
 import { z } from 'zod';
 
@@ -27,9 +28,9 @@ const environmentSchema = z.object({
     .enum(['single', 'sentinel', 'cluster'])
     .optional(),
   DISTRIBUTED_LOCK_REDIS_HOST: z.string().min(1).optional(),
-  DISTRIBUTED_LOCK_REDIS_PORT: z.coerce.number().int().optional(),
+  DISTRIBUTED_LOCK_REDIS_PORT: optionalEnvInt(1),
   DISTRIBUTED_LOCK_REDIS_PASSWORD: z.string().optional(),
-  DISTRIBUTED_LOCK_REDIS_DB: z.coerce.number().int().min(0).optional(),
+  DISTRIBUTED_LOCK_REDIS_DB: optionalEnvInt(0),
   DISTRIBUTED_LOCK_REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
   DISTRIBUTED_LOCK_REDIS_SENTINELS: z.string().min(1).optional(),
   DISTRIBUTED_LOCK_REDIS_CLUSTER_NODES: z.string().min(1).optional(),

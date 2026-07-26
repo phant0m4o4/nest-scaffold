@@ -1,8 +1,8 @@
 # CacheModule
 
-提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**（`CACHE_REDIS_DB`，默认 `1`；地址/密码/拓扑复用 `REDIS_*` 基础连接配置，见 `.env.example`）。
+提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**：连接配置完全自带（`CACHE_REDIS_*` 命名空间，`HOST`/`PORT`/`DB` 必填，缺失直接启动报错并指明变量名，见 `.env.example`）。
 
-> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。本模块默认已用 `CACHE_REDIS_DB=1` 与共享连接（`REDIS_DB=0`）隔离；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
+> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。`.env.example` 的推荐分配为缓存 `CACHE_REDIS_DB=1`、锁 `DISTRIBUTED_LOCK_REDIS_DB=0`、队列 `QUEUE_REDIS_DB=2`；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
 
 ## 功能特性
 
@@ -133,7 +133,7 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 | `expire(key, ttl)`                    | 设置过期时间                |
 | `persist(key)`                        | 移除过期时间                |
 | `rename(oldKey, newKey)`              | 重命名键                    |
-| `flush()`                             | 清空所有缓存                |
+| `flush()`                             | 清空缓存专用 DB（cluster 模式直接拒绝） |
 | `increment(key, step?)`               | 原子递增                    |
 | `decrement(key, step?)`               | 原子递减                    |
 | `executeScript(script, keys?, args?)` | 执行 Lua 脚本               |
@@ -161,6 +161,6 @@ configs/
 ## 注意事项
 
 - `setBatch` 使用 Redis Pipeline 一次性提交所有写入，相比逐条写入性能更优
-- `flush()` 会执行 `FLUSHDB`，清空**缓存专用 DB** 内的所有数据（不影响其他 DB；但 cluster 模式下无 DB 隔离，等同清空整个集群键空间，**请谨慎使用**）
+- `flush()` 会执行 `FLUSHDB`，清空**缓存专用 DB** 内的所有数据（不影响其他 DB）；cluster 模式下会**直接抛错拒绝**（Cluster 无 DB 隔离，且 FLUSHDB 只会发送到单个节点，语义既危险又不完整）
 - TTL 为 `0` 时会抛出异常（Redis 不支持 0 秒过期），使用 `-1` 表示永不过期
 - 模块启动时会自动执行 `PING` 健康检查，失败则阻止应用启动

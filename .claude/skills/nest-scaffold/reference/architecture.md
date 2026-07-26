@@ -92,9 +92,9 @@ src/
 2. `LoggerModule.forRoot({ name: 'app' })`
 3. `I18nModule` / `CacheModule` / `DatabaseModule` / `DistributedLockModule` / `QueueModule`（需要 Redis 的模块各自建连，无共享 Redis 模块）
 4. `ApiModule`（业务聚合）
-6. `GlobalResponseInterceptor` 通过 `APP_INTERCEPTOR` Provider 注册
-7. `I18nZodValidationPipe`（`app/pipes/`，基于 zod，校验消息按请求语言本地化）通过 `APP_PIPE` 注册 —— DTO 校验全局生效
-8. `GlobalExceptionFilter`（`app/filters/`）通过 `APP_FILTER` 注册 —— 所有异常统一为 `{ statusCode, code, message, errors? }` 信封，仓储异常映射语义化状态码（404/409/400/503），未知异常 500 并记录日志
+5. `GlobalResponseInterceptor` 通过 `APP_INTERCEPTOR` Provider 注册
+6. `I18nZodValidationPipe`（`app/pipes/`，基于 zod，校验消息按请求语言本地化）通过 `APP_PIPE` 注册 —— DTO 校验全局生效
+7. `GlobalExceptionFilter`（`app/filters/`）通过 `APP_FILTER` 注册 —— 所有异常统一为 `{ statusCode, code, message, errors? }` 信封，仓储异常映射语义化状态码（404/409/400/503），未知异常 500 并记录日志
 
 ## main.ts 启动要点
 

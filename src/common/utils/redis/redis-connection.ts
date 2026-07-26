@@ -86,6 +86,21 @@ function requireField<T>(
   return value;
 }
 
+/** 解析节点列表并断言非空（空白/纯逗号会解析出空列表，同样按缺失报错） */
+function requireNodes(
+  value: string | undefined,
+  envPrefix: string,
+  suffix: string,
+): Array<{ host: string; port: number }> {
+  const nodes = parseHostPortPairs(requireField(value, envPrefix, suffix));
+  if (nodes.length === 0) {
+    throw new Error(
+      `Redis 连接配置无效: 环境变量 ${envPrefix}_${suffix} 未包含任何有效的 host:port 节点`,
+    );
+  }
+  return nodes;
+}
+
 /**
  * 将模块自己的 `<PREFIX>_REDIS_*` 环境变量解析为 Redis 连接配置
  *
@@ -98,13 +113,18 @@ export function resolveRedisConnection(
 ): RedisConnectionConfig {
   const { envPrefix } = input;
   const mode = input.mode ?? 'single';
+  // 空串密码视为未设置（锚点变量缺失时 ${...} 会展开为空串）
+  const password =
+    input.password === undefined || input.password === ''
+      ? undefined
+      : input.password;
   if (mode === 'single') {
     return {
       mode,
       single: {
         host: requireField(input.host, envPrefix, 'HOST'),
         port: requireField(input.port, envPrefix, 'PORT'),
-        password: input.password ?? undefined,
+        password,
         db: requireField(input.db, envPrefix, 'DB'),
       },
     };
@@ -118,10 +138,8 @@ export function resolveRedisConnection(
           envPrefix,
           'SENTINEL_MASTER_NAME',
         ),
-        sentinels: parseHostPortPairs(
-          requireField(input.sentinels, envPrefix, 'SENTINELS'),
-        ),
-        password: input.password ?? undefined,
+        sentinels: requireNodes(input.sentinels, envPrefix, 'SENTINELS'),
+        password,
         db: requireField(input.db, envPrefix, 'DB'),
       },
     };
@@ -129,10 +147,8 @@ export function resolveRedisConnection(
   return {
     mode,
     cluster: {
-      nodes: parseHostPortPairs(
-        requireField(input.clusterNodes, envPrefix, 'CLUSTER_NODES'),
-      ),
-      password: input.password ?? undefined,
+      nodes: requireNodes(input.clusterNodes, envPrefix, 'CLUSTER_NODES'),
+      password,
     },
   };
 }

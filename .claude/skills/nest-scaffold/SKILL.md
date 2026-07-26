@@ -194,7 +194,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 - 在长期运行的服务中调用 `unique()` / `uniqueArray()`。这两个函数有进程内 Map，**仅限 seed CLI 使用**。
 - 业务里 `setTimeout` 做时序。改用 BullMQ 队列或 cron。
 - 控制器返回未经 `Entity.create(raw)` 净化的 Drizzle 原始行（zod schema 会剔除未声明字段；直接返回原始行会泄露未声明字段，且时间格式不可控）。
-- 在新业务里跑 `flushdb` / `cache.flush()`（会清空缓存专用 DB 的全部数据；cluster 模式下等同清空集群键空间）。
+- 在新业务里跑 `flushdb` / `cache.flush()`（会清空缓存专用 DB 的全部数据；cluster 模式下 `flush()` 会直接抛错拒绝）。
 - 让缓存与锁/队列等不可丢数据的服务共用一个 Redis DB（缓存可随时清空/被淘汰，必须独立 DB，`CACHE_REDIS_DB` 默认 1）。
 - 把 Redis client 直接共享给 BullMQ：BullMQ Worker 需要专用 blocking 连接，统一通过 `QueueModule` 接管。
 - 在 `.env` 里直接写明文密码并提交。所有敏感字段都通过 redact 脱敏并保持 `.env` 不入库。
