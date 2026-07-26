@@ -10,7 +10,7 @@ NestJS 11 + TypeScript 5 + Drizzle ORM (MySQL) + ioredis + BullMQ + nestjs-pino 
 适用场景：
 
 1. 在**本仓库或同款脚手架内**开发新业务模块、新 Drizzle 表、新仓储/服务/控制器、对应单元/E2E 测试。
-2. 在新目录从零 **bootstrap** 一个同款脚手架，复用所有基础设施模块（Cache / Queue / DistributedLock / Redis / Logger / Database / I18n / Bottleneck）。
+2. 在新目录从零 **bootstrap** 一个同款脚手架，复用所有基础设施模块（Cache / Queue / DistributedLock / Logger / Database / I18n / Bottleneck，需要 Redis 的模块各自建连）。
 
 ## 何时使用本 Skill
 
@@ -51,7 +51,7 @@ src/
 ├── common/
 │   ├── enums/                  # 跨模块通用枚举
 │   ├── modules/                # 通用基础设施模块（全部 @Global()）
-│   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/ redis/
+│   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/
 │   └── utils/                  # 通用工具：register-env-as-config、date-time、hash 等
 ├── configs/                    # 各模块的 ConfigModule（registerEnvAsConfig）
 ├── database/
@@ -74,7 +74,7 @@ src/
 | 新增业务模块（含 controller/service/dto/repository/tests） | 见下方"工作流 A" | `reference/module-development.md` + `reference/rest-api.md` |
 | 新增一张数据库表 | 见下方"工作流 B" | `reference/database.md` |
 | 写/改测试（Vitest） | 见 `reference/testing.md` | `reference/testing.md` |
-| 使用 Cache / Queue / DistributedLock / Redis / Logger | 看对应模块 README + 见 `reference/infra-modules.md` | `reference/infra-modules.md` |
+| 使用 Cache / Queue / DistributedLock / Logger 或自建 Redis 连接 | 看对应模块 README + 见 `reference/infra-modules.md` | `reference/infra-modules.md` |
 | 加配置（环境变量） | 在 `src/configs/<name>.config.ts` 写 zod 环境变量 schema + `registerEnvAsConfig` | `reference/env-vars.md` |
 | 写 commit message | 见 `reference/git-commit.md` | `reference/git-commit.md` |
 | 从零 bootstrap 新项目 | 运行 `scripts/bootstrap.sh <target-dir> <APP_NAME>` | `scripts/README.md` |
@@ -166,7 +166,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 | `reference/module-development.md` | 业务模块组成、控制器/服务/仓储约定 |
 | `reference/rest-api.md` | RESTful 规范、统一响应、CRUD 与 DTO 命名 |
 | `reference/database.md` | Drizzle schema、BaseRepository、基础数据（数据迁移）/seed、事务 |
-| `reference/infra-modules.md` | Cache / Queue / DistributedLock / Redis / Logger 用法 |
+| `reference/infra-modules.md` | Cache / Queue / DistributedLock / Logger 用法与 Redis 连接约定 |
 | `reference/testing.md` | Vitest / Testcontainers / useMocker / overrideProvider |
 | `reference/git-commit.md` | Commitizen 风格、type/scope/body 语言规则、分支与推送规范 |
 | `reference/env-vars.md` | 完整环境变量清单、默认值、配置注册方式 |
@@ -194,7 +194,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 - 在长期运行的服务中调用 `unique()` / `uniqueArray()`。这两个函数有进程内 Map，**仅限 seed CLI 使用**。
 - 业务里 `setTimeout` 做时序。改用 BullMQ 队列或 cron。
 - 控制器返回未经 `Entity.create(raw)` 净化的 Drizzle 原始行（zod schema 会剔除未声明字段；直接返回原始行会泄露未声明字段，且时间格式不可控）。
-- 在新业务里跑 `flushdb` / `cache.flush()`（会清空缓存专用 DB 的全部数据；cluster 模式下等同清空集群键空间）。
+- 在新业务里跑 `flushdb` / `cache.flush()`（会清空缓存专用 DB 的全部数据；cluster 模式下 `flush()` 会直接抛错拒绝）。
 - 让缓存与锁/队列等不可丢数据的服务共用一个 Redis DB（缓存可随时清空/被淘汰，必须独立 DB，`CACHE_REDIS_DB` 默认 1）。
 - 把 Redis client 直接共享给 BullMQ：BullMQ Worker 需要专用 blocking 连接，统一通过 `QueueModule` 接管。
 - 在 `.env` 里直接写明文密码并提交。所有敏感字段都通过 redact 脱敏并保持 `.env` 不入库。

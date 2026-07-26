@@ -126,10 +126,13 @@ Redis 模式通过将限流状态（当前并发数、令牌桶、队列）存�
 | 变量                          | 类型                    | 默认值       | 说明                        |
 | ----------------------------- | ----------------------- | ------------ | --------------------------- |
 | `BOTTLENECK_MODE`             | `'redis'` \| `'memory'` | `memory`     | 运行模式                    |
-| `BOTTLENECK_REDIS_HOST`       | string                  | `127.0.0.1`  | Redis 主机（仅 redis 模式） |
-| `BOTTLENECK_REDIS_PORT`       | number                  | `6379`       | Redis 端口                  |
+| `BOTTLENECK_REDIS_MODE`       | string                  | `single`     | 连接拓扑：`single` / `sentinel` / `cluster`（仅 redis 模式） |
+| `BOTTLENECK_REDIS_HOST`       | string                  | —（必填）    | Redis 主机（single 模式）   |
+| `BOTTLENECK_REDIS_PORT`       | number                  | —（必填）    | Redis 端口（single 模式）   |
 | `BOTTLENECK_REDIS_PASSWORD`   | string                  | —            | Redis 密码（可选）          |
-| `BOTTLENECK_REDIS_DB`         | number                  | `0`          | Redis 数据库编号            |
+| `BOTTLENECK_REDIS_DB`         | number                  | —（必填）    | Redis 数据库编号（推荐 `3`，禁止与缓存/锁/队列共用） |
+| `BOTTLENECK_REDIS_SENTINEL_MASTER_NAME` / `BOTTLENECK_REDIS_SENTINELS` | string | — | sentinel 模式必填 |
+| `BOTTLENECK_REDIS_CLUSTER_NODES` | string               | —            | cluster 模式必填，`host:port,host:port` |
 | `BOTTLENECK_REDIS_KEY_PREFIX` | string                  | `bottleneck` | Redis key 前缀              |
 
 ## 快速开始

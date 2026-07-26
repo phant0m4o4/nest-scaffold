@@ -94,7 +94,7 @@ describe('DemoService', () => {
 2. 工厂内需要的类可放独立文件，在工厂内 `await import()` 引入。
 3. mock 构造函数时实现必须用**普通 `function`**（可被 `new` 调用），不能用箭头函数。
 
-参考 `src/common/modules/redis/__tests__/redis.factory.spec.ts` 的实际写法：
+参考 `src/common/utils/redis/__tests__/redis.factory.spec.ts` 的实际写法：
 
 ```ts
 const { redisInstances } = vi.hoisted(() => ({
@@ -186,8 +186,8 @@ describe('Demo E2E', () => {
 
 ## 已存在的测试参考
 
-- `src/common/modules/redis/__tests__/redis.factory.spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
-- `src/common/modules/redis/__tests__/redis.module.e2e-spec.ts` —— testcontainers E2E 样例
+- `src/common/utils/redis/__tests__/redis.factory.spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
+- `src/common/utils/redis/__tests__/redis-factory.e2e-spec.ts` —— testcontainers E2E 样例
 
 ## 覆盖范围要求
 

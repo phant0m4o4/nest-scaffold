@@ -1,3 +1,8 @@
+import {
+  closeRedisClient,
+  createRedisClient,
+} from '@/common/utils/redis/redis.factory';
+import type { RedisClient } from '@/common/utils/redis/redis.types';
 import { BottleneckConfigType } from '@/configs/bottleneck.config';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -32,16 +37,14 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
   /** Bottleneck IORedisConnection 实例（仅 Redis 模式），所有限流器共享 */
   private _bottleneckConnection: IBottleneckConnection | null = null;
 
+  /** 自建的 ioredis 客户端（仅 Redis 模式），交由 IORedisConnection 使用 */
+  private _client: RedisClient | null = null;
+
   /** 当前运行模式 */
   private readonly _mode: 'redis' | 'memory';
 
-  /** Redis 连接配置（仅 Redis 模式） */
-  private readonly _redisConfig: {
-    host: string;
-    port: number;
-    password?: string;
-    db: number;
-  } | null;
+  /** Redis 连接配置（仅 Redis 模式，支持 single / sentinel / cluster） */
+  private readonly _connection: BottleneckConfigType['connection'];
 
   /** Redis key 前缀 */
   private readonly _keyPrefix: string;
@@ -55,15 +58,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       this._configService.getOrThrow<BottleneckConfigType>('bottleneck');
     this._mode = config.mode;
     this._keyPrefix = config.keyPrefix;
-    this._redisConfig =
-      this._mode === 'redis'
-        ? {
-            host: config.redis.host,
-            port: config.redis.port,
-            password: config.redis.password,
-            db: config.redis.db,
-          }
-        : null;
+    this._connection = config.connection;
     this._logger.info(
       { event: 'bottleneck_service_created', mode: this._mode },
       `Bottleneck 服务已创建，模式: ${this._mode}`,
@@ -71,14 +66,18 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 模块初始化 — Redis 模式下创建 IORedisConnection
+   * 模块初始化 — Redis 模式下自建 ioredis 客户端并创建 IORedisConnection
    */
   async onModuleInit(): Promise<void> {
-    if (this._mode !== 'redis' || !this._redisConfig) {
+    if (this._mode !== 'redis' || !this._connection) {
       return;
     }
+    this._client = createRedisClient({
+      config: this._connection,
+      logger: this._logger,
+    });
     try {
-      this._bottleneckConnection = this._createConnection();
+      this._bottleneckConnection = this._createConnection(this._client);
       this._bottleneckConnection.on('error', (error) => {
         this._logger.error(
           {
@@ -98,6 +97,10 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
         },
         'Bottleneck Redis 连接失败',
       );
+      // init 抛错后 Nest 不会执行 onModuleDestroy,必须就地关闭自建客户端,
+      // 否则 ioredis 的无限重连定时器会泄漏并挂住进程/测试
+      await closeRedisClient({ client: this._client, logger: this._logger });
+      this._client = null;
       throw error;
     }
   }
@@ -109,6 +112,11 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     await this._disconnectAllLimiters();
     this._limiters.clear();
     await this._closeConnection();
+    if (this._client) {
+      // Bottleneck 只负责它自己 duplicate 出的订阅连接,自建客户端由本服务关闭
+      await closeRedisClient({ client: this._client, logger: this._logger });
+      this._client = null;
+    }
     this._logger.info('Bottleneck 服务已销毁');
   }
 
@@ -248,19 +256,14 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
    * 将 Bottleneck.IORedisConnection 构造与类型断言集中在此处，
    * 避免在多处重复 `as unknown as` 断言。
    */
-  private _createConnection(): IBottleneckConnection {
+  private _createConnection(client: RedisClient): IBottleneckConnection {
     const BottleneckRef = Bottleneck as unknown as Record<string, unknown>;
     const ConnectionCtor = BottleneckRef['IORedisConnection'] as new (
       opts: Record<string, unknown>,
     ) => IBottleneckConnection;
-    return new ConnectionCtor({
-      clientOptions: {
-        host: this._redisConfig!.host,
-        port: this._redisConfig!.port,
-        password: this._redisConfig!.password,
-        db: this._redisConfig!.db,
-      },
-    });
+    // 传入自建的 ioredis 客户端（支持 single / sentinel / cluster），
+    // 而非平铺的 clientOptions（后者只能表达 single 模式）
+    return new ConnectionCtor({ client });
   }
 
   /**

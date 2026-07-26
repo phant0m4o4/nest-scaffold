@@ -69,18 +69,20 @@ export default myConfig;
 | `PGSQL_USER` | — | |
 | `PGSQL_PASSWORD` | — | |
 
-## Redis（RedisModule，全局共享）
+## Redis 公共锚点变量（应用不直接读取）
 
-| 变量 | 模式 | 默认 | 说明 |
-|------|------|------|------|
-| `REDIS_MODE` | — | `single` | `single` / `sentinel` / `cluster` |
-| `REDIS_PASSWORD` | 全部 | — | 鉴权 |
-| `REDIS_DB` | single/sentinel | `0` | DB 编号 |
-| `REDIS_HOST` | single | `127.0.0.1` | |
-| `REDIS_PORT` | single | `6379` | |
-| `REDIS_SENTINEL_MASTER_NAME` | sentinel | — | 必填 |
-| `REDIS_SENTINELS` | sentinel | — | `host:port,host:port` |
-| `REDIS_CLUSTER_NODES` | cluster | — | `host:port,host:port` |
+`REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` 仅作为 `.env` 内的锚点，供各模块的 `*_REDIS_*` 通过 `${REDIS_HOST}` 引用，避免重复书写地址。**每个需要 Redis 的模块只读自己命名空间的连接配置**（`CACHE_REDIS_*` / `DISTRIBUTED_LOCK_REDIS_*` / `QUEUE_REDIS_*`），必填缺失直接启动报错，不回退读其他模块。
+
+各模块连接配置的通用形态（`<P>` 为模块前缀，如 `CACHE_REDIS`）：
+
+| 变量 | 模式 | 说明 |
+|------|------|------|
+| `<P>_MODE` | — | `single`（默认）/ `sentinel` / `cluster` |
+| `<P>_HOST` / `<P>_PORT` | single | 必填 |
+| `<P>_PASSWORD` | 全部 | 可选 |
+| `<P>_DB` | single/sentinel | 必填，模块专用 DB（互相禁止共用） |
+| `<P>_SENTINEL_MASTER_NAME` / `<P>_SENTINELS` | sentinel | 必填，`host:port,host:port` |
+| `<P>_CLUSTER_NODES` | cluster | 必填，`host:port,host:port` |
 
 ## CacheModule
 
@@ -88,22 +90,23 @@ export default myConfig;
 |------|------|------|
 | `CACHE_TTL_SECONDS` | `604800`（7 天） | 默认 TTL |
 | `CACHE_KEY_PREFIX` | `cache` | 键前缀 |
-| `CACHE_REDIS_DB` | `1` | 缓存专用 Redis DB。缓存可随时清空，禁止与锁/队列等共用一个 DB（cluster 模式无 DB 概念，需独立集群） |
+| `CACHE_REDIS_*` | 见上文通用形态 | 自带连接配置（HOST/PORT/DB 必填）。缓存可随时清空，禁止与锁/队列等共用一个 DB（cluster 模式无 DB 概念，需独立集群） |
 
-## DistributedLockModule
+## DistributedLockModule（独立 Redis 连接）
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `DISTRIBUTED_LOCK_KEY_PREFIX` | `distributed-lock` | 锁键前缀 |
+| `DISTRIBUTED_LOCK_REDIS_*` | 见上文通用形态 | 自带连接配置（HOST/PORT/DB 必填）。锁数据不可丢，禁止与缓存等可清空数据共用 DB（cluster 模式无 DB 概念，需独立实例） |
 
-## QueueModule（独享 Redis 连接）
+## QueueModule（独享 Redis 连接，自带配置）
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `QUEUE_REDIS_HOST` | `${REDIS_HOST}` | BullMQ 专用主机 |
-| `QUEUE_REDIS_PORT` | `${REDIS_PORT}` | |
-| `QUEUE_REDIS_PASSWORD` | `${REDIS_PASSWORD}` | |
-| `QUEUE_REDIS_DB` | `0` | |
+| `QUEUE_REDIS_HOST` | —（必填） | BullMQ 专用主机，可引用 `${REDIS_HOST}` 锚点 |
+| `QUEUE_REDIS_PORT` | —（必填） | |
+| `QUEUE_REDIS_PASSWORD` | — | 可选 |
+| `QUEUE_REDIS_DB` | —（必填） | 队列专用 DB，禁止与缓存/锁共用（推荐 `2`） |
 | `QUEUE_KEY_PREFIX` | `queue` | 队列 key 前缀 |
 | `QUEUE_DASHBOARD_ROUTE` | `/queues` | Bull Board 路由（仅开发环境） |
 
@@ -126,10 +129,7 @@ export default myConfig;
 |------|------|------|
 | `BOTTLENECK_MODE` | `memory` | `memory` / `redis` |
 | `BOTTLENECK_REDIS_KEY_PREFIX` | `bottleneck` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_HOST` | `127.0.0.1` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_PORT` | `6379` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_PASSWORD` | — | 仅 redis 模式，可空 |
-| `BOTTLENECK_REDIS_DB` | `0` | 仅 redis 模式 |
+| `BOTTLENECK_REDIS_*` | 见上文通用形态 | 仅 redis 模式；自带连接配置（HOST/PORT/DB 必填，推荐 DB `3`），支持 single/sentinel/cluster |
 
 ## .env 完整示例
 
@@ -151,30 +151,35 @@ PGSQL_DATABASE=${APP_NAME}
 PGSQL_USER=postgres
 PGSQL_PASSWORD=root_password
 
-#Redis（全应用共享）
-REDIS_MODE=single
+#Redis 公共锚点变量（应用不直接读取，仅供下方 *_REDIS_* 引用）
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
-REDIS_DB=0
 
 #Log
 LOG_FILE_ENABLE=true
 LOG_FILE_PATH=./logs/app.log
 
-#Cache
+#Cache（自带连接配置，独立 DB）
 CACHE_TTL_SECONDS=604800
 CACHE_KEY_PREFIX=cache
-CACHE_REDIS_DB=1
+CACHE_REDIS_HOST=${REDIS_HOST}
+CACHE_REDIS_PORT=${REDIS_PORT}
+CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
+CACHE_REDIS_DB=0
 
-#Distributed Lock
+#Distributed Lock（自带连接配置，独立 DB）
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
+DISTRIBUTED_LOCK_REDIS_HOST=${REDIS_HOST}
+DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}
+DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
+DISTRIBUTED_LOCK_REDIS_DB=1
 
-#Queue（独立连接，默认引用上方 REDIS_*）
+#Queue（自带连接配置，独立 DB）
 QUEUE_REDIS_HOST=${REDIS_HOST}
 QUEUE_REDIS_PORT=${REDIS_PORT}
 QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
-QUEUE_REDIS_DB=0
+QUEUE_REDIS_DB=2
 QUEUE_KEY_PREFIX=queue
 QUEUE_DASHBOARD_ROUTE=/queues
 

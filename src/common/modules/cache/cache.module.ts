@@ -1,5 +1,4 @@
 import cacheConfig from '@/configs/cache.config';
-import redisConfig from '@/configs/redis.config';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CacheService } from './cache.service';
@@ -17,10 +16,7 @@ import { CacheService } from './cache.service';
  */
 @Global()
 @Module({
-  imports: [
-    ConfigModule.forFeature(cacheConfig),
-    ConfigModule.forFeature(redisConfig),
-  ],
+  imports: [ConfigModule.forFeature(cacheConfig)],
   providers: [CacheService],
   exports: [CacheService],
 })

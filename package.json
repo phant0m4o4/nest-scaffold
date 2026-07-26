@@ -92,5 +92,10 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "pnpm": {
+    "overrides": {
+      "ioredis": "^5.10.0"
+    }
   }
 }

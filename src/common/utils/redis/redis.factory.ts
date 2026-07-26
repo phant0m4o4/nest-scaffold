@@ -1,5 +1,5 @@
 import { normalizeError } from '@/common/utils/normalize-error';
-import type { RedisModuleConfig } from '@/configs/redis.config';
+import type { RedisConnectionConfig } from '@/common/utils/redis/redis-connection';
 import { Cluster, Redis } from 'ioredis';
 import type { PinoLogger } from 'nestjs-pino';
 
@@ -10,7 +10,7 @@ import type { RedisClient } from './redis.types';
  */
 interface ICreateRedisClientParams {
   /** 由 ConfigService 加载的 Redis 配置（已包含 mode 与对应分支） */
-  readonly config: RedisModuleConfig;
+  readonly config: RedisConnectionConfig;
   /** PinoLogger 实例，用于挂载 connect / ready / error / close 事件日志 */
   readonly logger: PinoLogger;
 }
@@ -31,6 +31,26 @@ const ACTIVE_CLIENT_STATUSES: ReadonlySet<string> = new Set([
   'connect',
   'connecting',
 ]);
+
+/** quit() 优雅关闭的最长等待时间（ms），超时后强制 disconnect */
+const QUIT_TIMEOUT_MS = 5_000;
+
+/**
+ * 带超时的 quit()：Redis 不可达时 quit 命令会被 ioredis 无限排队重试、
+ * 永不 resolve，超时后转为强制断开，避免优雅关闭流程永久挂起。
+ * @private
+ */
+function quitWithTimeout(client: RedisClient): Promise<unknown> {
+  return Promise.race([
+    client.quit(),
+    new Promise((_resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`quit 超过 ${QUIT_TIMEOUT_MS}ms 未完成`));
+      }, QUIT_TIMEOUT_MS);
+      timer.unref();
+    }),
+  ]);
+}
 
 /**
  * 为 Redis / Cluster 客户端挂载统一的事件日志监听
@@ -64,7 +84,7 @@ function attachClientEventListeners(
  * @private
  */
 function createSingleClient(
-  config: Extract<RedisModuleConfig, { mode: 'single' }>,
+  config: Extract<RedisConnectionConfig, { mode: 'single' }>,
 ): Redis {
   const { host, port, password, db } = config.single;
   return new Redis({
@@ -80,7 +100,7 @@ function createSingleClient(
  * @private
  */
 function createSentinelClient(
-  config: Extract<RedisModuleConfig, { mode: 'sentinel' }>,
+  config: Extract<RedisConnectionConfig, { mode: 'sentinel' }>,
 ): Redis {
   const { masterName, sentinels, password, db } = config.sentinel;
   return new Redis({
@@ -96,7 +116,7 @@ function createSentinelClient(
  * @private
  */
 function createClusterClient(
-  config: Extract<RedisModuleConfig, { mode: 'cluster' }>,
+  config: Extract<RedisConnectionConfig, { mode: 'cluster' }>,
 ): Cluster {
   const { nodes, password } = config.cluster;
   return new Cluster(
@@ -148,15 +168,18 @@ export async function closeRedisClient(
   const { client, logger } = params;
   try {
     if (ACTIVE_CLIENT_STATUSES.has(client.status)) {
-      await client.quit();
+      await quitWithTimeout(client);
     } else {
       client.disconnect();
     }
     logger.info('Redis 连接已优雅关闭');
   } catch (error: unknown) {
+    // quit 失败/超时（如 Redis 不可达时命令被无限排队）则强制断开，
+    // 确保重连定时器被清理、连接一定被释放
+    client.disconnect();
     logger.warn(
       { event: 'redis_close_warn', error: normalizeError(error) },
-      'Redis 连接关闭时发生错误，可能已关闭',
+      'Redis 优雅关闭失败，已强制断开连接',
     );
   }
 }

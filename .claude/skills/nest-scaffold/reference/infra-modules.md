@@ -4,20 +4,26 @@
 
 详细 README 在每个模块目录下；本文给出"何时用、怎么用、避坑"的速查。
 
-## RedisModule
+## Redis 连接约定（无共享客户端）
 
-**何时用**：业务直接需要 Redis 客户端（操作 Hash、List、Set、Sorted Set、Streams 等原生数据结构）。
+**本项目没有共享 Redis 客户端/模块**：每个需要 Redis 的模块（缓存、锁、队列）只读取**自己命名空间**的连接配置（如 `CACHE_REDIS_*`），通过 `resolveRedisConnection` 解析（必填缺失直接启动报错，不回退读其他模块的配置）、`redis.factory` 自建连接——一个使用方的行为（阻塞命令、FLUSHDB、被淘汰）不会影响其他使用方。`.env` 中的 `REDIS_HOST` 等是纯锚点变量，仅供 `${...}` 引用避免重复书写地址。
+
+业务直接需要 Redis 原生数据结构（Hash、List、Sorted Set、Streams 等）时，参照缓存/锁的做法：在自己的 config 里声明 `<MY>_REDIS_*` 环境变量并解析、自建连接：
 
 ```ts
-constructor(private readonly _redisService: RedisService) {}
-const client = this._redisService.getClient(); // Redis | Cluster
+import { resolveRedisConnection } from '@/common/utils/redis/redis-connection';
+import { createRedisClient, closeRedisClient } from '@/common/utils/redis/redis.factory';
+
+// config 内：connection = resolveRedisConnection({ envPrefix: 'MY_REDIS', host: env.MY_REDIS_HOST, ... })
+// onModuleInit：createRedisClient({ config: connection, logger })；onModuleDestroy：closeRedisClient
 ```
 
-支持三种模式（`REDIS_MODE`）：`single` / `sentinel` / `cluster`。
+支持三种模式（`<PREFIX>_MODE`）：`single` / `sentinel` / `cluster`。
 
 **避坑**：
 
-- 不要把这个 client 直接共享给 BullMQ。BullMQ Worker 需要 blocking subscribe 连接，框架已经在 `QueueModule` 里独立维护连接（`QUEUE_REDIS_*` 环境变量）。
+- 不要与其他模块共用 DB；新业务连接用自己的 `*_REDIS_DB` 环境变量（cluster 模式无 DB 概念，需独立实例）。
+- 不要把自建 client 共享给 BullMQ。BullMQ Worker 需要 blocking subscribe 连接，框架已经在 `QueueModule` 里独立维护连接（`QUEUE_REDIS_*` 环境变量）。
 - `Cluster` 与 `Redis` 部分命令行为不同，必要时 `instanceof Cluster` 收窄。
 
 ## CacheModule
@@ -37,7 +43,7 @@ API 速查（更全见 `src/common/modules/cache/README.md`）：
 - `getBatch` / `setBatch` / `deleteBatch` / `existsBatch`
 - `exists` / `getTtl` / `expire` / `persist` / `rename`
 - `increment` / `decrement` / `executeScript`
-- `flush()` —— 对缓存专用 DB 执行 **FLUSHDB**（cluster 模式无 DB 隔离，等同清空集群键空间），禁止业务里调用。
+- `flush()` —— 对缓存专用 DB 执行 **FLUSHDB**（cluster 模式直接抛错拒绝），禁止业务里调用。
 - `isHealthy()` —— 启动时已自动 PING 校验。
 
 **键规则**：自动添加 `${CACHE_KEY_PREFIX}:` 前缀；不能含换行；带前缀总长 ≤ 250。
@@ -161,7 +167,6 @@ this._logger.info({ event: 'user_query', userId: '1' }, '查询用户');
 import { CacheService } from '@/common/modules/cache/cache.service';
 import { DistributedLockService } from '@/common/modules/distributed-lock/distributed-lock.service';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service'; // pgsql 版见 database/pgsql/database.service
-import { RedisService } from '@/common/modules/redis/redis.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 ```
