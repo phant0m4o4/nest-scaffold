@@ -101,7 +101,9 @@ app.enableShutdownHooks();
 
 ## 与现有模块的关系
 
-`CacheModule` / `DistributedLockModule` / `QueueModule` 历史上各自维护独立的 Redis 连接，本模块**不**自动接管它们的连接，仅作为通用共享 Redis 客户端供新业务使用，避免大范围迁移风险。
+`CacheModule` / `DistributedLockModule` 复用本模块的共享连接（不再自建连接）；`QueueModule`（BullMQ）仍按其自身要求维护连接。
+
+⚠️ **生产部署注意**：共享连接意味着缓存与分布式锁落在同一个 Redis DB，这只适合开发环境。生产环境锁与缓存**至少要分 DB、建议分实例**（缓存的 `allkeys-lru` 淘汰策略 / `FLUSHDB` 会静默清掉锁键，导致互斥性失效；cluster 模式只有 db 0，必须分实例），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
 
 ## 测试
 
