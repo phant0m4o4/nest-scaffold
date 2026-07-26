@@ -99,6 +99,8 @@
 
 「本机/个人信息」包括但不限于:真实姓名、个人邮箱、本机用户名、本机绝对路径(`/Users/<user>/...` 这类)、主机名、机器序列号等。引用路径用相对路径或占位符,不要贴本机绝对路径。**本规则文档自身也受此约束——举例一律用占位符,不要写真实值。**
 
+**AI 署名信息同样视为隐私信息,禁止出现在提交信息、PR 标题/描述、代码与文档中**:包括 `Co-Authored-By: Claude ...` 等 AI 合作者尾注、`Claude-Session:` / `claude.ai` 会话链接、"Generated with Claude Code" 之类的生成声明。会话链接可关联到个人 AI 账号与使用记录,属于隐私泄露;AI 代理默认附加的署名尾注一律不写。
+
 **1. 提交 / 推送一律走 SSH key。**
 
 - remote 必须用 SSH 形式 `git@github.com:<owner>/<repo>.git`,**不要用 HTTPS**。
@@ -127,7 +129,7 @@
   git config --local user.email "$GH_USER@users.noreply.github.com"
   ```
 
-**3. 提交前自检:**`git log`、`git config --local --list`、以及 diff 中不得出现上述任何本机/个人信息;发现就先清理再提交。
+**3. 提交前自检:**`git log`、`git config --local --list`、以及 diff 中不得出现上述任何本机/个人信息或 AI 署名信息(`Co-Authored-By: Claude`、`Claude-Session`、`claude.ai` 链接等);发现就先清理再提交。PR 的标题与描述同样适用。
 
 **4. 开发分支规范(GitHub Flow)。**
 
