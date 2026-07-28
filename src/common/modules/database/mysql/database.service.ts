@@ -91,7 +91,7 @@ class DrizzleQueryLogger implements DrizzleLogger {
  *
  * 基于 MySQL2 连接池 + Drizzle ORM，提供：
  * - `db`：Drizzle 数据库实例，供 Repository 层直接使用
- * - 连接池生命周期管理（启动验证、优雅关闭）
+ * - 连接池生命周期管理（启动验证、平滑关闭）
  * - 开发环境 SQL 查询日志
  *
  * @see README.md 查看完整使用示例与配置说明

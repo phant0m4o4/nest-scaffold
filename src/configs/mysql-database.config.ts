@@ -1,4 +1,5 @@
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
+import { optionalEnvInt } from '@/common/utils/zod/optional-env-int';
 import { ConfigType } from '@nestjs/config';
 import { z } from 'zod';
 /**
@@ -13,7 +14,7 @@ import { z } from 'zod';
  */
 const environmentSchema = z.object({
   MYSQL_HOST: z.string().optional(),
-  MYSQL_PORT: z.coerce.number().int().optional(),
+  MYSQL_PORT: optionalEnvInt(1),
   MYSQL_DATABASE: z.string().min(1),
   MYSQL_USER: z.string().min(1),
   MYSQL_PASSWORD: z.string().min(1),

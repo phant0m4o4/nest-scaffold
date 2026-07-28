@@ -21,7 +21,7 @@ import { z } from 'zod';
  * CACHE_REDIS_DB=0
  */
 const environmentSchema = z.object({
-  CACHE_TTL_SECONDS: z.coerce.number().int().optional(),
+  CACHE_TTL_SECONDS: optionalEnvInt(1),
   CACHE_KEY_PREFIX: z.string().optional(),
   CACHE_REDIS_MODE: z.enum(['single', 'sentinel', 'cluster']).optional(),
   CACHE_REDIS_HOST: z.string().min(1).optional(),

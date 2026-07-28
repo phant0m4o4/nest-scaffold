@@ -212,7 +212,7 @@ describe('redis.factory', () => {
   });
 
   describe('closeRedisClient', () => {
-    it('在客户端 status 为 ready 时应调用 quit 并打印优雅关闭日志', async () => {
+    it('在客户端 status 为 ready 时应调用 quit 并打印平滑关闭日志', async () => {
       const mockClient = new MockRedisClient([]);
       mockClient.status = 'ready';
       const mockLogger = buildMockLogger();
@@ -225,7 +225,7 @@ describe('redis.factory', () => {
       expect(mockClient.quit).toHaveBeenCalledTimes(1);
       expect(mockClient.disconnect).not.toHaveBeenCalled();
       expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('优雅关闭'),
+        expect.stringContaining('平滑关闭'),
       );
     });
 

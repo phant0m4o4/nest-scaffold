@@ -6,7 +6,7 @@
 ## 功能特性
 
 - `DatabaseService`：MySQL2 连接池 + Drizzle ORM 实例（绑定全部 Schema）
-- 连接池生命周期管理：启动时自动验证连接、销毁时优雅关闭
+- 连接池生命周期管理：启动时自动验证连接、销毁时平滑关闭
 - 开发环境自动输出参数化 SQL 查询日志
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
 - CLI 工具脚本（`ToolsModule`）：`db:seed:mysql`（演示数据）与 `db:reset:mysql`（重置到迁移基线），均仅限开发环境

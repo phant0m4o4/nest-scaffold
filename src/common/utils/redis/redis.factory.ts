@@ -25,19 +25,19 @@ interface ICloseRedisClientParams {
   readonly logger: PinoLogger;
 }
 
-/** 处于活跃状态的客户端 status 集合，仅这些状态使用 quit() 优雅关闭 */
+/** 处于活跃状态的客户端 status 集合，仅这些状态使用 quit() 平滑关闭 */
 const ACTIVE_CLIENT_STATUSES: ReadonlySet<string> = new Set([
   'ready',
   'connect',
   'connecting',
 ]);
 
-/** quit() 优雅关闭的最长等待时间（ms），超时后强制 disconnect */
+/** quit() 平滑关闭的最长等待时间（ms），超时后强制 disconnect */
 const QUIT_TIMEOUT_MS = 5_000;
 
 /**
  * 带超时的 quit()：Redis 不可达时 quit 命令会被 ioredis 无限排队重试、
- * 永不 resolve，超时后转为强制断开，避免优雅关闭流程永久挂起。
+ * 永不 resolve，超时后转为强制断开，避免平滑关闭流程永久挂起。
  * @private
  */
 function quitWithTimeout(client: RedisClient): Promise<unknown> {
@@ -153,7 +153,7 @@ export function createRedisClient(
 }
 
 /**
- * 优雅关闭 Redis / Cluster 客户端
+ * 平滑关闭 Redis / Cluster 客户端
  *
  * - 当客户端处于活跃状态时使用 `quit()`（发送 QUIT 后等待响应再断开）
  * - 否则直接 `disconnect()`
@@ -172,14 +172,14 @@ export async function closeRedisClient(
     } else {
       client.disconnect();
     }
-    logger.info('Redis 连接已优雅关闭');
+    logger.info('Redis 连接已平滑关闭');
   } catch (error: unknown) {
     // quit 失败/超时（如 Redis 不可达时命令被无限排队）则强制断开，
     // 确保重连定时器被清理、连接一定被释放
     client.disconnect();
     logger.warn(
       { event: 'redis_close_warn', error: normalizeError(error) },
-      'Redis 优雅关闭失败，已强制断开连接',
+      'Redis 平滑关闭失败，已强制断开连接',
     );
   }
 }
