@@ -12,7 +12,7 @@
 
 **环境要求**：Node.js >= 22、pnpm >= 10、Docker & Docker Compose（本地基础设施）。
 
-**文档地图**：本文覆盖开发/生产两条主线的操作；开发规范细节见 [.claude/skills/nest-scaffold/SKILL.md](.claude/skills/nest-scaffold/SKILL.md)（含 [各场景端到端工作流](.claude/skills/nest-scaffold/reference/workflows.md)、[Git/提交规范](.claude/skills/nest-scaffold/reference/git-commit.md)），AI 代理行为约束见 [CLAUDE.md](CLAUDE.md)。
+**文档地图**：本文覆盖开发/生产两条主线的操作；开发规范细节见 [.claude/skills/nest-scaffold/SKILL.md](.claude/skills/nest-scaffold/SKILL.md)（含 [各场景端到端工作流](.claude/skills/nest-scaffold/reference/workflows.md)、[工程约定](.claude/skills/nest-scaffold/reference/engineering-conventions.md)、[任务验收四档约定](.claude/skills/nest-scaffold/reference/task-acceptance.md)、[Git/提交规范](.claude/skills/nest-scaffold/reference/git-commit.md)），AI 代理行为约束见 [CLAUDE.md](CLAUDE.md)；验收报告归档见 [reports/](reports/README.md)。
 
 ---
 
@@ -134,7 +134,7 @@ gh pr merge --squash --delete-branch
 git checkout main && git pull && git branch -d feature/user-profile
 ```
 
-不同任务类型（新功能 / 修改 / 修 bug / 数据库变更等）的端到端流程见 [workflows.md](.claude/skills/nest-scaffold/reference/workflows.md)。
+不同任务类型（新功能 / 修改 / 修 bug / 数据库变更等）的端到端流程见 [workflows.md](.claude/skills/nest-scaffold/reference/workflows.md)；有风险改动的验收四档与 PR 产物见 [task-acceptance.md](.claude/skills/nest-scaffold/reference/task-acceptance.md)。
 
 ### 仓库设置（PR 门禁清单）
 
@@ -398,7 +398,10 @@ drizzle/                    # 迁移文件（mysql/ 与 pgsql/，随代码提交
 
 - [SKILL.md](.claude/skills/nest-scaffold/SKILL.md)：开发规范唯一入口（命名/分层/DTO/数据库/测试的决策树）
 - [workflows.md](.claude/skills/nest-scaffold/reference/workflows.md)：新项目/新功能/修改/修 bug 等场景的端到端工作流
+- [engineering-conventions.md](.claude/skills/nest-scaffold/reference/engineering-conventions.md)：工程约定（通用不变量 / 审查对照表）
+- [task-acceptance.md](.claude/skills/nest-scaffold/reference/task-acceptance.md)：里程碑任务验收四档约定与 PR 四件产物
 - [git-commit.md](.claude/skills/nest-scaffold/reference/git-commit.md)：提交规范、分支与推送、gh 用法
+- [reports/](reports/README.md)：验收报告与取证归档
 - [scripts/README.md](.claude/skills/nest-scaffold/scripts/README.md)：bootstrap / new-module / setup-github 脚本
-- [CLAUDE.md](CLAUDE.md)：AI 代理行为约束（含 Git 身份/隐私硬规定）
+- [CLAUDE.md](CLAUDE.md)：AI 代理行为约束（含 Git 身份/隐私硬规定、任务验收）
 - 各基础设施模块用法：`src/common/modules/*/README.md`
