@@ -56,6 +56,9 @@ importers:
       mysql2:
         specifier: ^3.18.2
         version: 3.18.2(@types/node@22.19.13)
+      nanoid:
+        specifier: ^6.0.0
+        version: 6.0.0
       nestjs-i18n:
         specifier: ^10.6.0
         version: 10.6.0(@nestjs/common@11.1.14(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.14)(class-validator@0.15.1)(rxjs@7.8.2)
@@ -3687,6 +3690,11 @@ packages:
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
+  nanoid@6.0.0:
+    resolution: {integrity: sha512-mkUH+rPkwU2qPadJ0oJZOjeZ5Mxn8Q1UhevwkTRWNuUZzyia3h4rhzK39hxaHTk0o2OxB8W2SQ6A8k23ZDi1pQ==}
+    engines: {node: ^22 || ^24 || >=26}
     hasBin: true
 
   natural-compare@1.4.0:
@@ -8181,6 +8189,8 @@ snapshots:
     optional: true
 
   nanoid@3.3.11: {}
+
+  nanoid@6.0.0: {}
 
   natural-compare@1.4.0: {}
 

@@ -1,6 +1,6 @@
 {
-  "id": "60952126-18f1-4119-9fa9-86fae201b0f6",
-  "prevId": "382a69ef-ebde-44bb-81a9-a883ad40296d",
+  "id": "db2ee35d-0c41-451b-b171-08579ea18c55",
+  "prevId": "15dbeffd-1f1b-43c3-b32e-ad45fce4491f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -24,6 +24,18 @@
             "schema": "public",
             "type": "always"
           }
+        },
+        "publicId": {
+          "name": "publicId",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shortPublicId": {
+          "name": "shortPublicId",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -78,6 +90,20 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
+        "demos_publicId_unique": {
+          "name": "demos_publicId_unique",
+          "columns": [
+            "publicId"
+          ],
+          "nullsNotDistinct": false
+        },
+        "demos_shortPublicId_unique": {
+          "name": "demos_shortPublicId_unique",
+          "columns": [
+            "shortPublicId"
+          ],
+          "nullsNotDistinct": false
+        },
         "demos_name_unique": {
           "name": "demos_name_unique",
           "columns": [

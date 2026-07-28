@@ -49,7 +49,7 @@ git checkout main && git pull && git branch -d <branch>
 准备开 `feature/<topic>` 分支后：
 
 1. 生成骨架：`bash .claude/skills/nest-scaffold/scripts/new-module.sh <domain-kebab>`（或按 [module-development.md](module-development.md) 手写）。
-2. 数据库：定义 schema → `pnpm db:generate:mysql` → **检查生成的 SQL** → `pnpm db:migrate:mysql`；需要基础数据用 `--custom` 数据迁移（详见 [database.md](database.md)）。
+2. 数据库：定义 schema → `pnpm db:generate:mysql --name=<kebab>`（务必带 `--name`）→ **检查生成的 SQL** → `pnpm db:migrate:mysql`；需要基础数据用 `--custom --name=<n>`（详见 [database.md](database.md)）。
 3. 实现：Repository 确认表名与特殊查询 → Service 业务逻辑 → Controller/DTO 遵循 [rest-api.md](rest-api.md)（zod DTO、param DTO、`Entity.create()` 净化）。
 4. 注册：`api.module.ts` 的 `imports` 加入新模块。
 5. 测试：Service 单测（`useMocker` mock 仓储）+ 按需 e2e（testcontainers），写法见 [testing.md](testing.md)。

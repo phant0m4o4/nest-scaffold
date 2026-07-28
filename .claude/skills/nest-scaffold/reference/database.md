@@ -9,7 +9,7 @@
 - 软删除以 `deletedAt: timestamp()` 列约定，由 `BaseRepository` 自动识别。
 - 所有 schema 在 `src/database/<dialect>/schemas/<table>.schema.ts`（`<dialect>` 为 `mysql` 或 `pgsql`），并在 `schemas/index.ts` 用 `export * from './<table>.schema'` 聚合。
 - 跨表枚举放 `src/database/enums/`（方言无关，两套 schema 共享），**键和值都用 camelCase**。仅当前文件用就就地定义。
-- **表结构一律用 migration 维护，开发与生产同一套迁移文件**：schema 变更后 `pnpm db:generate:mysql` 生成迁移（检查 `drizzle/mysql/` 下的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随代码提交;PG 用 `:pgsql` 后缀（迁移在 `drizzle/pgsql/`）。**没有 push 脚本**——`drizzle-kit push` 只是一次性实验库的原型工具（`pnpm exec drizzle-kit push --config drizzle-mysql.config.ts`），不进入日常流程。
+- **表结构一律用 migration 维护，开发与生产同一套迁移文件**：schema 变更后 `pnpm db:generate:mysql --name=<kebab>` 生成迁移（**必须带 `--name`**，避免 `jazzy_*` 随机后缀）→ 检查 `drizzle/mysql/` 下的 SQL → `pnpm db:migrate:mysql` 应用 → 迁移文件随代码提交；PG 用 `:pgsql` 后缀（迁移在 `drizzle/pgsql/`）。**没有 push 脚本**——`drizzle-kit push` 只是一次性实验库的原型工具（`pnpm exec drizzle-kit push --config drizzle-mysql.config.ts`），不进入日常流程。
 
 ## Schema 写法
 
@@ -18,12 +18,15 @@ import { foreignKey, mysqlEnum, mysqlTable, unique, varchar } from 'drizzle-orm/
 import { DemoTypeEnum, demoTypes } from '../enums/demo-type.enum';
 import { createForeignKeyColumn } from '../utils/create-foreign-key';
 import { createPrimaryKeyColumn } from '../utils/create-primary-key';
+import { createPublicIdColumn } from '../utils/create-public-id';
 import { createTimestamps } from '../utils/create-time-stamps';
 
 export const demosSchema = mysqlTable(
   'demos',
   {
     id: createPrimaryKeyColumn(),
+    publicId: createPublicIdColumn(),                 // 长码：路径/读查（默认 21）
+    shortPublicId: createPublicIdColumn('shortPublicId', 8), // 短码：推荐码等
     name: varchar({ length: 100 }).notNull(),
     type: mysqlEnum(demoTypes).notNull().default(DemoTypeEnum.type1),
     parentId: createForeignKeyColumn(),
@@ -31,6 +34,8 @@ export const demosSchema = mysqlTable(
     // 启用软删除则用 ...createTimestampsWithSoftDelete()
   },
   (table) => [
+    unique().on(table.publicId),
+    unique().on(table.shortPublicId),
     unique().on(table.name),
     foreignKey({
       columns: [table.parentId],
@@ -46,9 +51,38 @@ export const demosSchema = mysqlTable(
 | 函数 | 说明 |
 |------|------|
 | `createPrimaryKeyColumn(name?)` | 默认生成 `bigint unsigned not null auto_increment primary key`（`mode: 'number'`），自定义列名时传参 |
+| `createPublicIdColumn(name?, length?)` | 公开标识列（默认 `varchar(21)`）；短码传 `length`（如 `8`）；**须**表级 `unique()` |
 | `createForeignKeyColumn(name?)` | 生成可空的外键列（bigint unsigned，与主键类型一致），约束在 schema 第 3 个参数声明 |
 | `createTimestamps()` | `{ createdAt, updatedAt }` 默认 now、`onUpdateNow()` |
 | `createTimestampsWithSoftDelete()` | 额外加 `deletedAt: timestamp()` |
+
+## 公开标识：长码 vs 短码（必须分开）
+
+主键一律 **bigint**（`createPrimaryKeyColumn`）。面向用户的标识按用途拆成两列，**不要**用缩短的长码冒充推荐码，也不要用短码当 URL 资源 id。
+
+### 长码 `publicId`（nanoid 21）
+
+- **列**：`createPublicIdColumn()` + `unique().on(table.publicId)`
+- **生成**：`generatePublicId()`（默认长度 `PUBLIC_ID_LENGTH` = 21）
+- **写入**：仓储重载 `create` 内直接 generate → `super.create`，**不查、不重试**
+- **碰撞**：极低概率；确认是长码唯一冲突时抛 `RepositoryException`（对外 500「数据访问异常」），不暴露真实原因
+- **用途**：用户端路径参数、资源定位（见 `DemoController`）
+
+### 短码 `shortPublicId`（nanoid 8）
+
+- **列**：`createPublicIdColumn('shortPublicId', 8)` + `unique().on(table.shortPublicId)`（列宽与 `generatePublicId(8)` 保持一致）
+- **生成**：同一个 `generatePublicId(8)`（长短只差入参，无单独工厂）
+- **写入**：仓储内「循环 generate → 查是否占用 → 再随行 insert」（查空策略在仓储，见 `DemoRepository`）
+- **碰撞**：查空耗尽，或 insert 时竞态再撞唯一约束 → 同样不透明 `RepositoryException`，**不再换号死磕**
+- **用途**：推荐码、邀请码等需口播/抄写的场景；可出现在列表/详情实体，一般不进 URL
+
+### 业务封装与 API
+
+- 两列都需要时：仓储重载 `create`，入参不含两码，返回 `{ id, publicId, shortPublicId }`（见 `DemoRepository`）。只需其一则只加对应列与分配逻辑。
+- `name` 等业务唯一键冲突仍抛 `RecordAlreadyExistsException`（409）。
+- **用户端**：路径与创建响应用长码（`OnlyPublicIdEntity`）；列表/详情用 `DemoPublicEntity`（可含短码、不要带 `id`）。
+- **管理端**：可暴露 `id`（`AdminDemoController` + `DemoEntity`）。
+- 都不需要对外标识的表：两列都可不加。
 
 ## PostgreSQL 版差异
 
@@ -62,16 +96,18 @@ export const demoTypeEnum = pgEnum('demo_type', demoTypes);
 
 export const demosSchema = pgTable('demos', {
   id: createPrimaryKeyColumn(),            // bigint generated always as identity
+  publicId: createPublicIdColumn(),
+  shortPublicId: createPublicIdColumn('shortPublicId', 8),
   name: varchar({ length: 100 }).notNull(),
   type: demoTypeEnum().notNull().default(DemoTypeEnum.type1),
   parentId: createForeignKeyColumn(),
   ...createTimestamps(),
-}, (table) => [ /* 同 MySQL 版 */ ]);
+}, (table) => [ /* 同 MySQL 版：两码 + name 的 unique 等 */ ]);
 ```
 
 要点：
 
-- 工具函数来自 `src/database/pgsql/utils/`，签名与 MySQL 版一致。
+- 工具函数来自 `src/database/pgsql/utils/`（含 `createPublicIdColumn`），签名与 MySQL 版一致。
 - `updatedAt` 用 Drizzle `$onUpdate` 在应用层写入（PG 无 `ON UPDATE CURRENT_TIMESTAMP`）。
 - 仓储基类：`src/app/repositories/common/pgsql/base.repository.ts`（API 与 MySQL 版完全一致）；错误映射走 PG SQLSTATE（`mapPgsqlErrorAndThrow`：23505 唯一冲突、23503 外键、40P01 死锁、55P03 锁不可用、23502/22001/22P02 数据完整性）。
 - 事务类型：`PgsqlTransactionType`（`@/common/modules/database/pgsql/common/types/pgsql-transaction.type`）。
@@ -173,7 +209,7 @@ clearUniqueCollections();
 
 | 命令（MySQL / PostgreSQL） | 说明 |
 |------|------|
-| `pnpm db:generate:mysql` / `pnpm db:generate:pgsql` | schema 变更后生成 migration 文件（`drizzle/<dialect>/`，随代码提交） |
+| `pnpm db:generate:mysql --name=<kebab>` / `pnpm db:generate:pgsql --name=<kebab>` | schema 变更后生成 migration；**务必传 `--name`**，否则 drizzle-kit 会生成 `jazzy_*` 一类随机后缀，难读难搜 |
 | `pnpm db:migrate:mysql` / `pnpm db:migrate:pgsql` | 应用 migration（开发与生产统一方式） |
 | `NODE_ENV=development pnpm db:seed:mysql` / `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()` |
 | `NODE_ENV=development pnpm db:reset:mysql` / `NODE_ENV=development pnpm db:reset:pgsql`（仅开发，生产环境会被拒绝） | 重置到迁移基线：删除全部表（含迁移记录）后重放所有迁移，恢复表结构与基础数据；演示数据按需再跑 seed |

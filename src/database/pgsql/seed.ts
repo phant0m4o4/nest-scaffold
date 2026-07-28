@@ -1,6 +1,7 @@
 import { unique } from '@/common/modules/database/common/utils/unique';
 import { DatabaseService } from '@/common/modules/database/pgsql/database.service';
 import { ISeeder } from '@/common/modules/database/interfaces/seeder.interface';
+import { generatePublicId } from '@/common/utils/public-id';
 import { Injectable } from '@nestjs/common';
 import inquirer from 'inquirer';
 import { demoTypes } from '../enums/demo-type.enum';
@@ -34,8 +35,18 @@ export class SeedService implements ISeeder {
     const demos: (typeof demosSchema.$inferInsert)[] = [];
     for (let i = 0; i < 100; i++) {
       const name: string = await unique(() => faker.person.fullName(), 'demos');
+      const publicId: string = await unique(
+        () => generatePublicId(),
+        'demos.publicId',
+      );
+      const shortPublicId: string = await unique(
+        () => generatePublicId(8),
+        'demos.shortPublicId',
+      );
       const type = faker.helpers.arrayElement(demoTypes);
       demos.push({
+        publicId,
+        shortPublicId,
         name,
         // 依赖基础数据迁移(drizzle/pgsql/0001_base-data.sql)插入的 demos0 行(id=1)
         parentId: 1,

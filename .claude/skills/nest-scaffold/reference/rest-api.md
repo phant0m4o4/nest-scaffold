@@ -103,8 +103,8 @@
 
 | 操作 | 控制器方法 | 服务方法 | 请求 DTO | 响应 |
 |------|----------|---------|---------|------|
-| 创建 | `create` | `create` | `Create<Resource>RequestDto` | `OnlyIdEntity` 或 `<Resource>Entity` |
-| 查询单条 | `findOne` | `findOne` | `FindOne<Resource>ParamDto`（路径参数） | `<Resource>Entity` |
+| 创建 | `create` | `create` | `Create<Resource>RequestDto` | 用户端 `OnlyPublicIdEntity`；管理端 `OnlyIdEntity` 或带 `id` 的 Entity |
+| 查询单条 | `findOne` | `findOne` / `findOneByPublicId` | 管理端 `FindOne…ParamDto`（`id`）；用户端 `FindOne…ByPublicIdParamDto`（`publicId`） | 管理端 `<Resource>Entity`（含 `id`）；用户端 `<Resource>PublicEntity`（无 `id`） |
 | 列表（无分页） | `findAll` | `findAll` | — | `<Resource>Entity[]` |
 | 游标分页 | `findManyByCursorPagination` | `findManyByCursorPagination` | `FindMany<Resource>ByCursoredPaginationRequestDto` | `<Resource>Entity[]` + `nextCursor` |
 | 普通分页 | `findManyByPagination` | `findManyByPagination` | `FindMany<Resource>ByPaginationRequestDto` | `<Resource>Entity[]` + 分页 meta |
@@ -154,7 +154,16 @@ MyEntity.create(raw)
 
 zod 默认剔除 schema 未声明的字段，起到响应净化作用。
 
-## 控制器示例
+## 主键暴露约定（bigint id vs 长码 / 短码）
+
+- 表主键始终是 **bigint** `id`（内部关联、事务、admin）。
+- **长码 `publicId`**（nanoid 21）：用户端路径参数、创建响应里的资源标识；列表/详情不要带数字 `id`。
+- **短码 `shortPublicId`**（nanoid 8）：推荐码等，可出现在列表/详情实体，一般不进 URL、不进创建响应（与长码列、策略分开，见 `reference/database.md`）。
+- 管理端（如 `@Controller('admin/demo')`）可以暴露 `id`；真实项目务必加鉴权。
+- 创建时由仓储重载的 `create` 自动分配两码，返回 `{ id, publicId, shortPublicId }`；用户端创建响应通常只透出长码（`OnlyPublicIdEntity`）。
+- 完整示例见 `src/app/api/demo/`（`DemoController` 用户端 / `AdminDemoController` 管理端）。
+
+## 控制器示例（用户端：publicId）
 
 ```ts
 @Controller('demo')
@@ -163,9 +172,9 @@ export class DemoController {
 
   @Post()
   async create(@Body() body: CreateDemoRequestDto) {
-    const id = await this.demoService.create(body);
+    const { publicId } = await this.demoService.create(body);
     return {
-      data: OnlyIdEntity.create({ id }),
+      data: OnlyPublicIdEntity.create({ publicId }),
     };
   }
 
@@ -174,13 +183,16 @@ export class DemoController {
     @Query() query: FindManyDemoByCursoredPaginationRequestDto,
   ) {
     const { data, meta } = await this.demoService.findManyByCursorPagination(query);
-    return { data, meta };
+    return {
+      data: data.map((row) => DemoPublicEntity.create(row)),
+      meta,
+    };
   }
 
-  @Get(':id')
-  async findOne(@Param() params: FindOneDemoParamDto) {
-    const data = await this.demoService.findOne(params.id);
-    return { data };
+  @Get(':publicId')
+  async findOne(@Param() params: FindOneDemoByPublicIdParamDto) {
+    const row = await this.demoService.findOneByPublicId(params.publicId);
+    return { data: row ? DemoPublicEntity.create(row) : null };
   }
 }
 ```
@@ -196,9 +208,11 @@ src/app/api/<domain>/
 │   ├── create-<domain>-request.dto.ts
 │   ├── update-<domain>-request.dto.ts
 │   ├── find-many-<domain>-request.dto.ts
-│   └── find-one-<domain>-param.dto.ts
+│   ├── find-one-<domain>-param.dto.ts                 # 管理端：id
+│   └── find-one-<domain>-by-public-id-param.dto.ts    # 用户端：publicId
 ├── entities/
-│   └── <domain>.entity.ts
+│   ├── <domain>.entity.ts                             # 管理端（可含 id）
+│   └── <domain>-public.entity.ts                      # 用户端（无 id，可含 shortPublicId）
 ├── interfaces/
 │   └── <domain>-payload.interface.ts
 └── __tests__/

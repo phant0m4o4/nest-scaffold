@@ -1,5 +1,5 @@
 {
-  "id": "382a69ef-ebde-44bb-81a9-a883ad40296d",
+  "id": "15dbeffd-1f1b-43c3-b32e-ad45fce4491f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -24,6 +24,18 @@
             "cache": "1",
             "cycle": false
           }
+        },
+        "publicId": {
+          "name": "publicId",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shortPublicId": {
+          "name": "shortPublicId",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -78,6 +90,20 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
+        "demos_publicId_unique": {
+          "name": "demos_publicId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "publicId"
+          ]
+        },
+        "demos_shortPublicId_unique": {
+          "name": "demos_shortPublicId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "shortPublicId"
+          ]
+        },
         "demos_name_unique": {
           "name": "demos_name_unique",
           "nullsNotDistinct": false,
