@@ -20,12 +20,12 @@
 
 ## 依赖
 
-| 包               | 用途             |
-| ---------------- | ---------------- |
-| `drizzle-orm`    | TypeScript ORM   |
-| `pg`             | PostgreSQL 驱动  |
-| `@nestjs/config` | 配置管理         |
-| `nestjs-pino`    | 结构化日志       |
+| 包               | 用途            |
+| ---------------- | --------------- |
+| `drizzle-orm`    | TypeScript ORM  |
+| `pg`             | PostgreSQL 驱动 |
+| `@nestjs/config` | 配置管理        |
+| `nestjs-pino`    | 结构化日志      |
 
 ## 环境变量
 
@@ -102,21 +102,21 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
 
 ## 命令
 
-| 命令 | 说明 |
-| ---- | ---- |
-| `pnpm db:generate:pgsql` | schema 变更后生成 migration（`drizzle/pgsql/`，随代码提交） |
-| `pnpm db:migrate:pgsql` | 应用 migration（开发与生产统一方式） |
-| `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝） | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`） |
+| 命令                                                                   | 说明                                                            |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `pnpm db:generate:pgsql --name=<kebab>`                                | schema 变更后生成 migration（务必带 `--name`，避免随机后缀）    |
+| `pnpm db:migrate:pgsql`                                                | 应用 migration（开发与生产统一方式）                            |
+| `NODE_ENV=development pnpm db:seed:pgsql`（仅开发，生产环境会被拒绝）  | 跑 `SeedService.run()`（`src/database/pgsql/seed.ts`）          |
 | `NODE_ENV=development pnpm db:reset:pgsql`（仅开发，生产环境会被拒绝） | 重置到迁移基线：重建 public schema 并清除迁移记录后重放所有迁移 |
 
 Drizzle Kit 配置见根目录 `drizzle-pgsql.config.ts`。
 
 ## 类型导出
 
-| 类型                  | 路径                                | 用途                   |
-| --------------------- | ----------------------------------- | ---------------------- |
-| `PgsqlDatabaseType`   | `common/types/pgsql-database.type`  | Drizzle 数据库实例类型 |
-| `PgsqlTransactionType`| `common/types/pgsql-transaction.type` | 事务回调参数类型     |
+| 类型                   | 路径                                  | 用途                   |
+| ---------------------- | ------------------------------------- | ---------------------- |
+| `PgsqlDatabaseType`    | `common/types/pgsql-database.type`    | Drizzle 数据库实例类型 |
+| `PgsqlTransactionType` | `common/types/pgsql-transaction.type` | 事务回调参数类型       |
 
 ## docker-compose
 

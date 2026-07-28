@@ -28,7 +28,7 @@ NestJS 11 + TypeScript 5 + Drizzle ORM (MySQL) + ioredis + BullMQ + nestjs-pino 
 4. **类 PascalCase / 变量与方法 camelCase / 私有成员以 `_` 开头**。
 5. **路径别名固定 `@/*` → `src/*`**。新代码中跨目录引用必须用 `@/`，不要写 `../../../`。
 6. **每个文件只有一个导出**（默认导出或单一具名导出）。
-7. **表结构一律用 migration 维护**（开发与生产同一套迁移文件）：schema 变更后 `pnpm db:generate:mysql` 生成迁移 → 检查 SQL → `pnpm db:migrate:mysql` 应用 → 迁移文件（`drizzle/<dialect>/`）随代码提交。**没有 push 脚本**——`drizzle-kit push` 只是一次性实验工具，不要引入日常流程。
+7. **表结构一律用 migration 维护**（开发与生产同一套迁移文件）：schema 变更后 `pnpm db:generate:mysql --name=<kebab>` 生成迁移（**必须带 `--name`**，避免随机后缀）→ 检查 SQL → `pnpm db:migrate:mysql` 应用 → 迁移文件（`drizzle/<dialect>/`）随代码提交。**没有 push 脚本**——`drizzle-kit push` 只是一次性实验工具，不要引入日常流程。
 8. **Drizzle 表必须有 `id` 主键列**，否则 `BaseRepository` 会在启动时抛错。`BaseRepository` 通过列名 `deletedAt` 自动判定软删除。
 9. **代码英文 / 注释和文档中文 / 日志 `msg` 中文 + `event` 英文枚举**。
 10. **Git commit**：`type(scope): subject`（type/scope 必须英文），body 必须中文。详见 `reference/git-commit.md`。
@@ -58,7 +58,7 @@ src/
 │   ├── enums/                  # 跨表复用的枚举（camelCase 键值）
 │   ├── mysql/                  # MySQL 侧（默认装配）
 │   │   ├── schemas/            # Drizzle 表定义（每张表 *.schema.ts，index.ts 聚合导出）
-│   │   ├── utils/              # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
+│   │   ├── utils/              # createPrimaryKeyColumn / createPublicIdColumn / createTimestamps / createForeignKeyColumn
 │   │   └── seed.ts             # SeedService（NODE_ENV=development pnpm db:seed:mysql）
 │   └── pgsql/                  # PostgreSQL 侧（可选，结构与 mysql/ 平行，命令后缀 :pgsql）
 └── main.ts                     # Pino logger、enableCors、trust proxy、process.once 平滑停机（含超时兜底）
@@ -125,11 +125,12 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 1. 在 `src/database/enums/` 决定是否需要枚举（跨文件复用才放这里，键值用 camelCase）。
 2. 在 `src/database/mysql/schemas/<table-name>.schema.ts` 用 Drizzle MySQL 定义：
    - 必须 `id: createPrimaryKeyColumn()`（来自 `@/database/mysql/utils/create-primary-key`）。
+   - 用户端路径用长码：`publicId: createPublicIdColumn()` + `unique()`；推荐码等另加短码：`shortPublicId: createPublicIdColumn('shortPublicId', 8)` + `unique()`。写入在仓储**重载 `create`**（长码直接插、短码先查空再插；碰撞均不透明报错，见 `DemoRepository` / `reference/database.md`）。管理端可暴露 `id`。
    - 时间戳用 `...createTimestamps()`，需要软删除则 `...createTimestampsWithSoftDelete()`（自动生成 `deletedAt`，`BaseRepository` 会识别）。
    - 外键用 `createForeignKeyColumn()`。
 3. 在 `src/database/mysql/schemas/index.ts` 重导出新 schema。
 4. 基础数据用自定义数据迁移维护（`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移后手写 SQL，示例 `drizzle/mysql/0001_base-data.sql`）；演示数据更新 `src/database/mysql/seed.ts`（使用 `unique()` 工具 + `@faker-js/faker` 中文 locale）。
-5. 迁移：`pnpm db:generate:mysql` 生成迁移文件（检查 `drizzle/mysql/` 下新生成的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随本次代码一起提交。
+5. 迁移：`pnpm db:generate:mysql --name=<kebab>` 生成迁移文件（检查 `drizzle/mysql/` 下新生成的 SQL）→ `pnpm db:migrate:mysql` 应用 → 迁移文件随本次代码一起提交。
 6. 按需填充演示数据：`NODE_ENV=development pnpm db:seed:mysql`。
 7. 若项目使用 PostgreSQL：在 `src/database/pgsql/schemas/` 下用 pg-core（`pgTable` / `pgEnum`）做同样的事，工具函数来自 `@/database/pgsql/utils/*`，命令换成 `:pgsql` 后缀（迁移文件在 `drizzle/pgsql/`）。
 

@@ -26,10 +26,15 @@ export class DemoService {
   constructor(protected readonly demoRepository: DemoRepository) {}
 
   /**
-   * 创建 Demo
+   * 创建 Demo（仓储 create 自动分配长码 publicId + 短码 shortPublicId）
+   * @returns 内部 id 与两类公开标识，供用户端/admin 端各自挑选响应字段
    */
-  async create(body: CreateDemoRequestDto) {
-    return await this.demoRepository.create({ data: body });
+  async create(body: CreateDemoRequestDto): Promise<{
+    id: number;
+    publicId: string;
+    shortPublicId: string;
+  }> {
+    return this.demoRepository.create({ data: body });
   }
 
   /**
@@ -110,23 +115,52 @@ export class DemoService {
   }
 
   /**
-   * 查询单条 Demo
+   * 按内部主键查询（admin）
    */
   async findOne(id: number) {
     return await this.demoRepository.findOne({ id });
   }
 
   /**
-   * 更新 Demo
+   * 按公开标识查询（用户端）
+   */
+  async findOneByPublicId(publicId: string) {
+    return await this.demoRepository.findOneByPublicId({ publicId });
+  }
+
+  /**
+   * 按内部主键更新（admin）
    */
   async update(id: number, body: UpdateDemoRequestDto) {
     return await this.demoRepository.update({ id, data: body });
   }
 
   /**
-   * 删除 Demo
+   * 按公开标识更新（用户端）：先解析出内部 id 再更新
+   */
+  async updateByPublicId(publicId: string, body: UpdateDemoRequestDto) {
+    const row = await this.demoRepository.findOneByPublicId({ publicId });
+    if (!row) {
+      return;
+    }
+    return await this.demoRepository.update({ id: row.id, data: body });
+  }
+
+  /**
+   * 按内部主键删除（admin）
    */
   async delete(id: number) {
     return await this.demoRepository.delete({ id });
+  }
+
+  /**
+   * 按公开标识删除（用户端）
+   */
+  async deleteByPublicId(publicId: string) {
+    const row = await this.demoRepository.findOneByPublicId({ publicId });
+    if (!row) {
+      return;
+    }
+    return await this.demoRepository.delete({ id: row.id });
   }
 }

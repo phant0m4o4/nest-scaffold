@@ -112,7 +112,7 @@ export class UserService {
 | `findMany({ filter?, limit?, order? })`                             | 条件查询              | `TSchema['$inferSelect'][]`        |
 | `findManyWithPagination({ page, pageSize, filter?, order? })`       | 普通分页              | `IPaginationResult<TSchema>`       |
 | `findManyWithCursorPagination({ limit, cursor?, filter?, order? })` | 游标分页              | `ICursorPaginationResult<TSchema>` |
-| `create({ data })`                                                  | 创建单条              | `id`                               |
+| `create({ data })`                                                  | 创建单条              | `id`；有公开标识列时业务仓储可重载（demo：长码直插、短码先查空，返回 `{ id, publicId, shortPublicId }`） |
 | `batchCreate({ data })`                                             | 批量创建              | `{ id }[]`                         |
 | `update({ id, data })`                                              | 更新                  | `void`                             |
 | `delete({ id })`                                                    | 删除（自动判断软/硬） | `void`                             |

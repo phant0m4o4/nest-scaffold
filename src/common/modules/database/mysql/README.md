@@ -89,7 +89,7 @@ async transferFunds(fromId: number, toId: number, amount: number) {
 NODE_ENV=development pnpm db:seed:mysql
 
 # 表结构维护（Drizzle Kit migration，开发与生产同一套迁移文件）
-pnpm db:generate:mysql   # schema 变更后生成迁移（drizzle/mysql/，随代码提交）
+pnpm db:generate:mysql --name=<kebab>   # schema 变更后生成迁移（务必带 --name，避免随机后缀）
 pnpm db:migrate:mysql    # 应用迁移
 ```
 
@@ -137,11 +137,11 @@ clearUniqueCollections();
 
 ## 类型导出
 
-| 类型                   | 路径                                     | 用途                   |
-| ---------------------- | ---------------------------------------- | ---------------------- |
-| `MySqlDatabaseType`    | `mysql/common/types/mysql-database.type`    | Drizzle 数据库实例类型 |
-| `MySqlTransactionType` | `mysql/common/types/mysql-transaction.type` | 事务回调参数类型       |
-| `NotEmptyArrayType<T>` | `../common/types/not-empty-array.type`（共享） | 非空数组约束类型  |
+| 类型                   | 路径                                           | 用途                   |
+| ---------------------- | ---------------------------------------------- | ---------------------- |
+| `MySqlDatabaseType`    | `mysql/common/types/mysql-database.type`       | Drizzle 数据库实例类型 |
+| `MySqlTransactionType` | `mysql/common/types/mysql-transaction.type`    | 事务回调参数类型       |
+| `NotEmptyArrayType<T>` | `../common/types/not-empty-array.type`（共享） | 非空数组约束类型       |
 
 ## 架构设计
 

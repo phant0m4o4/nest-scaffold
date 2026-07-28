@@ -1,6 +1,6 @@
 {
-  "id": "f0c710ae-cc58-4278-90d7-a477b939639c",
-  "prevId": "81d22baa-43c8-44ca-b36a-067ffc3a811a",
+  "id": "1672743c-b54c-4d16-a99d-f1007c0442a4",
+  "prevId": "970c4754-f743-45e9-b87f-7bb50273c925",
   "version": "5",
   "dialect": "mysql",
   "tables": {
@@ -13,6 +13,20 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "publicId": {
+          "name": "publicId",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shortPublicId": {
+          "name": "shortPublicId",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "name": {
           "name": "name",
@@ -79,6 +93,18 @@
         }
       },
       "uniqueConstraints": {
+        "demos_publicId_unique": {
+          "name": "demos_publicId_unique",
+          "columns": [
+            "publicId"
+          ]
+        },
+        "demos_shortPublicId_unique": {
+          "name": "demos_shortPublicId_unique",
+          "columns": [
+            "shortPublicId"
+          ]
+        },
         "demos_name_unique": {
           "name": "demos_name_unique",
           "columns": [

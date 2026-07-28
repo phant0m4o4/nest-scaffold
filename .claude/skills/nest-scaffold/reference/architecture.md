@@ -76,7 +76,7 @@ src/
     ├── enums/                              # 跨表枚举（方言无关，两套 schema 共享）
     ├── mysql/                              # MySQL 业务库（mysql-core）
     │   ├── schemas/                        # Drizzle 表（每张表一个文件）+ index.ts 聚合 export *
-    │   ├── utils/                          # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
+    │   ├── utils/                          # createPrimaryKeyColumn / createPublicIdColumn / createTimestamps / createForeignKeyColumn
     │   └── seed.ts                         # SeedService（NODE_ENV=development pnpm db:seed:mysql）
     └── pgsql/                              # PostgreSQL 业务库（pg-core，与 mysql/ 平行）
         ├── schemas/                        # 同上（pgTable / pgEnum）

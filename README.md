@@ -173,7 +173,7 @@ git checkout main && git pull && git branch -d feature/user-profile
 
 ```bash
 # 改 schema（src/database/mysql/schemas/）之后：
-pnpm db:generate:mysql        # 1) 生成迁移文件 —— 必须人工检查生成的 SQL
+pnpm db:generate:mysql --name=<kebab>   # 1) 生成迁移（务必带 --name）—— 必须人工检查 SQL
 pnpm db:migrate:mysql         # 2) 应用到本地库
 # 3) 迁移文件随本次代码同一个 PR 提交
 ```
@@ -360,7 +360,7 @@ jobs:
 | 启动 | `pnpm start:debug` | 热重载 + Node.js inspector |
 | 启动 | `pnpm start:dist` | 运行构建产物（生产：前缀 `NODE_ENV=production`） |
 | 测试 | `pnpm test` / `test:watch` / `test:cov` / `test:e2e` | 见「开发环境 · 测试与调试」 |
-| 数据库 | `pnpm db:generate:mysql` | schema 变更后生成迁移（`--custom --name=<n>` 生成数据迁移） |
+| 数据库 | `pnpm db:generate:mysql --name=<kebab>` | schema 变更后生成迁移（务必带 `--name`；`--custom --name=<n>` 生成数据迁移） |
 | 数据库 | `pnpm db:migrate:mysql` | 应用迁移（开发/生产统一方式） |
 | 数据库 | `pnpm db:seed:mysql` | 演示数据（仅开发，需 NODE_ENV=development） |
 | 数据库 | `pnpm db:reset:mysql` | 重置到迁移基线（仅开发） |

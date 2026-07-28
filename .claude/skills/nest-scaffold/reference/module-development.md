@@ -18,6 +18,8 @@
 
 ## 控制器写法
 
+> 用户端路径/创建响应用长码 `publicId`（`OnlyPublicIdEntity` / `*PublicEntity`）；短码 `shortPublicId` 仅出现在列表/详情等实体。管理端可用 `OnlyIdEntity`（bigint）。约定见 `rest-api.md`「主键暴露约定」与 `src/app/api/demo/`。
+
 ```ts
 @Controller('<domain>')
 export class <Domain>Controller {
@@ -25,9 +27,9 @@ export class <Domain>Controller {
 
   @Post()
   async create(@Body() body: Create<Domain>RequestDto) {
-    const id = await this.<domain>Service.create(body);
+    const { publicId } = await this.<domain>Service.create(body);
     return {
-      data: OnlyIdEntity.create({ id }),
+      data: OnlyPublicIdEntity.create({ publicId }),
     };
   }
 
@@ -35,7 +37,7 @@ export class <Domain>Controller {
   async findAll() {
     const rows = await this.<domain>Service.findAll();
     return {
-      data: rows.map((row) => <Domain>Entity.create(row)),
+      data: rows.map((row) => <Domain>PublicEntity.create(row)),
     };
   }
 
@@ -46,30 +48,30 @@ export class <Domain>Controller {
     const { data, meta } =
       await this.<domain>Service.findManyByCursorPagination(query);
     return {
-      data: data.map((row) => <Domain>Entity.create(row)),
+      data: data.map((row) => <Domain>PublicEntity.create(row)),
       meta,
     };
   }
 
-  @Get(':id')
-  async findOne(@Param() params: FindOne<Domain>ParamDto) {
-    const row = await this.<domain>Service.findOne(params.id);
+  @Get(':publicId')
+  async findOne(@Param() params: FindOne<Domain>ByPublicIdParamDto) {
+    const row = await this.<domain>Service.findOneByPublicId(params.publicId);
     return {
-      data: row ? <Domain>Entity.create(row) : null,
+      data: row ? <Domain>PublicEntity.create(row) : null,
     };
   }
 
-  @Patch(':id')
+  @Patch(':publicId')
   async update(
-    @Param() params: FindOne<Domain>ParamDto,
+    @Param() params: FindOne<Domain>ByPublicIdParamDto,
     @Body() body: Update<Domain>RequestDto,
   ) {
-    await this.<domain>Service.update(params.id, body);
+    await this.<domain>Service.updateByPublicId(params.publicId, body);
   }
 
-  @Delete(':id')
-  async remove(@Param() params: FindOne<Domain>ParamDto) {
-    await this.<domain>Service.delete(params.id);
+  @Delete(':publicId')
+  async remove(@Param() params: FindOne<Domain>ByPublicIdParamDto) {
+    await this.<domain>Service.deleteByPublicId(params.publicId);
   }
 }
 ```
