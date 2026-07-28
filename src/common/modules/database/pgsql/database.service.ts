@@ -95,7 +95,7 @@ class DrizzleQueryLogger implements DrizzleLogger {
  *
  * 基于 node-postgres 连接池 + Drizzle ORM，提供：
  * - `db`：Drizzle 数据库实例
- * - 连接池生命周期管理（启动验证、优雅关闭）
+ * - 连接池生命周期管理（启动验证、平滑关闭）
  * - 开发环境 SQL 查询日志
  *
  * 与 `../mysql/database.service.ts` 是平行的两套实现。

@@ -61,7 +61,7 @@ src/
 │   │   ├── utils/              # createPrimaryKeyColumn / createTimestamps / createForeignKeyColumn
 │   │   └── seed.ts             # SeedService（NODE_ENV=development pnpm db:seed:mysql）
 │   └── pgsql/                  # PostgreSQL 侧（可选，结构与 mysql/ 平行，命令后缀 :pgsql）
-└── main.ts                     # 启用 enableShutdownHooks、Pino logger、CORS
+└── main.ts                     # Pino logger、enableCors、trust proxy、process.once 平滑停机（含超时兜底）
 ```
 
 详细架构见 `reference/architecture.md`。

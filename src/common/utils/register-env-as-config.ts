@@ -17,9 +17,11 @@ import { z } from 'zod';
  *
  * @example
  * ```typescript
+ * // 整数型环境变量一律用 optionalEnvInt()，不要直接写 z.coerce.number()：
+ * // 后者会把空串静默转成 0，绕过默认值兜底（`env.X ?? 3306` 对 0 不生效）
  * const databaseEnvSchema = z.object({
  *   DATABASE_HOST: z.string().min(1),
- *   DATABASE_PORT: z.coerce.number().int().optional(),
+ *   DATABASE_PORT: optionalEnvInt(1),
  * });
  *
  * const databaseConfig = registerEnvAsConfig(

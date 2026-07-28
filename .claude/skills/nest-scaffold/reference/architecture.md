@@ -98,10 +98,11 @@ src/
 
 ## main.ts 启动要点
 
-- `NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bufferLogs: true, cors: { origin: true, credentials: true, ... } })`
-- `app.enableShutdownHooks()` —— 必须，否则各模块的 `onModuleDestroy()`（缓存/锁关闭各自的 Redis 连接等）不会触发，连接不能优雅关闭。
+- `NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bufferLogs: true })` —— CORS 不在此处配置。
+- `app.enableCors({ origin, credentials, methods, ... })` —— `origin` 由 `AppConfigType.corsDomains`（`APP_CORS_DOMAINS` 逗号分隔）驱动，留空或含 `*` 时传 `true` 反射任意来源；`credentials` 由 `APP_CORS_CREDENTIALS` 驱动，默认 `true`（Cookie Session 需要）。生产环境若留空 / `*`+凭证，`getProductionCorsSecurityWarnings` 仅打 warning、不阻断启动——很多部署把 CORS 放在 CDN / Nginx / API Gateway 上管；本服务直接对外时仍应配具体白名单。
+- 平滑停机：显式 `process.once('SIGTERM'/'SIGINT', () => shutdown(...))` → `app.close()`，配合 `setTimeout(..., SHUTDOWN_TIMEOUT_MS).unref()` 做强制退出兜底；用 `shuttingDown` 互斥，防止 SIGTERM 与 SIGINT 几乎同时到达时并发关闭两次。`app.close()` 会触发各模块的 `onModuleDestroy()`（缓存/锁/DB 关闭连接、BullMQ drain 等），因此不再需要 `app.enableShutdownHooks()`。
 - `app.useLogger(app.get(PinoLogger))` + `app.flushLogs()` —— 接管 Nest 内置 logger。
-- `app.set('trust proxy', true)` —— 反代/负载均衡场景下取真实 IP。
+- `app.set('trust proxy', trustProxy)` —— 由 `AppConfigType.trustProxy`（`APP_TRUST_PROXY`）驱动，**默认 `false`**。不信任 `X-Forwarded-For` 时 `req.ip` 取 TCP 对端地址、客户端伪造不了；只有确实位于 CDN / Nginx / 负载均衡之后才开启，误开会让任何人伪造该头绕过限流与 IP 名单。反代场景推荐填代理层数（`APP_TRUST_PROXY=1`）而非 `true`。
 - 静态资源：`app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' })`。
 
 ## 路径别名
