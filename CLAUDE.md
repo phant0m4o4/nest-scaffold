@@ -93,6 +93,8 @@
 
 **任何涉及本项目代码/文档的任务,动手前先加载 `nest-scaffold` skill**(通过 Skill 工具调用,或直接读 [.claude/skills/nest-scaffold/SKILL.md](.claude/skills/nest-scaffold/SKILL.md)),按其中的决策树进入对应的 `reference/*.md`。SKILL.md 是项目开发规范(命名/分层/DTO/数据库/测试)的唯一入口,不要凭记忆或通用惯例替代它。纯对话、纯 git 操作等不涉及代码的任务可跳过。
 
+**工程不变量**(安全/隐私/数据/分层/Redis/交付等底线)见 [.claude/skills/nest-scaffold/reference/engineering-conventions.md](.claude/skills/nest-scaffold/reference/engineering-conventions.md);循环 review 与代码审核时逐条对照,不得削弱。
+
 ### A. Git 规范:身份、隐私与开发工作流(其中隐私为硬规定,不可妥协)
 
 **项目里(包括 git 历史、配置、代码、注释、文档)不得出现任何本机信息或本人个人信息。**
@@ -147,3 +149,11 @@
 - **原子提交**:一次提交只做一件事;因本次改动而需要同步的文档/模板/配置放进同一个提交,不留"文档稍后补"的尾巴。
 - **推送前验证**:`pnpm lint && pnpm build && pnpm test` 必须全绿(改动涉及 e2e 面时加 `pnpm test:e2e`),工作区不留未跟踪的临时文件——别把红的推给 CI。
 - PR 上 CI 全绿由分支保护强制,合并后关注 CD(如已配置)的部署结果。
+
+**6. 任务验收(四档,有风险改动必走满)。**
+
+- 完成定义与流程见 [.claude/skills/nest-scaffold/reference/task-acceptance.md](.claude/skills/nest-scaffold/reference/task-acceptance.md):第 0 档循环 review → 第 1 档自动化测试(先定覆盖清单) → 第 2 档人工验收 → 第 3 档代码审核。
+- 审查对照表见 [.claude/skills/nest-scaffold/reference/engineering-conventions.md](.claude/skills/nest-scaffold/reference/engineering-conventions.md)(工程约定)。
+- 有风险 PR 的描述须含四件产物(review 记录 / 测试清单与覆盖对照 / 人工取证 / 审核导读),缺任一件可退回;报告落盘 [`reports/<里程碑>/<任务>/`](reports/README.md)。
+- 纯机械改动走轻量版;把有风险改动当机械改动放水视同违规。里程碑计划只写「测什么、怎么人工验」,不得削弱该约定。
+- **报告出完再询问是否提交,不自动提交**。

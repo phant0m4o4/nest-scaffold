@@ -120,6 +120,7 @@ Implement user list query functionality with pagination support.
 - **`main` 受保护，禁止直推**：一切变更走短命工作分支，经 PR 合入 `main`。分支命名 `<type>/<kebab-topic>`（如 `feature/pgsql-support`、`refactor/zod-migration`），`type` 与上方提交 type 表一致。
 - **PR 合并的前提是 CI 全绿**（分支保护 required status checks：`ci` 与 `docker`），`main` 永远处于可部署状态。
 - 合并方式用 **Squash merge**（一个 PR 压成 main 上一个提交，线性历史）；**PR 标题按本规范书写**，它就是合入 `main` 的提交标题。
+- **有风险改动的 PR 描述须含四件验收产物**（循环 review 记录、自动化测试清单与覆盖对照、人工验收记录、审核导读），缺任一件审核人可直接退回；详见 [task-acceptance.md](task-acceptance.md)。审查对照 [engineering-conventions.md](engineering-conventions.md)。纯机械改动可走轻量版说明。
 - 工作分支**用完即清**：PR 合并后立即删除远端与本地分支及对应 worktree（GitHub 开启 auto-delete head branches 后远端自动删）。
 - **禁止对 `main` 强推**；工作分支在 PR 评审期间可 rebase/强推自己。
 - PR 的创建/检查/合并可用 `gh` CLI 或网页；工具分工与 gh 命令见下方「工具分工与 gh 用法」。
@@ -149,9 +150,9 @@ gh auth status
 PR 全流程的 gh 版本（网页操作的等价替代）：
 
 ```bash
-gh pr create --fill              # 以分支提交信息生成 PR 标题/描述（标题须符合提交规范）
+gh pr create                     # 标题符合提交规范；描述含 task-acceptance 四件产物（或链到 reports/.../验收报告.md）
 gh pr checks --watch             # 盯 required checks（ci / docker）直到出结果
-gh pr merge --squash --delete-branch   # CI 全绿后 Squash 合并并删除远端分支
+gh pr merge --squash --delete-branch   # CI 全绿且审核通过后 Squash 合并并删除远端分支
 ```
 
 ## 验证清单

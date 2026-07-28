@@ -2,10 +2,12 @@
 
 按任务类型划分的端到端流程——从拿到需求到变更合入 `main`（乃至自动部署）。本文只写"流程与顺序"，具体规范由各 reference 文档承载，避免两处维护。
 
+**验收完成定义**（四档 review / 测试 / 人工验 / 代码审 + PR 四件产物）以 [task-acceptance.md](task-acceptance.md) 为准；审查时对照的工程不变量见 [engineering-conventions.md](engineering-conventions.md)。里程碑计划只写「测什么、怎么人工验」，不得削弱上述约定。有风险的改动必须走满四档；纯机械改动可走其中的轻量版。
+
 ## 通用骨架（所有场景共享）
 
 ```
-准备 → 实施 → 验证 → 交付
+准备 → 实施 → 验证（含 task-acceptance 四档）→ 交付
 ```
 
 **准备**（所有场景相同）：
@@ -15,22 +17,26 @@ git checkout main && git pull
 git checkout -b <type>/<kebab-topic>   # type 与提交规范一致：feature/ fix/ refactor/ docs/ chore/ ...
 ```
 
-**验证**（所有场景相同）：
+**验证**（所有场景相同；有风险改动按 [task-acceptance.md](task-acceptance.md) 四档推进，不可跳过第 0 档直接开写测试）：
 
 ```bash
 pnpm lint && pnpm build && pnpm test   # 涉及 e2e 面时加 pnpm test:e2e
 ```
 
+自动化命令全绿只覆盖第 1 档的一部分；第 0 档循环 review、第 1 档覆盖清单对照、第 2 档人工取证、第 3 档审核导读见 `task-acceptance.md`。报告落盘 `reports/<里程碑>/<任务>/`。
+
 **交付**（所有场景相同，详见 [git-commit.md](git-commit.md)）：
 
 ```bash
-git add <files> && pnpm commit         # 原子提交，连带的文档/迁移/模板进同一提交
+git add <files> && pnpm commit         # 原子提交，连带的文档/迁移/模板/验收报告进同一提交
 git push -u origin <branch>
-gh pr create --fill                    # 或打开推送输出的网页链接；标题符合提交规范
+gh pr create                           # PR 描述须含 task-acceptance 四件产物（或链到验收报告）
 gh pr checks --watch                   # ci / docker 全绿
 gh pr merge --squash --delete-branch   # 或网页 Squash merge；合并即触发 CD(如已配置)
 git checkout main && git pull && git branch -d <branch>
 ```
+
+**报告出完再问是否提交——不自动提交**（见 `task-acceptance.md`「报告与提交节奏」）。
 
 下文各场景只写**实施**部分的差异。
 

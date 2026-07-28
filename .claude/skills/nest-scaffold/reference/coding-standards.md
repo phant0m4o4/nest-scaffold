@@ -1,5 +1,7 @@
 # 编码规范（TypeScript & 通用）
 
+> 本文管**怎么写得像样**（命名、函数形状、异常用法）。**不可违反的工程底线**（安全、数据、分层、Redis、交付）见 [engineering-conventions.md](engineering-conventions.md)。
+
 ## 总则
 
 - **代码英文，注释与文档中文**。
@@ -11,16 +13,16 @@
 
 ## 命名
 
-| 对象 | 风格 | 示例 |
-|------|------|------|
-| 类 / 接口 / 类型 | PascalCase | `UserService`, `IUserPayload` |
-| 接口名 | `IPascalCase` | `IUserService`, `IPaginationResult` |
-| 变量 / 函数 / 方法 | camelCase | `findOne`, `userId` |
-| 文件 / 目录 | kebab-case | `user-profile.service.ts`, `access-key/` |
-| 环境变量 | UPPER_SNAKE | `MYSQL_HOST`, `REDIS_PORT` |
-| 常量字面量 | UPPER_SNAKE | `const DEFAULT_LIMIT = 30 as const;` |
-| 枚举值（DB 通用枚举） | camelCase | `{ type1: 'type1' }` |
-| 私有成员 | `_xxx` 前缀 | `private _logger`, `private _buildFilters()` |
+| 对象                  | 风格          | 示例                                         |
+| --------------------- | ------------- | -------------------------------------------- |
+| 类 / 接口 / 类型      | PascalCase    | `UserService`, `IUserPayload`                |
+| 接口名                | `IPascalCase` | `IUserService`, `IPaginationResult`          |
+| 变量 / 函数 / 方法    | camelCase     | `findOne`, `userId`                          |
+| 文件 / 目录           | kebab-case    | `user-profile.service.ts`, `access-key/`     |
+| 环境变量              | UPPER_SNAKE   | `MYSQL_HOST`, `REDIS_PORT`                   |
+| 常量字面量            | UPPER_SNAKE   | `const DEFAULT_LIMIT = 30 as const;`         |
+| 枚举值（DB 通用枚举） | camelCase     | `{ type1: 'type1' }`                         |
+| 私有成员              | `_xxx` 前缀   | `private _logger`, `private _buildFilters()` |
 
 文件名后缀（kebab-case + dots）：
 
