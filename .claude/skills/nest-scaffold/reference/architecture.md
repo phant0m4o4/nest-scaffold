@@ -32,7 +32,8 @@ src/
 │   │   ├── common/                         # 跨业务复用 DTO（分页等）/ 共享 Entity
 │   │   │   ├── dtos/find-many-by-cursored-pagination.dto.ts
 │   │   │   ├── dtos/find-many-by-pagination.dto.ts
-│   │   │   └── entities/only-id.entity.ts
+│   │   │   ├── entities/only-id.entity.ts
+│   │   │   └── entities/only-public-id.entity.ts
 │   │   └── <domain>/                       # 单个业务域，自包含
 │   │       ├── <domain>.controller.ts
 │   │       ├── <domain>.service.ts

@@ -25,6 +25,8 @@ type DemoCreateData = Omit<
  * - **短码 shortPublicId**：循环 generate → 查空 → 再随行 insert；查空耗尽或
  *   insert 竞态撞唯一约束 → 同样不透明错误
  *
+ * 自定义查询一律经 `_buildWhereFilter`，表启用软删除时自动过滤已删行。
+ *
  * `name` 等业务唯一键冲突仍抛 {@link RecordAlreadyExistsException}。
  */
 @Injectable()
@@ -45,10 +47,11 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
     name: string;
   }): Promise<typeof demosSchema.$inferSelect | null> {
     const { db = this._db, name } = options;
+    const whereFilter = this._buildWhereFilter([eq(demosSchema.name, name)]);
     const results = await db
       .select()
       .from(demosSchema)
-      .where(eq(demosSchema.name, name))
+      .where(whereFilter)
       .limit(1);
     return results[0] ?? null;
   }
@@ -61,10 +64,13 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
     publicId: string;
   }): Promise<typeof demosSchema.$inferSelect | null> {
     const { db = this._db, publicId } = options;
+    const whereFilter = this._buildWhereFilter([
+      eq(demosSchema.publicId, publicId),
+    ]);
     const results = await db
       .select()
       .from(demosSchema)
-      .where(eq(demosSchema.publicId, publicId))
+      .where(whereFilter)
       .limit(1);
     return results[0] ?? null;
   }
@@ -77,10 +83,13 @@ export class DemoRepository extends BaseRepository<typeof demosSchema> {
     shortPublicId: string;
   }): Promise<typeof demosSchema.$inferSelect | null> {
     const { db = this._db, shortPublicId } = options;
+    const whereFilter = this._buildWhereFilter([
+      eq(demosSchema.shortPublicId, shortPublicId),
+    ]);
     const results = await db
       .select()
       .from(demosSchema)
-      .where(eq(demosSchema.shortPublicId, shortPublicId))
+      .where(whereFilter)
       .limit(1);
     return results[0] ?? null;
   }

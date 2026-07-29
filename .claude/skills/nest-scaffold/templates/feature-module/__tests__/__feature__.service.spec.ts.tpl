@@ -5,13 +5,15 @@ import { __Feature__Service } from '../__feature__.service';
 
 describe('__Feature__Service', () => {
   let __featureCamel__Service: __Feature__Service;
-  let mock__Feature__Repository: Partial<Record<keyof __Feature__Repository, Mock>>;
+  let mock__Feature__Repository: Partial<
+    Record<keyof __Feature__Repository, Mock>
+  >;
 
   beforeEach(async () => {
     mock__Feature__Repository = {
       create: vi.fn(),
       findAll: vi.fn(),
-      findOne: vi.fn(),
+      findOneByPublicId: vi.fn(),
       findManyWithCursorPagination: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -31,34 +33,44 @@ describe('__Feature__Service', () => {
   });
 
   describe('create', () => {
-    it('应当创建 __feature__ 并返回 id', async () => {
+    it('应当创建 __feature__ 并返回 id 与公开标识', async () => {
       const inputBody = { name: '示例名称' };
-      const expectedId = 1;
-      (mock__Feature__Repository.create as Mock).mockImplementation(
-        async () => await Promise.resolve(expectedId),
-      );
+      const expected = {
+        id: 1,
+        publicId: 'V1StGXR8_Z5jdHi6B-myT',
+        shortPublicId: 'xY7_k2Qm',
+      };
+      (mock__Feature__Repository.create as Mock).mockResolvedValue(expected);
 
-      const actualId = await __featureCamel__Service.create(inputBody);
+      const actual = await __featureCamel__Service.create(inputBody);
 
-      expect(actualId).toBe(expectedId);
+      expect(actual).toEqual(expected);
       expect(mock__Feature__Repository.create).toHaveBeenCalledWith({
         data: inputBody,
       });
     });
   });
 
-  describe('findOne', () => {
-    it('应当通过 id 查询 __feature__', async () => {
-      const inputId = 1;
-      const expected = { id: inputId, name: '示例名称' };
-      (mock__Feature__Repository.findOne as Mock).mockImplementation(
-        async () => await Promise.resolve(expected),
-      );
+  describe('findOneByPublicId', () => {
+    it('应当通过长码 publicId 查询 __feature__', async () => {
+      const inputPublicId = 'V1StGXR8_Z5jdHi6B-myT';
+      const expected = {
+        id: 1,
+        publicId: inputPublicId,
+        shortPublicId: 'xY7_k2Qm',
+        name: '示例名称',
+      };
+      (
+        mock__Feature__Repository.findOneByPublicId as Mock
+      ).mockResolvedValue(expected);
 
-      const actual = await __featureCamel__Service.findOne(inputId);
+      const actual =
+        await __featureCamel__Service.findOneByPublicId(inputPublicId);
 
       expect(actual).toEqual(expected);
-      expect(mock__Feature__Repository.findOne).toHaveBeenCalledWith({ id: inputId });
+      expect(mock__Feature__Repository.findOneByPublicId).toHaveBeenCalledWith(
+        { publicId: inputPublicId },
+      );
     });
   });
 });
