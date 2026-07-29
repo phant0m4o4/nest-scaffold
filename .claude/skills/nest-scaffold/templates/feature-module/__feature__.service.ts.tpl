@@ -1,12 +1,32 @@
+import { ICursorKeysetItem } from '@/app/repositories/common/interfaces/cursor-keyset.interface';
 import { __Feature__Repository } from '@/app/repositories/__feature__.repository';
-import { Injectable } from '@nestjs/common';
+import { buildCursorScope } from '@/app/repositories/common/mysql/utils/cursor/build-cursor-scope';
+import {
+  decodeCursor,
+  encodeCursor,
+} from '@/app/repositories/common/mysql/utils/cursor/encode-cursor';
+import {
+  isSameOrderDeclaration,
+  parseOrderQuery,
+} from '@/app/repositories/common/mysql/utils/cursor/parse-order';
+import appConfig from '@/configs/app.config';
+import type { AppConfigType } from '@/configs/app.config';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { SQL } from 'drizzle-orm';
 import { Create__Feature__RequestDto } from './dtos/create-__feature__-request.dto';
-import { FindMany__Feature__ByCursoredPaginationRequestDto } from './dtos/find-many-__feature__-request.dto';
+import {
+  __FEATURE___ORDERABLE_COLUMNS,
+  FindMany__Feature__ByCursoredPaginationRequestDto,
+  FindMany__Feature__ByPaginationRequestDto,
+} from './dtos/find-many-__feature__-request.dto';
 import { Update__Feature__RequestDto } from './dtos/update-__feature__-request.dto';
+
+/** 列表 resourceKey（写入 cursor.scope） */
+export const __FEATURE___LIST_RESOURCE_KEY = '__features__.list';
 
 /** __feature__ 过滤条件 */
 interface I__Feature__FilterOptions {
+  name?: string;
   // TODO: 按业务字段补充
 }
 
@@ -14,6 +34,7 @@ interface I__Feature__FilterOptions {
 export class __Feature__Service {
   constructor(
     protected readonly __featureCamel__Repository: __Feature__Repository,
+    @Inject(appConfig.KEY) private readonly _appConfig: AppConfigType,
   ) {}
 
   /** 创建（仓储分配长码 + 短码） */
@@ -29,20 +50,65 @@ export class __Feature__Service {
     return await this.__featureCamel__Repository.findAll({});
   }
 
+  /** 加密游标分页 */
   async findManyByCursorPagination(
     query: FindMany__Feature__ByCursoredPaginationRequestDto,
+    resourceKey: string = __FEATURE___LIST_RESOURCE_KEY,
   ) {
-    const { cursor, limit, orderColumn, orderDirection, ...filterOptions } =
+    const { cursor, limit, order: orderRaw, ...filterOptions } = query;
+    const order = parseOrderQuery(orderRaw, __FEATURE___ORDERABLE_COLUMNS);
+    const scope = buildCursorScope(
+      resourceKey,
+      filterOptions as Record<string, unknown>,
+    );
+
+    let keyset: ICursorKeysetItem[] | undefined;
+    if (cursor) {
+      const payload = decodeCursor(cursor, this._appConfig.masterKey);
+      if (payload.scope !== scope) {
+        throw new BadRequestException('无效的分页游标');
+      }
+      if (!isSameOrderDeclaration(order, payload.order)) {
+        throw new BadRequestException('分页游标与当前排序不一致');
+      }
+      keyset = payload.order;
+    }
+
+    const filters = this._buildFilters(filterOptions);
+    const result =
+      await this.__featureCamel__Repository.findManyWithCursorPagination({
+        limit: limit ?? 30,
+        cursor: keyset,
+        order,
+        filter: filters,
+      });
+
+    return {
+      data: result.data,
+      meta: {
+        nextCursor: result.meta.nextCursor
+          ? encodeCursor(
+              { scope, order: result.meta.nextCursor },
+              this._appConfig.masterKey,
+            )
+          : null,
+      },
+    };
+  }
+
+  /** 页码分页 */
+  async findManyByPagination(query: FindMany__Feature__ByPaginationRequestDto) {
+    const { page, pageSize, orderColumn, orderDirection, ...filterOptions } =
       query;
     const filters = this._buildFilters(filterOptions);
-    return await this.__featureCamel__Repository.findManyWithCursorPagination({
-      limit: limit ?? 30,
-      cursor,
+    return await this.__featureCamel__Repository.findManyWithPagination({
+      page: page ?? 1,
+      pageSize: pageSize ?? 30,
+      filter: filters,
       order: {
         column: orderColumn ?? 'id',
         direction: (orderDirection ?? 'desc') as 'asc' | 'desc',
       },
-      filter: filters,
     });
   }
 

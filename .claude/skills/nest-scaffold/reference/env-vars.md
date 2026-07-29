@@ -48,6 +48,7 @@ export default myConfig;
 | `APP_PORT` | int | `3000` | 监听端口 |
 | `APP_ADDRESS` | string | `127.0.0.1` | 监听地址 |
 | `APP_BASE_URL` | string | `http://${APP_ADDRESS}:${APP_PORT}` | 基础 URL |
+| `APP_MASTER_KEY` | hex64 | — | 应用主密钥，32 字节（64 位 hex）；游标 AES-256-GCM 等。生产用 `openssl rand -hex 32` |
 
 ## MySQL（DatabaseModule）
 
@@ -136,6 +137,7 @@ export default myConfig;
 ```env
 APP_NAME=my-api
 APP_PORT=3000
+APP_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
 #MySQL
 MYSQL_HOST=127.0.0.1

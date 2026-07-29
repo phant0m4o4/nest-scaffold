@@ -1,13 +1,30 @@
+import { ICursorKeysetItem } from '@/app/repositories/common/interfaces/cursor-keyset.interface';
+import { buildCursorScope } from '@/app/repositories/common/mysql/utils/cursor/build-cursor-scope';
+import {
+  decodeCursor,
+  encodeCursor,
+} from '@/app/repositories/common/mysql/utils/cursor/encode-cursor';
+import {
+  isSameOrderDeclaration,
+  parseOrderQuery,
+} from '@/app/repositories/common/mysql/utils/cursor/parse-order';
 import { DemoRepository } from '@/app/repositories/demo.repository';
+import type { AppConfigType } from '@/configs/app.config';
+import appConfig from '@/configs/app.config';
 import { demosSchema } from '@/database/mysql/schemas/demos.schema';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq, gte, like, lte, SQL } from 'drizzle-orm';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';
 import {
+  DEMO_ORDERABLE_COLUMNS,
   FindManyDemoByCursoredPaginationRequestDto,
   FindManyDemoByPaginationRequestDto,
 } from './dtos/find-many-demo-request.dto';
 import { UpdateDemoRequestDto } from './dtos/update-demo-request.dto';
+
+/** Demo 列表 resourceKey（写入 cursor.scope，防用户/管理互串） */
+export const DEMO_LIST_RESOURCE_KEY = 'demo.list';
+export const ADMIN_DEMO_LIST_RESOURCE_KEY = 'admin.demo.list';
 
 /**
  * Demo 过滤条件接口
@@ -23,7 +40,10 @@ interface IDemoFilterOptions {
 
 @Injectable()
 export class DemoService {
-  constructor(protected readonly demoRepository: DemoRepository) {}
+  constructor(
+    protected readonly demoRepository: DemoRepository,
+    @Inject(appConfig.KEY) private readonly _appConfig: AppConfigType,
+  ) {}
 
   /**
    * 创建 Demo（仓储 create 自动分配长码 publicId + 短码 shortPublicId）
@@ -45,30 +65,54 @@ export class DemoService {
   }
 
   /**
-   * 游标分页查询 Demo，支持多条件过滤
+   * 加密游标分页（用户端与管理端共用；仅 resourceKey 不同）
    */
   async findManyByCursorPagination(
     query: FindManyDemoByCursoredPaginationRequestDto,
+    resourceKey: string,
   ) {
-    const { cursor, limit, orderColumn, orderDirection, ...filterOptions } =
-      query;
+    const { cursor, limit, order: orderRaw, ...filterOptions } = query;
+    const order = parseOrderQuery(orderRaw, DEMO_ORDERABLE_COLUMNS);
+    const scope = buildCursorScope(
+      resourceKey,
+      filterOptions as Record<string, unknown>,
+    );
+
+    let keyset: ICursorKeysetItem[] | undefined;
+    if (cursor) {
+      const payload = decodeCursor(cursor, this._appConfig.masterKey);
+      if (payload.scope !== scope) {
+        throw new BadRequestException('无效的分页游标');
+      }
+      if (!isSameOrderDeclaration(order, payload.order)) {
+        throw new BadRequestException('分页游标与当前排序不一致');
+      }
+      keyset = payload.order;
+    }
+
     const filters = this._buildFilters(filterOptions);
-    return await this.demoRepository.findManyWithCursorPagination({
+    const result = await this.demoRepository.findManyWithCursorPagination({
       limit: limit ?? 30,
-      cursor,
-      order: {
-        column: orderColumn ?? 'id',
-        direction: orderDirection ?? 'desc',
-      },
+      cursor: keyset,
+      order,
       filter: filters,
     });
+
+    return {
+      data: result.data,
+      meta: {
+        nextCursor: result.meta.nextCursor
+          ? encodeCursor(
+              { scope, order: result.meta.nextCursor },
+              this._appConfig.masterKey,
+            )
+          : null,
+      },
+    };
   }
 
   /**
    * 普通分页查询 Demo，支持多条件过滤
-   *
-   * 示例保留：演示 `findManyWithPagination` 的用法，当前控制器未暴露对应路由
-   * （默认走游标分页），需要 offset 分页时在控制器加路由接入即可。
    */
   async findManyByPagination(query: FindManyDemoByPaginationRequestDto) {
     const { page, pageSize, orderColumn, orderDirection, ...filterOptions } =
@@ -87,9 +131,6 @@ export class DemoService {
 
   /**
    * 构建过滤条件 SQL 数组
-   * @param options - 过滤选项
-   * @returns SQL 条件数组
-   * @private
    */
   private _buildFilters(options: IDemoFilterOptions): SQL[] {
     const filters: SQL[] = [];

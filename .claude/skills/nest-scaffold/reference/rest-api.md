@@ -15,7 +15,7 @@
 {
   "statusCode": 200,
   "data": { ... },
-  "meta": { "nextCursor": 12 }
+  "meta": { "nextCursor": "iv.authTag.ciphertext" }
 }
 
 // 创建
@@ -67,37 +67,41 @@
 
 ## 分页
 
-### 游标分页（默认推荐）
+### 游标分页（默认推荐，加密 nextCursor）
+
+筛选与 `limit`/`order`/`cursor` 均在 **URL query**。`cursor` / `meta.nextCursor` 为 **AES-256-GCM 密文**（密钥 `APP_MASTER_KEY`），明文载荷为：
+
+```ts
+{ scope: string; order: Array<{ column; direction; value }> }
+```
+
+- `scope` = `resourceKey` + 筛选字段的稳定 hash（防改筛选或用户/管理列表互串；空串/null 不计入 hash）
+- `order` 多列 keyset，**最后一列必须是 `id`**、列名不重复；query 如 `createdAt:desc,id:desc`，缺省 `id:desc`
+- 无版本号；载荷结构变更则旧 cursor 全体作废
+- 仓储层仍使用内部 keyset；Service 负责编解码（实现：`repositories/common/mysql/utils/cursor/`，PG 侧再导出）
 
 请求 query：
 
 ```ts
 {
-  cursor?: number;       // 上一页 meta.nextCursor，缺省即第一页
-  limit?: number;        // 默认 30，最大 100
-  orderColumn?: string;  // 默认 id
-  orderDirection?: 'asc' | 'desc'; // 默认 desc
-  // ... 业务过滤字段
+  cursor?: string;  // 上一页 meta.nextCursor，缺省即第一页
+  limit?: number;   // 默认 30，最大 100
+  order?: string;   // 如 "createdAt:desc,id:desc"；默认 id:desc
+  // ... 业务过滤字段（进 scope，不进 cursor 明文）
 }
 ```
 
 继承基类 `FindManyByCursoredPaginationDto`（`src/app/api/common/dtos/`）。
 
-响应：
+响应：`meta.nextCursor` 为密文字符串或 `null`。
 
-```json
-{
-  "statusCode": 200,
-  "data": [ ... ],
-  "meta": { "nextCursor": 12 }
-}
-```
+路由示例：`GET /demo`（用户，`resourceKey=demo.list`）、`GET /admin/demo`（管理，`admin.demo.list`）。
 
-由 `BaseRepository.findManyWithCursorPagination` 返回 `{ data, meta: { nextCursor } }`，控制器透传即可。
+### 普通分页（页码）
 
-### 普通分页
+继承 `FindManyByPaginationDto`，请求 `{ page, pageSize, orderColumn, orderDirection }`（单列排序），响应 `{ data, meta: { page, pageSize, total, totalPages, hasPreviousPage, hasNextPage } }`。
 
-继承 `FindManyByPaginationDto`，请求 `{ page, pageSize, orderColumn, orderDirection }`，响应 `{ data, meta: { page, pageSize, total, totalPages, hasPreviousPage, hasNextPage } }`。
+Demo：`GET /demo/by-page`、`GET /admin/demo/by-page`（静态路径须在 `:publicId` / `:id` 之前）。
 
 ## CRUD 命名
 
@@ -178,11 +182,20 @@ export class DemoController {
     };
   }
 
+  @Get('by-page')
+  async findManyByPagination(@Query() query: FindManyDemoByPaginationRequestDto) {
+    const { data, meta } = await this.demoService.findManyByPagination(query);
+    return { data: data.map((row) => DemoPublicEntity.create(row)), meta };
+  }
+
   @Get()
   async findManyByCursorPagination(
     @Query() query: FindManyDemoByCursoredPaginationRequestDto,
   ) {
-    const { data, meta } = await this.demoService.findManyByCursorPagination(query);
+    const { data, meta } = await this.demoService.findManyByCursorPagination(
+      query,
+      'demo.list',
+    );
     return {
       data: data.map((row) => DemoPublicEntity.create(row)),
       meta,

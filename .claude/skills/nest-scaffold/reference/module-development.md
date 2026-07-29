@@ -98,19 +98,8 @@ export class <Domain>Service {
     return await this.<domain>Repository.findAll({});
   }
 
-  async findManyByCursorPagination(query: FindMany<Domain>ByCursoredPaginationRequestDto) {
-    const { cursor, limit, orderColumn, orderDirection, ...filterOptions } = query;
-    const filters = this._buildFilters(filterOptions);
-    return await this.<domain>Repository.findManyWithCursorPagination({
-      limit: limit ?? 30,
-      cursor,
-      order: {
-        column: orderColumn ?? 'id',
-        direction: (orderDirection ?? 'desc') as 'asc' | 'desc',
-      },
-      filter: filters,
-    });
-  }
+  // 游标分页：parseOrder → buildScope → decode → 仓储 keyset → encode nextCursor
+  // 完整实现见 DemoService.findManyByCursorPagination 与 reference/rest-api.md
 
   async findOne(id: number) {
     return await this.<domain>Repository.findOne({ id });

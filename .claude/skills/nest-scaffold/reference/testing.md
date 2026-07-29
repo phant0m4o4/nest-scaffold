@@ -171,18 +171,18 @@ describe('Demo E2E', () => {
 
   it('GET /demo 应返回 200 与游标分页结构', async () => {
     const res = await request(app.getHttpServer()).get('/demo').expect(200);
-    expect(res.body).toMatchObject({
-      statusCode: 200,
-      data: expect.any(Array),
-      meta: expect.objectContaining({ nextCursor: expect.anything() }),
-    });
+    expect(res.body.statusCode).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    // nextCursor 为加密字符串或 null（勿断言为数字 id）
+    const { nextCursor } = res.body.meta;
+    expect(nextCursor === null || typeof nextCursor === 'string').toBe(true);
   });
 });
 ```
 
 注意：
 
-- E2E 用 **`overrideProvider`** 覆盖配置 / 三方依赖。
+- E2E 用 **`overrideProvider`** 覆盖配置 / 三方依赖；须提供合法 `APP_MASTER_KEY`（或 mock `appConfig`）。
 - 容器化依赖用 **testcontainers**，测试自启自销，避免污染本地环境。
 - 不要在 e2e 里用真实 `.env.development`。
 
@@ -190,6 +190,9 @@ describe('Demo E2E', () => {
 
 - `src/common/utils/redis/__tests__/redis.factory.spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
 - `src/common/utils/redis/__tests__/redis-factory.e2e-spec.ts` —— testcontainers E2E 样例
+- `src/app/api/demo/__tests__/demo.service.spec.ts` —— 加密游标 Service 单测
+- `src/app/repositories/common/mysql/__tests__/base.repository.cursor.spec.ts` —— 多列 keyset 仓储单测
+- `src/app/api/demo/__tests__/demo-cursor.e2e-spec.ts` —— MySQL testcontainers 游标/页码集测
 
 ## 覆盖范围要求
 

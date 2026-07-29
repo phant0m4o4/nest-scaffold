@@ -9,9 +9,15 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { __Feature__Service } from './__feature__.service';
+import {
+  __FEATURE___LIST_RESOURCE_KEY,
+  __Feature__Service,
+} from './__feature__.service';
 import { Create__Feature__RequestDto } from './dtos/create-__feature__-request.dto';
-import { FindMany__Feature__ByCursoredPaginationRequestDto } from './dtos/find-many-__feature__-request.dto';
+import {
+  FindMany__Feature__ByCursoredPaginationRequestDto,
+  FindMany__Feature__ByPaginationRequestDto,
+} from './dtos/find-many-__feature__-request.dto';
 import { FindOne__Feature__ByPublicIdParamDto } from './dtos/find-one-__feature__-by-public-id-param.dto';
 import { Update__Feature__RequestDto } from './dtos/update-__feature__-request.dto';
 import { __Feature__PublicEntity } from './entities/__feature__-public.entity';
@@ -20,7 +26,7 @@ import { __Feature__PublicEntity } from './entities/__feature__-public.entity';
  * __feature__ 用户端控制器
  *
  * 路径与创建响应用长码列（模板占位名 publicId，请改成业务语义名）；
- * 列表/详情可含短码列。不暴露 bigint id。
+ * 游标分页返回加密 nextCursor；页码见 /by-page。不暴露 bigint id。
  */
 @Controller('__features__')
 export class __Feature__Controller {
@@ -44,13 +50,29 @@ export class __Feature__Controller {
     };
   }
 
-  /** 游标分页 */
+  /** 页码分页（须在 :publicId 之前） */
+  @Get('by-page')
+  async findManyByPagination(
+    @Query() query: FindMany__Feature__ByPaginationRequestDto,
+  ) {
+    const { data, meta } =
+      await this.__featureCamel__Service.findManyByPagination(query);
+    return {
+      data: data.map((row) => __Feature__PublicEntity.create(row)),
+      meta,
+    };
+  }
+
+  /** 加密游标分页 */
   @Get()
   async findManyByCursorPagination(
     @Query() query: FindMany__Feature__ByCursoredPaginationRequestDto,
   ) {
     const { data, meta } =
-      await this.__featureCamel__Service.findManyByCursorPagination(query);
+      await this.__featureCamel__Service.findManyByCursorPagination(
+        query,
+        __FEATURE___LIST_RESOURCE_KEY,
+      );
     return {
       data: data.map((row) => __Feature__PublicEntity.create(row)),
       meta,

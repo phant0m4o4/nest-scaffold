@@ -1,22 +1,17 @@
 import { Table } from 'drizzle-orm';
 
+import { ICursorKeysetItem } from './cursor-keyset.interface';
+
 /**
- * 游标分页结果接口
+ * 游标分页结果接口（仓储层）
+ *
+ * `meta.nextCursor` 为多列 keyset；对外 API 由 Service 加密为密文字符串。
  */
 export interface ICursorPaginationResult<TSchema extends Table> {
-  /**
-   * 数据列表
-   */
   data: TSchema['$inferSelect'][];
 
-  /**
-   * 分页元数据
-   */
   meta: {
-    /**
-     * 下一页游标，没有下一页时为 null
-     * @example 100
-     */
-    nextCursor: TSchema['$inferSelect']['id'] | null;
+    /** 下一页 keyset；没有下一页时为 null */
+    nextCursor: ICursorKeysetItem[] | null;
   };
 }

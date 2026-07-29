@@ -4,9 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import appConfig, { getProductionCorsSecurityWarnings } from '../app.config';
 
 /** 每个用例只声明自己关心的变量，其余由本函数补齐必填项 */
+/** 测试用 32 字节主密钥（64 hex），非生产密钥 */
+const TEST_MASTER_KEY =
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
 function stubEnvironment(overrides: Record<string, string | undefined>): void {
   vi.stubEnv('NODE_ENV', EnvironmentEnum.DEVELOPMENT);
   vi.stubEnv('APP_NAME', 'nest-scaffold');
+  vi.stubEnv('APP_MASTER_KEY', TEST_MASTER_KEY);
   for (const [key, value] of Object.entries(overrides)) {
     vi.stubEnv(key, value);
   }
@@ -17,6 +22,23 @@ afterEach(() => {
 });
 
 describe('appConfig', () => {
+  describe('masterKey', () => {
+    it('应将 64 位 hex 解析为 32 字节 Buffer', () => {
+      stubEnvironment({});
+
+      expect(appConfig().masterKey).toEqual(
+        Buffer.from(TEST_MASTER_KEY, 'hex'),
+      );
+      expect(appConfig().masterKey).toHaveLength(32);
+    });
+
+    it('非法长度应校验失败', () => {
+      stubEnvironment({ APP_MASTER_KEY: 'abcd' });
+
+      expect(() => appConfig()).toThrow(/APP_MASTER_KEY/);
+    });
+  });
+
   describe('trustProxy', () => {
     it('未设置时应为 false（默认不信任代理头，req.ip 取 TCP 对端地址）', () => {
       stubEnvironment({ APP_TRUST_PROXY: undefined });

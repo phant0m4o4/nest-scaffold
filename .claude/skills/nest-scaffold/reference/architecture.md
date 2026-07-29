@@ -55,12 +55,16 @@ src/
 │       └── common/
 │           ├── mysql/
 │           │   ├── base.repository.ts      # 通用 CRUD + 分页 + 软删除（MySQL 方言）
-│           │   └── utils/mysql-error-mapper.util.ts
+│           │   └── utils/
+│           │       ├── mysql-error-mapper.util.ts
+│           │       └── cursor/             # 加密游标编解码 / scope / order（实现）
 │           ├── pgsql/                      # 与 mysql/ 平行的 PostgreSQL 实现
 │           │   ├── base.repository.ts
-│           │   └── utils/pgsql-error-mapper.util.ts
+│           │   └── utils/
+│           │       ├── pgsql-error-mapper.util.ts
+│           │       └── cursor/             # 再导出 mysql 实现，统一 PG 侧引用路径
 │           ├── exceptions/                 # RepositoryException 体系（两方言共享）
-│           └── interfaces/                 # 分页/排序接口（两方言共享）
+│           └── interfaces/                 # 分页/排序/keyset 接口（两方言共享）
 ├── common/
 │   ├── enums/environment.enum.ts           # development / test / production
 │   ├── modules/                            # 全部 @Global() 基础设施模块
@@ -71,8 +75,8 @@ src/
 │   │   ├── i18n/                           # nestjs-i18n（项目实际不强依赖）
 │   │   ├── logger/                         # nestjs-pino + pino-roll
 │   │   └── queue/                          # BullMQ + Bull Board (dev)（独立 Redis 连接，QUEUE_REDIS_*）
-│   └── utils/                              # date-time / hash / random / zod / register-env-as-config / redis(连接工厂) 等
-├── configs/                                # registerEnvAsConfig 注册的各模块配置
+│   └── utils/                              # date-time / hash / public-id / zod / register-env-as-config / redis 等
+├── configs/                                # registerEnvAsConfig（含 app.APP_MASTER_KEY）
 └── database/
     ├── enums/                              # 跨表枚举（方言无关，两套 schema 共享）
     ├── mysql/                              # MySQL 业务库（mysql-core）
