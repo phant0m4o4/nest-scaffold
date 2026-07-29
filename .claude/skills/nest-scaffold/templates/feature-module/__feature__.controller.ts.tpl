@@ -19,7 +19,8 @@ import { __Feature__PublicEntity } from './entities/__feature__-public.entity';
 /**
  * __feature__ 用户端控制器
  *
- * 路径与创建响应用长码 publicId；列表/详情可含短码。不暴露 bigint id。
+ * 路径与创建响应用长码列（模板占位名 publicId，请改成业务语义名）；
+ * 列表/详情可含短码列。不暴露 bigint id。
  */
 @Controller('__features__')
 export class __Feature__Controller {

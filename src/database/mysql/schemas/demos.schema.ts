@@ -15,9 +15,9 @@ export const demosSchema = mysqlTable(
   'demos',
   {
     id: createPrimaryKeyColumn(),
-    /** 长码：用户端路径/读查（nanoid 21），不向用户暴露自增 id */
+    /** 长码（demo 泛化名；业务表请用语义名如 accessKey） */
     publicId: createPublicIdColumn(),
-    /** 短码：推荐码等（nanoid 8），碰撞策略与长码不同，见 DemoRepository */
+    /** 短码（demo 泛化名；业务表请用语义名如 inviteCode） */
     shortPublicId: createPublicIdColumn('shortPublicId', 8),
     name: varchar({ length: 100 }).notNull(), // 名称
     type: mysqlEnum(demoTypes).notNull().default(DemoTypeEnum.TYPE_1), // 类型

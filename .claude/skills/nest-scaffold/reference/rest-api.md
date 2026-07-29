@@ -104,7 +104,7 @@
 | 操作 | 控制器方法 | 服务方法 | 请求 DTO | 响应 |
 |------|----------|---------|---------|------|
 | 创建 | `create` | `create` | `Create<Resource>RequestDto` | 用户端 `OnlyPublicIdEntity`；管理端 `OnlyIdEntity` 或带 `id` 的 Entity |
-| 查询单条 | `findOne` | `findOne` / `findOneByPublicId` | 管理端 `FindOne…ParamDto`（`id`）；用户端 `FindOne…ByPublicIdParamDto`（`publicId`） | 管理端 `<Resource>Entity`（含 `id`）；用户端 `<Resource>PublicEntity`（无 `id`） |
+| 查询单条 | `findOne` | `findOne` / `findOneBy<长码语义>` | 管理端 `FindOne…ParamDto`（`id`）；用户端按长码列名（如 `accessKey`，勿机械叫 `publicId`） | 管理端 `<Resource>Entity`（含 `id`）；用户端 `<Resource>PublicEntity`（无 `id`） |
 | 列表（无分页） | `findAll` | `findAll` | — | `<Resource>Entity[]` |
 | 游标分页 | `findManyByCursorPagination` | `findManyByCursorPagination` | `FindMany<Resource>ByCursoredPaginationRequestDto` | `<Resource>Entity[]` + `nextCursor` |
 | 普通分页 | `findManyByPagination` | `findManyByPagination` | `FindMany<Resource>ByPaginationRequestDto` | `<Resource>Entity[]` + 分页 meta |
@@ -157,13 +157,13 @@ zod 默认剔除 schema 未声明的字段，起到响应净化作用。
 ## 主键暴露约定（bigint id vs 长码 / 短码）
 
 - 表主键始终是 **bigint** `id`（内部关联、事务、admin）。
-- **长码 `publicId`**（nanoid 21）：用户端路径参数、创建响应里的资源标识；列表/详情不要带数字 `id`。
-- **短码 `shortPublicId`**（nanoid 8）：推荐码等，可出现在列表/详情实体，一般不进 URL、不进创建响应（与长码列、策略分开，见 `reference/database.md`）。
+- **长码**（nanoid 默认 21）：用户端路径参数、创建响应里的资源标识；**列名/参数名按业务语义**（如 `accessKey`），不必叫 `publicId`（demo 用泛化名仅示例）。列表/详情不要带数字 `id`。
+- **短码**（常见 8）：推荐码等；列名如 `inviteCode` / `referralCode`；可出现在列表/详情，一般不进 URL、不进创建响应（策略见 `reference/database.md`）。
 - 管理端（如 `@Controller('admin/demo')`）可以暴露 `id`；真实项目务必加鉴权。
-- 创建时由仓储重载的 `create` 自动分配两码，返回 `{ id, publicId, shortPublicId }`；用户端创建响应通常只透出长码（`OnlyPublicIdEntity`）。
-- 完整示例见 `src/app/api/demo/`（`DemoController` 用户端 / `AdminDemoController` 管理端）。
+- 创建时由仓储重载的 `create` 自动分配所需公开串；用户端创建响应通常只透出长码字段。
+- 完整示例见 `src/app/api/demo/`（字段名为泛化 `publicId`/`shortPublicId`）。
 
-## 控制器示例（用户端：publicId）
+## 控制器示例（用户端：长码路径；demo 字段名仅为示例）
 
 ```ts
 @Controller('demo')

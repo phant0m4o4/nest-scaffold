@@ -18,7 +18,7 @@
 
 ## 控制器写法
 
-> 用户端路径/创建响应用长码 `publicId`（`OnlyPublicIdEntity` / `*PublicEntity`）；短码 `shortPublicId` 仅出现在列表/详情等实体。管理端可用 `OnlyIdEntity`（bigint）。约定见 `rest-api.md`「主键暴露约定」与 `src/app/api/demo/`。
+> 用户端路径/创建响应用**长码列**（列名随业务；下方示例的 `publicId` 仅为占位，请改成如 `accessKey`）。短码列（如 `inviteCode`）仅出现在列表/详情等实体。管理端可用 `OnlyIdEntity`（bigint）。约定见 `rest-api.md` 与 `database.md`。
 
 ```ts
 @Controller('<domain>')

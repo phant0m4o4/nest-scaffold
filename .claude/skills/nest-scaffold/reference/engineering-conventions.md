@@ -37,7 +37,7 @@
 | D1 | **表必须有合法 `id` 主键** | bigint + `createPrimaryKeyColumn()`；否则 `BaseRepository` 启动抛错 |
 | D2 | **结构变更走 migration** | 开发与生产同一套迁移；`db:generate:* --name=<kebab>` 必带 name；**禁止**把 `drizzle-kit push` 当日常流程 |
 | D3 | **软删除约定** | 有 `deletedAt` 即自动软删；查询默认过滤已删行；删除 API 不得绕过该约定却装作软删 |
-| D4 | **公开标识分长短、策略分岔** | 长码 `publicId`：直插、碰撞不透明；短码 `shortPublicId`：先查空再插、竞态再不透明；**禁止**用缩短长码冒充推荐码，也禁止用短码当 URL 资源 id |
+| D4 | **公开标识分长短、策略分岔；列名随业务语义** | 长码直插、短码先查空；列名用业务含义（如 `accessKey`/`inviteCode`），`publicId`/`shortPublicId` 仅为 demo 泛化名；**禁止**缩短长码冒充推荐码，也禁止短码当 URL 资源 id |
 | D5 | **唯一冲突语义分明** | DB 唯一冲突 → `RecordAlreadyExistsException`（409）；公开标识分配失败不得伪装成「记录已存在」给用户；业务唯一键（如 name）仍应 409 |
 | D6 | **基础数据进数据迁移** | 必备初始数据用 `--custom` 数据迁移；seed 仅开发演示，不承担生产基线 |
 | D7 | **事务边界清晰** | 多表一致性写操作走 `db.transaction`，仓储方法接收 `db`/`tx`；禁止「一半成功一半失败」却无补偿约定 |
@@ -50,7 +50,7 @@
 |---|--------|------|
 | A1 | **控制器无业务 / 无直访仓储** | Controller：校验入参 → 调 Service → 组装响应；禁止拼 SQL、堆业务分支 |
 | A2 | **响应必须经 Entity 净化** | 返回前 `Entity.create(row)`（或等价 zod DTO）；禁止把 Drizzle 原始行直接甩给客户端 |
-| A3 | **路径参数必须走 Param DTO** | 禁止裸 `@Param('id')`；用户端资源定位用长码 `publicId`，管理端才可暴露 `id` |
+| A3 | **路径参数必须走 Param DTO** | 禁止裸 `@Param('id')`；用户端资源定位用长码列（列名随业务语义），管理端才可暴露 `id` |
 | A4 | **统一错误信封** | 非 2xx 走全局过滤器形状；业务勿自造另一套错误 JSON |
 | A5 | **入参校验在边界完成** | 请求体/查询/路径用 zod DTO + 全局管道；服务层不重复「防呆式」校验已保证的形状（业务规则校验除外） |
 

@@ -19,7 +19,8 @@ import { DemoPublicEntity } from './entities/demo-public.entity';
 /**
  * Demo 用户端控制器
  *
- * 路径与创建响应用长码 `publicId`；列表/详情实体可带短码 `shortPublicId`。
+ * 路径与创建响应用长码列；本 demo 字段名为泛化 `publicId` / `shortPublicId`
+ *（业务表请用语义名，如 accessKey / inviteCode）。
  * 不暴露 bigint 自增主键。
  */
 @Controller('demo')
