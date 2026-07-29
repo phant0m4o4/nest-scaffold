@@ -21,6 +21,8 @@ type __Feature__CreateData = Omit<
  * __feature__ 仓储
  *
  * 长码直插、短码先查空；自定义查询经 `_buildWhereFilter`（软删除安全）。
+ * 模板字段 `publicId` / `shortPublicId` 为占位名——请改成业务语义列名，
+ * 并同步本文件方法名、Controller 路径参数与 Entity 字段。
  */
 @Injectable()
 export class __Feature__Repository extends BaseRepository<

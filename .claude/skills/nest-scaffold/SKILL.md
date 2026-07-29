@@ -127,7 +127,7 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 1. 在 `src/database/enums/` 决定是否需要枚举（跨文件复用才放这里，键值用 camelCase）。
 2. 在 `src/database/mysql/schemas/<table-name>.schema.ts` 用 Drizzle MySQL 定义：
    - 必须 `id: createPrimaryKeyColumn()`（来自 `@/database/mysql/utils/create-primary-key`）。
-   - 用户端路径用长码：`publicId: createPublicIdColumn()` + `unique()`；推荐码等另加短码：`shortPublicId: createPublicIdColumn('shortPublicId', 8)` + `unique()`。写入在仓储**重载 `create`**（长码直接插、短码先查空再插；碰撞均不透明报错，见 `DemoRepository` / `reference/database.md`）。管理端可暴露 `id`。
+   - 用户端路径用长码列：`createPublicIdColumn()` + `unique()`，**列名按业务语义**（如 `accessKey`；demo 泛化名 `publicId` 仅示例）。推荐码等另加短码列：`createPublicIdColumn('inviteCode', 8)` + `unique()`。写入在仓储**重载 `create`**（长码直插、短码先查空；见 `reference/database.md`）。管理端可暴露 `id`。
    - 时间戳用 `...createTimestamps()`，需要软删除则 `...createTimestampsWithSoftDelete()`（自动生成 `deletedAt`，`BaseRepository` 会识别）。
    - 外键用 `createForeignKeyColumn()`。
 3. 在 `src/database/mysql/schemas/index.ts` 重导出新 schema。

@@ -25,8 +25,9 @@ export const demosSchema = mysqlTable(
   'demos',
   {
     id: createPrimaryKeyColumn(),
-    publicId: createPublicIdColumn(),                 // 长码：路径/读查（默认 21）
-    shortPublicId: createPublicIdColumn('shortPublicId', 8), // 短码：推荐码等
+    // 列名按业务语义；demo 用泛化名仅作示例。真实业务如 accessKey / inviteCode
+    publicId: createPublicIdColumn(),
+    shortPublicId: createPublicIdColumn('shortPublicId', 8),
     name: varchar({ length: 100 }).notNull(),
     type: mysqlEnum(demoTypes).notNull().default(DemoTypeEnum.type1),
     parentId: createForeignKeyColumn(),
@@ -51,38 +52,41 @@ export const demosSchema = mysqlTable(
 | 函数 | 说明 |
 |------|------|
 | `createPrimaryKeyColumn(name?)` | 默认生成 `bigint unsigned not null auto_increment primary key`（`mode: 'number'`），自定义列名时传参 |
-| `createPublicIdColumn(name?, length?)` | 公开标识列（默认 `varchar(21)`）；短码传 `length`（如 `8`）；**须**表级 `unique()` |
+| `createPublicIdColumn(name?, length?)` | 公开串列工厂（默认 `varchar(21)`）；**列名自定**；短码传 `length`（如 `8`）；**须**表级 `unique()` |
 | `createForeignKeyColumn(name?)` | 生成可空的外键列（bigint unsigned，与主键类型一致），约束在 schema 第 3 个参数声明 |
 | `createTimestamps()` | `{ createdAt, updatedAt }` 默认 now、`onUpdateNow()` |
 | `createTimestampsWithSoftDelete()` | 额外加 `deletedAt: timestamp()` |
 
-## 公开标识：长码 vs 短码（必须分开）
+## 公开标识：长码 vs 短码（策略分开，列名随业务）
 
-主键一律 **bigint**（`createPrimaryKeyColumn`）。面向用户的标识按用途拆成两列，**不要**用缩短的长码冒充推荐码，也不要用短码当 URL 资源 id。
+主键一律 **bigint**（`createPrimaryKeyColumn`）。面向用户的标识按**用途**分长短策略，**列名用业务语义**（如 `accessKey`、`inviteCode`、`referralCode`），**不要**规定死叫 `publicId` / `shortPublicId`——那只是 demo 的泛化示例名。
 
-### 长码 `publicId`（nanoid 21）
+也不要用缩短的长码冒充推荐码，或用短码当 URL 资源 id。
 
-- **列**：`createPublicIdColumn()` + `unique().on(table.publicId)`
+### 长码（nanoid 默认 21，路径/读查）
+
+- **列**：`createPublicIdColumn()` 或 `createPublicIdColumn('accessKey')` + 对应字段的 `unique()`
 - **生成**：`generatePublicId()`（默认长度 `PUBLIC_ID_LENGTH` = 21）
-- **写入**：仓储重载 `create` 内直接 generate → `super.create`，**不查、不重试**
-- **碰撞**：极低概率；确认是长码唯一冲突时抛 `RepositoryException`（对外 500「数据访问异常」），不暴露真实原因
-- **用途**：用户端路径参数、资源定位（见 `DemoController`）
+- **写入**：仓储 `create` 内直接 generate → `super.create`，**不查、不重试**
+- **碰撞**：极低概率；确认是该长码列唯一冲突时抛 `RepositoryException`（对外 500「数据访问异常」），不暴露真实原因
+- **用途**：用户端路径参数、资源定位（demo：`DemoController` 的 `publicId`）
 
-### 短码 `shortPublicId`（nanoid 8）
+### 短码（常见长度 8，口播/抄写）
 
-- **列**：`createPublicIdColumn('shortPublicId', 8)` + `unique().on(table.shortPublicId)`（列宽与 `generatePublicId(8)` 保持一致）
-- **生成**：同一个 `generatePublicId(8)`（长短只差入参，无单独工厂）
-- **写入**：仓储内「循环 generate → 查是否占用 → 再随行 insert」（查空策略在仓储，见 `DemoRepository`）
-- **碰撞**：查空耗尽，或 insert 时竞态再撞唯一约束 → 同样不透明 `RepositoryException`，**不再换号死磕**
-- **用途**：推荐码、邀请码等需口播/抄写的场景；可出现在列表/详情实体，一般不进 URL
+- **列**：`createPublicIdColumn('inviteCode', 8)` + `unique()`（列宽与 `generatePublicId(8)` 一致）
+- **生成**：同一个 `generatePublicId(8)`（长短只差入参）
+- **写入**：「循环 generate → 查是否占用 → 再随行 insert」（见 `DemoRepository` 对短码的处理）
+- **碰撞**：查空耗尽，或 insert 竞态再撞 → 同样不透明 `RepositoryException`，**不再换号死磕**
+- **用途**：推荐码、邀请码等；可出现在列表/详情实体，一般不进 URL
 
 ### 业务封装与 API
 
-- 两列都需要时：仓储重载 `create`，入参不含两码，返回 `{ id, publicId, shortPublicId }`（见 `DemoRepository`）。只需其一则只加对应列与分配逻辑。
+- 仓储方法名、路径参数名、响应字段名与**语义列名**一致（如 `findOneByInviteCode`、`:inviteCode`），不要为了「规范」硬叫 `publicId`。
+- 需要长+短时：仓储重载 `create`，入参不含这两列，返回 `{ id, <长码字段>, <短码字段> }`（demo 返回名是泛化示例）。
 - `name` 等业务唯一键冲突仍抛 `RecordAlreadyExistsException`（409）。
-- **用户端**：路径与创建响应用长码（`OnlyPublicIdEntity`）；列表/详情用 `DemoPublicEntity`（可含短码、不要带 `id`）。
-- **管理端**：可暴露 `id`（`AdminDemoController` + `DemoEntity`）。
-- 都不需要对外标识的表：两列都可不加。
+- **用户端**：路径与创建响应用长码列；实体可含短码列、不要带 `id`。
+- **管理端**：可暴露 `id`。
+- 都不需要对外标识的表：相关列都可不加。
 
 ## PostgreSQL 版差异
 
@@ -96,13 +100,14 @@ export const demoTypeEnum = pgEnum('demo_type', demoTypes);
 
 export const demosSchema = pgTable('demos', {
   id: createPrimaryKeyColumn(),            // bigint generated always as identity
-  publicId: createPublicIdColumn(),
-  shortPublicId: createPublicIdColumn('shortPublicId', 8),
+  // 列名按业务语义；勿照抄 demo 的 publicId / shortPublicId
+  accessKey: createPublicIdColumn(),
+  inviteCode: createPublicIdColumn('inviteCode', 8),
   name: varchar({ length: 100 }).notNull(),
   type: demoTypeEnum().notNull().default(DemoTypeEnum.type1),
   parentId: createForeignKeyColumn(),
   ...createTimestamps(),
-}, (table) => [ /* 同 MySQL 版：两码 + name 的 unique 等 */ ]);
+}, (table) => [ /* unique(accessKey) / unique(inviteCode) 等 */ ]);
 ```
 
 要点：

@@ -21,8 +21,9 @@ type DemoCreateData = Omit<
  * Demo 仓储
  *
  * `create` 重载同时分配：
- * - **长码 publicId**：generate → insert；碰撞极低，不重试，转不透明错误
- * - **短码 shortPublicId**：循环 generate → 查空 → 再随行 insert；查空耗尽或
+ * - **长码**（本表列名 `publicId` 为 demo 泛化名；业务表请用语义名）：
+ *   generate → insert；碰撞极低，不重试，转不透明错误
+ * - **短码**（本表列名 `shortPublicId` 同上）：循环 generate → 查空 → 再随行 insert；查空耗尽或
  *   insert 竞态撞唯一约束 → 同样不透明错误
  *
  * 自定义查询一律经 `_buildWhereFilter`，表启用软删除时自动过滤已删行。
