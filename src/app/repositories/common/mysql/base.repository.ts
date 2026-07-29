@@ -88,12 +88,11 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
       order?: IOrderOption | IOrderOption[];
     } = {},
   ): Promise<TSchema['$inferSelect'][]> {
-    const { db = this._db, order } = options;
-    const query = db.select().from(this._schema);
-    query.orderBy(
-      ...this._buildOrder(order ?? { column: 'id', direction: 'asc' }),
-    );
-    return await query;
+    // 走 findMany，确保自动附加软删除过滤（deletedAt IS NULL）
+    return this.findMany({
+      db: options.db,
+      order: options.order,
+    });
   }
 
   /**
@@ -145,7 +144,8 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
   }): Promise<IPaginationResult<TSchema>> {
     const { db = this._db, page, pageSize, filter, order } = options;
     const offset = (page - 1) * pageSize;
-    const whereFilter = filter ? this._buildWhereFilter(filter) : undefined;
+    // 无业务 filter 时仍须走 _buildWhereFilter，否则软删除条件会被跳过
+    const whereFilter = this._buildWhereFilter(filter);
     const countQuery = db.select({ count: count() }).from(this._schema);
     if (whereFilter) {
       countQuery.where(whereFilter);

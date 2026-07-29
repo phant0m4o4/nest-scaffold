@@ -189,6 +189,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 |------|------|
 | `scripts/bootstrap.sh` | 把本仓库克隆为新项目并替换 APP_NAME |
 | `scripts/new-module.sh` | 在当前项目内生成新业务模块 |
+| `scripts/setup-github.sh` | 配置 GitHub 分支保护 / Squash / auto-delete |
 
 执行脚本前先 `chmod +x` 或 `bash <script>` 调用。
 
@@ -200,6 +201,6 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 - 业务里 `setTimeout` 做时序。改用 BullMQ 队列或 cron。
 - 控制器返回未经 `Entity.create(raw)` 净化的 Drizzle 原始行（zod schema 会剔除未声明字段；直接返回原始行会泄露未声明字段，且时间格式不可控）。
 - 在新业务里跑 `flushdb` / `cache.flush()`（会清空缓存专用 DB 的全部数据；cluster 模式下 `flush()` 会直接抛错拒绝）。
-- 让缓存与锁/队列等不可丢数据的服务共用一个 Redis DB（缓存可随时清空/被淘汰，必须独立 DB，`CACHE_REDIS_DB` 默认 1）。
+- 让缓存与锁/队列等不可丢数据的服务共用一个 Redis DB（缓存可随时清空/被淘汰，必须独立 DB；推荐 `CACHE_REDIS_DB=0` / `DISTRIBUTED_LOCK_REDIS_DB=1` / `QUEUE_REDIS_DB=2`）。
 - 把 Redis client 直接共享给 BullMQ：BullMQ Worker 需要专用 blocking 连接，统一通过 `QueueModule` 接管。
 - 在 `.env` 里直接写明文密码并提交。所有敏感字段都通过 redact 脱敏并保持 `.env` 不入库。

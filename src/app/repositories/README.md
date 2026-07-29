@@ -108,7 +108,7 @@ export class UserService {
 | 方法                                                                | 说明                  | 返回值                             |
 | ------------------------------------------------------------------- | --------------------- | ---------------------------------- |
 | `findOne({ id })`                                                   | 主键查找单条          | `TSchema['$inferSelect'] \| null`  |
-| `findAll({ order? })`                                               | 查询所有记录          | `TSchema['$inferSelect'][]`        |
+| `findAll({ order? })`                                               | 查询所有记录（含软删过滤） | `TSchema['$inferSelect'][]`        |
 | `findMany({ filter?, limit?, order? })`                             | 条件查询              | `TSchema['$inferSelect'][]`        |
 | `findManyWithPagination({ page, pageSize, filter?, order? })`       | 普通分页              | `IPaginationResult<TSchema>`       |
 | `findManyWithCursorPagination({ limit, cursor?, filter?, order? })` | 游标分页              | `ICursorPaginationResult<TSchema>` |

@@ -1,6 +1,6 @@
 # Scripts
 
-两个工具脚本，配合 SKILL.md 使用。
+三个工具脚本，配合 SKILL.md 使用。
 
 ## bootstrap.sh
 
