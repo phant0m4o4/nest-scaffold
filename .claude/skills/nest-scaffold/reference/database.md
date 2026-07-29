@@ -136,7 +136,7 @@ export const demosSchema = pgTable('demos', {
 - `findAll({ db?, order? })`
 - `findMany({ db?, filter?, limit?, order? })`
 - `findManyWithPagination({ db?, page, pageSize, filter?, order? })`
-- `findManyWithCursorPagination({ db?, limit, cursor?, filter?, order? })`
+- `findManyWithCursorPagination({ db?, limit, cursor?, filter?, order? })` — `cursor`/`nextCursor` 为多列 keyset；对外加密由 Service 完成（见 rest-api.md）
 - `create({ db?, data })`、`batchCreate({ db?, data })`
 - `update({ db?, id, data })`
 - `delete({ db?, id })`、`batchDelete({ db?, ids })`

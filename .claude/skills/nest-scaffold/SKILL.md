@@ -115,8 +115,8 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 - CRUD 方法名固定：`create` / `findOne` / `findMany` / `findManyByCursorPagination` / `update` / `remove` / `findAll`。
 - DTO 一律放 `dtos/` 下，命名 `create-<feature>-request.dto.ts`、`update-<feature>-request.dto.ts`、`find-many-<feature>-request.dto.ts`、`find-one-<feature>-param.dto.ts`、`<feature>-response.dto.ts`（实体可放 `entities/<feature>.entity.ts`）。
 - 请求/响应 DTO 一律用 `createZodDto(z.object({ ... }))` 定义（zod，项目内 createZodDto 工厂），控制器返回时用 `EntityClass.create(raw)` 净化（zod 默认剔除 schema 未声明的字段）。
-- Service 注入仓储；分页查询从 `BaseRepository` 继承的 `findManyWithCursorPagination` / `findManyWithPagination` 调用。
-- `<Feature>Module` 通过 `RepositoryModule.forFeature([<Feature>Repository])` 注册仓储。
+- Service 注入仓储；游标分页在 Service 层用 `APP_MASTER_KEY` 加密 `nextCursor`（仓储仍是内部 keyset），页码分页走 `findManyWithPagination`；约定见 `reference/rest-api.md`。
+- `<Feature>Module` 通过 `RepositoryModule.forFeature([<Feature>Repository])` 注册仓储，并 `ConfigModule.forFeature(appConfig)`（加密游标需要）。
 
 完整模板见 `templates/feature-module/`，详细规范见 `reference/module-development.md` 与 `reference/rest-api.md`。
 

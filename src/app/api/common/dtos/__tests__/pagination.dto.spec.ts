@@ -14,12 +14,22 @@ describe('分页 DTO 边界', () => {
     expect(schema.safeParse({ limit: '2.5' }).success).toBe(false);
   });
 
-  it('cursored：cursor 必须为正整数', () => {
+  it('cursored：cursor 为非空字符串密文', () => {
     const schema = FindManyByCursoredPaginationDto.schema;
 
-    expect(schema.parse({ cursor: '10' }).cursor).toBe(10);
-    expect(schema.safeParse({ cursor: '-1' }).success).toBe(false);
-    expect(schema.safeParse({ cursor: '0' }).success).toBe(false);
+    expect(schema.parse({ cursor: 'iv.tag.cipher' }).cursor).toBe(
+      'iv.tag.cipher',
+    );
+    expect(schema.safeParse({ cursor: '' }).success).toBe(false);
+  });
+
+  it('cursored：order 为非空字符串', () => {
+    const schema = FindManyByCursoredPaginationDto.schema;
+
+    expect(schema.parse({ order: 'createdAt:desc,id:desc' }).order).toBe(
+      'createdAt:desc,id:desc',
+    );
+    expect(schema.safeParse({ order: '' }).success).toBe(false);
   });
 
   it('pagination：page/pageSize 边界与 cursored 一致', () => {
@@ -33,8 +43,8 @@ describe('分页 DTO 边界', () => {
     expect(schema.safeParse({ pageSize: '101' }).success).toBe(false);
   });
 
-  it('orderDirection 仅接受 asc / desc', () => {
-    const schema = FindManyByCursoredPaginationDto.schema;
+  it('pagination：orderDirection 仅接受 asc / desc', () => {
+    const schema = FindManyByPaginationDto.schema;
 
     expect(schema.parse({ orderDirection: 'desc' }).orderDirection).toBe(
       'desc',

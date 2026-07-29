@@ -1,4 +1,8 @@
 import { PgsqlDatabaseType } from '@/common/modules/database/pgsql/common/types/pgsql-database.type';
+import {
+  coerceCursorValueForQuery,
+  serializeCursorValue,
+} from '@/app/repositories/common/pgsql/utils/cursor/serialize-cursor-value';
 import { UTC } from '@/common/utils/date-time';
 import {
   and,
@@ -10,10 +14,12 @@ import {
   inArray,
   isNull,
   lt,
+  or,
   SQL,
 } from 'drizzle-orm';
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import { RecordNotFoundException } from '../exceptions/record-not-found-exception';
+import { ICursorKeysetItem } from '../interfaces/cursor-keyset.interface';
 import { ICursorPaginationResult } from '../interfaces/cursor-pagination-result.interface';
 import { IOrderOption } from '../interfaces/order-option.interface';
 import { IPaginationResult } from '../interfaces/pagination-result.interface';
@@ -174,22 +180,20 @@ export abstract class BaseRepository<TSchema extends PgTable> {
   }
 
   /**
-   * 游标分页查询
-   * @param options.db 数据库事务实例（可选）
-   * @param options.limit 每页条数（>=1）
-   * @param options.filter 查询条件，已自动附加软删除过滤
-   * @param options.order 排序方向（默认 'asc'）
-   * @param options.cursor 游标（上一页最后一条记录的 id）
-   * @returns 分页结果（data + meta.nextCursor）
+   * 游标分页查询（多列 keyset）
+   *
+   * @param options.cursor 上一页末行的 keyset（column/direction/value）；对外密文由 Service 编解码
+   * @returns data + meta.nextCursor（keyset 数组或 null）
    */
   public async findManyWithCursorPagination(options: {
     db?: PgsqlDatabaseType;
     limit: number;
     filter?: SQL[] | SQL;
     order?: IOrderOption | IOrderOption[];
-    cursor?: number;
+    cursor?: ICursorKeysetItem[];
   }): Promise<ICursorPaginationResult<TSchema>> {
     const { db = this._db, limit, filter, order, cursor } = options;
+    const normalizedOrder = this._normalizeCursorOrder(order);
     const filters: SQL[] = [];
     if (filter) {
       if (Array.isArray(filter)) {
@@ -198,22 +202,16 @@ export abstract class BaseRepository<TSchema extends PgTable> {
         filters.push(filter);
       }
     }
-    if (cursor) {
-      const idOrderDirection = this._extractIdOrderDirection(order);
-      if (idOrderDirection === 'desc') {
-        filters.push(lt(this._schema['id'], cursor));
-      } else {
-        filters.push(gt(this._schema['id'], cursor));
-      }
+    if (cursor && cursor.length > 0) {
+      this._assertCursorMatchesOrder(cursor, normalizedOrder);
+      filters.push(this._buildKeysetWhere(cursor));
     }
     const query = db.select().from(this._schema as PgTable);
     const whereFilter = this._buildWhereFilter(filters);
     if (whereFilter) {
       query.where(whereFilter);
     }
-    query.orderBy(
-      ...this._buildOrder(order ?? { column: 'id', direction: 'asc' }),
-    );
+    query.orderBy(...this._buildOrder(normalizedOrder));
     // 多查一条用于判断是否有下一页
     query.limit(limit + 1);
     const results = (await query) as TSchema['$inferSelect'][];
@@ -223,7 +221,10 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     }
     const nextCursor =
       hasNextPage && results.length > 0
-        ? (results[results.length - 1]['id'] as TSchema['$inferSelect']['id'])
+        ? this._buildNextCursorKeyset(
+            results[results.length - 1],
+            normalizedOrder,
+          )
         : null;
     return {
       data: results,
@@ -471,18 +472,92 @@ export abstract class BaseRepository<TSchema extends PgTable> {
 
   // ---------- 私有方法 ----------
 
-  /** 从排序配置中提取 id 列的排序方向，用于游标分页的方向判断 */
-  private _extractIdOrderDirection(
+  /** 规范化游标排序：默认 id desc（与 API 缺省一致）；最后一列必须是 id */
+  private _normalizeCursorOrder(
     order?: IOrderOption | IOrderOption[],
-  ): 'asc' | 'desc' {
+  ): IOrderOption[] {
     const normalized: IOrderOption[] = Array.isArray(order)
       ? order
       : order
         ? [order]
-        : [];
-    const idOrder =
-      normalized.find((o) => o.column === 'id') ??
-      ({ column: 'id', direction: 'asc' } as IOrderOption);
-    return idOrder.direction;
+        : [{ column: 'id', direction: 'desc' }];
+    if (normalized.length === 0) {
+      throw new Error(`${this._tableConfig.name}: 游标排序不能为空`);
+    }
+    if (normalized[normalized.length - 1].column !== 'id') {
+      throw new Error(`${this._tableConfig.name}: 游标排序最后一列必须是 id`);
+    }
+    return normalized;
+  }
+
+  private _assertCursorMatchesOrder(
+    cursor: ICursorKeysetItem[],
+    order: IOrderOption[],
+  ): void {
+    if (cursor.length !== order.length) {
+      throw new Error(
+        `${this._tableConfig.name}: 游标 keyset 与 order 列数不一致`,
+      );
+    }
+    for (let index = 0; index < order.length; index++) {
+      if (
+        cursor[index].column !== order[index].column ||
+        cursor[index].direction !== order[index].direction
+      ) {
+        throw new Error(
+          `${this._tableConfig.name}: 游标 keyset 与 order 声明不一致`,
+        );
+      }
+    }
+  }
+
+  /**
+   * 多列 keyset WHERE：前缀相等 + 当前列按方向严格大于/小于
+   */
+  private _buildKeysetWhere(cursor: ICursorKeysetItem[]): SQL {
+    const branches: SQL[] = [];
+    for (let index = 0; index < cursor.length; index++) {
+      const equalities: SQL[] = [];
+      for (let prefix = 0; prefix < index; prefix++) {
+        equalities.push(
+          eq(
+            this._schemaColumn(cursor[prefix].column),
+            coerceCursorValueForQuery(cursor[prefix].value),
+          ),
+        );
+      }
+      const current = cursor[index];
+      const column = this._schemaColumn(current.column);
+      const value = coerceCursorValueForQuery(current.value);
+      const comparison =
+        current.direction === 'desc' ? lt(column, value) : gt(column, value);
+      branches.push(
+        equalities.length > 0 ? and(...equalities, comparison)! : comparison,
+      );
+    }
+    return or(...branches)!;
+  }
+
+  private _buildNextCursorKeyset(
+    row: TSchema['$inferSelect'],
+    order: IOrderOption[],
+  ): ICursorKeysetItem[] {
+    return order.map((item) => ({
+      column: item.column,
+      direction: item.direction,
+      value: serializeCursorValue(
+        (row as Record<string, unknown>)[item.column],
+      ),
+    }));
+  }
+
+  private _schemaColumn(columnName: string): SQL {
+    const column = (this._schema as unknown as Record<string, unknown>)[
+      columnName
+    ];
+    if (!column) {
+      throw new Error(`${this._tableConfig.name}: 无效的游标列: ${columnName}`);
+    }
+    return column as unknown as SQL;
   }
 }

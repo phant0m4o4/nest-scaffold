@@ -1,26 +1,23 @@
 import { FindManyByCursoredPaginationDto } from '@/app/api/common/dtos/find-many-by-cursored-pagination.dto';
 import { FindManyByPaginationDto } from '@/app/api/common/dtos/find-many-by-pagination.dto';
+import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { zUtcDateTime } from '@/common/utils/zod/utc-date-time';
 import { demoTypes } from '@/database/enums/demo-type.enum';
 import { demosSchema } from '@/database/mysql/schemas';
 import { getTableConfig } from 'drizzle-orm/mysql-core';
-import { createZodDto } from '@/common/utils/zod/create-zod-dto';
 import { z } from 'zod';
 
 /**
  * demos 表的可排序列名列表（运行时获取）
  */
-const DEMO_ORDERABLE_COLUMNS = getTableConfig(demosSchema).columns.map(
+export const DEMO_ORDERABLE_COLUMNS = getTableConfig(demosSchema).columns.map(
   (col) => col.name,
 ) as [string, ...string[]];
 
 /**
- * Demo 查询共用的字段 schema
- * 覆盖基类的 orderColumn 验证规则（限制为 demos 表的列名），并追加过滤条件字段
+ * Demo 查询共用的筛选字段（不含排序；游标用 order，页码用 orderColumn）
  */
 const demoFilterFieldsSchema = z.object({
-  /** 排序列，例如 'id' */
-  orderColumn: z.enum(DEMO_ORDERABLE_COLUMNS).optional(),
   /** 名称（模糊匹配），例如 'test' */
   name: z.string().optional(),
   /** 类型，例如 'TYPE_1' */
@@ -40,5 +37,8 @@ export class FindManyDemoByCursoredPaginationRequestDto extends createZodDto(
 ) {}
 
 export class FindManyDemoByPaginationRequestDto extends createZodDto(
-  FindManyByPaginationDto.schema.extend(demoFilterFieldsSchema.shape),
+  FindManyByPaginationDto.schema.extend(demoFilterFieldsSchema.shape).extend({
+    /** 排序列，例如 'id'（页码分页仍为单列） */
+    orderColumn: z.enum(DEMO_ORDERABLE_COLUMNS).optional(),
+  }),
 ) {}

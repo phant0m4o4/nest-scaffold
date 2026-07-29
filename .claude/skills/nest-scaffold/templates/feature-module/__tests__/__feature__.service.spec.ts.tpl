@@ -1,7 +1,13 @@
 import { __Feature__Repository } from '@/app/repositories/__feature__.repository';
+import appConfig from '@/configs/app.config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { __Feature__Service } from '../__feature__.service';
+
+const TEST_MASTER_KEY = Buffer.from(
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  'hex',
+);
 
 describe('__Feature__Service', () => {
   let __featureCamel__Service: __Feature__Service;
@@ -15,12 +21,16 @@ describe('__Feature__Service', () => {
       findAll: vi.fn(),
       findOneByPublicId: vi.fn(),
       findManyWithCursorPagination: vi.fn(),
+      findManyWithPagination: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
-      providers: [__Feature__Service],
+      providers: [
+        __Feature__Service,
+        { provide: appConfig.KEY, useValue: { masterKey: TEST_MASTER_KEY } },
+      ],
     })
       .useMocker((token) => {
         if (token === __Feature__Repository) {

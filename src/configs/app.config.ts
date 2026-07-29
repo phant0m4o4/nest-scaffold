@@ -91,6 +91,7 @@ export function getProductionCorsSecurityWarnings(params: {
  * APP_CORS_DOMAINS=https://a.example.com,https://b.example.com
  * APP_CORS_CREDENTIALS=true
  * APP_TRUST_PROXY=false
+ * APP_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
  *
  * CORS 说明：
  * - `APP_CORS_DOMAINS`：英文逗号分隔的允许来源白名单，精确匹配（协议 + 域名 + 端口需完全一致）
@@ -112,6 +113,13 @@ const environmentSchema = z.object({
     z.stringbool().optional(),
   ),
   APP_TRUST_PROXY: z.string().optional(),
+  /** 应用主密钥：64 位 hex（32 字节），用于游标等 AES-256-GCM */
+  APP_MASTER_KEY: z
+    .string()
+    .regex(
+      /^[0-9a-fA-F]{64}$/,
+      'APP_MASTER_KEY 必须是 64 位十六进制（32 字节）',
+    ),
 });
 
 const appConfig = registerEnvAsConfig('app', environmentSchema, (env) => {
@@ -127,6 +135,7 @@ const appConfig = registerEnvAsConfig('app', environmentSchema, (env) => {
     // 默认 true：本项目使用 Cookie Session，跨域请求需要携带凭证
     corsCredentials: env.APP_CORS_CREDENTIALS ?? true,
     trustProxy: parseTrustProxy(env.APP_TRUST_PROXY),
+    masterKey: Buffer.from(env.APP_MASTER_KEY, 'hex'),
   };
 });
 export type AppConfigType = ConfigType<typeof appConfig>;

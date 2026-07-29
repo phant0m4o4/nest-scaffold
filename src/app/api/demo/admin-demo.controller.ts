@@ -9,9 +9,12 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { DemoService } from './demo.service';
+import { ADMIN_DEMO_LIST_RESOURCE_KEY, DemoService } from './demo.service';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';
-import { FindManyDemoByCursoredPaginationRequestDto } from './dtos/find-many-demo-request.dto';
+import {
+  FindManyDemoByCursoredPaginationRequestDto,
+  FindManyDemoByPaginationRequestDto,
+} from './dtos/find-many-demo-request.dto';
 import { FindOneDemoParamDto } from './dtos/find-one-demo-param.dto';
 import { UpdateDemoRequestDto } from './dtos/update-demo-request.dto';
 import { DemoEntity } from './entities/demo.entity';
@@ -20,6 +23,7 @@ import { DemoEntity } from './entities/demo.entity';
  * Demo 管理端控制器
  *
  * 可暴露 bigint 自增 `id`（同时保留长码 `publicId` / 短码 `shortPublicId` 便于对照）。
+ * 游标与用户端同一套加密逻辑（resourceKey 不同）；页码分页见 `/by-page`。
  * 真实项目中应在此路由加鉴权 / 角色守卫。
  */
 @Controller('admin/demo')
@@ -47,14 +51,27 @@ export class AdminDemoController {
   }
 
   /**
-   * 分页查询资源
+   * 页码分页（须声明在 :id 之前）
+   */
+  @Get('by-page')
+  async findManyByPagination(
+    @Query() query: FindManyDemoByPaginationRequestDto,
+  ) {
+    const { data, meta } = await this.demoService.findManyByPagination(query);
+    return { data: data.map((row) => DemoEntity.create(row)), meta };
+  }
+
+  /**
+   * 加密游标分页
    */
   @Get()
   async findManyByCursorPagination(
     @Query() query: FindManyDemoByCursoredPaginationRequestDto,
   ) {
-    const { data, meta } =
-      await this.demoService.findManyByCursorPagination(query);
+    const { data, meta } = await this.demoService.findManyByCursorPagination(
+      query,
+      ADMIN_DEMO_LIST_RESOURCE_KEY,
+    );
     return { data: data.map((row) => DemoEntity.create(row)), meta };
   }
 

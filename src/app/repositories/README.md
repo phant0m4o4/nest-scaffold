@@ -111,7 +111,7 @@ export class UserService {
 | `findAll({ order? })`                                               | 查询所有记录（含软删过滤） | `TSchema['$inferSelect'][]`        |
 | `findMany({ filter?, limit?, order? })`                             | 条件查询              | `TSchema['$inferSelect'][]`        |
 | `findManyWithPagination({ page, pageSize, filter?, order? })`       | 普通分页              | `IPaginationResult<TSchema>`       |
-| `findManyWithCursorPagination({ limit, cursor?, filter?, order? })` | 游标分页              | `ICursorPaginationResult<TSchema>` |
+| `findManyWithCursorPagination({ limit, cursor?, filter?, order? })` | 多列 keyset 游标分页（`cursor`/`nextCursor` 为 keyset；对外密文由 Service 经 `common/<dialect>/utils/cursor` 编解码） | `ICursorPaginationResult<TSchema>` |
 | `create({ data })`                                                  | 创建单条              | `id`；有公开标识列时业务仓储可重载（长码直插、短码先查空；列名随业务，demo 返回泛化字段名仅示例） |
 | `batchCreate({ data })`                                             | 批量创建              | `{ id }[]`                         |
 | `update({ id, data })`                                              | 更新                  | `void`                             |
