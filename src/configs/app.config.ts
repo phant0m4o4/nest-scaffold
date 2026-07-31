@@ -91,7 +91,12 @@ export function getProductionCorsSecurityWarnings(params: {
  * APP_CORS_DOMAINS=https://a.example.com,https://b.example.com
  * APP_CORS_CREDENTIALS=true
  * APP_TRUST_PROXY=false
- * APP_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+ * APP_MASTER_KEY=...（64 位 hex；生成：openssl rand -hex 32）
+ *
+ * APP_MASTER_KEY 说明：
+ * - AES-256-GCM 要求密钥正好 256 bit（32 字节）；本配置把 hex 解码后的 Buffer 直接当 key
+ * - 不经口令 KDF（密钥派生），故 env 必须是 32 字节高熵材料（64 位 hex），而非任意短串
+ * - 生成：openssl rand -hex 32（生产务必替换示例/占位值）
  *
  * CORS 说明：
  * - `APP_CORS_DOMAINS`：英文逗号分隔的允许来源白名单，精确匹配（协议 + 域名 + 端口需完全一致）
@@ -113,12 +118,16 @@ const environmentSchema = z.object({
     z.stringbool().optional(),
   ),
   APP_TRUST_PROXY: z.string().optional(),
-  /** 应用主密钥：64 位 hex（32 字节），用于游标等 AES-256-GCM */
+  /**
+   * 应用主密钥：64 位 hex = 32 字节，用于游标等 AES-256-GCM。
+   * AES-256 固定要 32 字节 key；此处 hex 解码后直接使用，故必须正好 64 位高熵 hex。
+   * 生成：openssl rand -hex 32
+   */
   APP_MASTER_KEY: z
     .string()
     .regex(
       /^[0-9a-fA-F]{64}$/,
-      'APP_MASTER_KEY 必须是 64 位十六进制（32 字节）',
+      'APP_MASTER_KEY 必须是 64 位十六进制（32 字节；生成：openssl rand -hex 32）',
     ),
 });
 

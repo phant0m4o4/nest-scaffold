@@ -53,7 +53,7 @@
 | A3 | **路径参数必须走 Param DTO** | 禁止裸 `@Param('id')`；用户端资源定位用长码列（列名随业务语义），管理端才可暴露 `id` |
 | A4 | **统一错误信封** | 非 2xx 走全局过滤器形状；业务勿自造另一套错误 JSON |
 | A5 | **入参校验在边界完成** | 请求体/查询/路径用 zod DTO + 全局管道；服务层不重复「防呆式」校验已保证的形状（业务规则校验除外） |
-| A6 | **游标对外必须加密** | 列表 `nextCursor` 用 `APP_MASTER_KEY` 做 AES-GCM；筛选在 URL；payload 含 scope + 多列 keyset；勿把裸 `id` 当 cursor |
+| A6 | **游标对外必须加密** | 列表 `nextCursor` 用 `APP_MASTER_KEY` 做 AES-256-GCM（key 固定 32 字节，env 为 64 位 hex，生成 `openssl rand -hex 32`）；筛选在 URL；payload 含 scope + 多列 keyset；勿把裸 `id` 当 cursor |
 
 详见 [rest-api.md](rest-api.md)、[module-development.md](module-development.md)。
 
