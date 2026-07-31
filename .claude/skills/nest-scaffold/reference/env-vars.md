@@ -48,7 +48,7 @@ export default myConfig;
 | `APP_PORT` | int | `3000` | 监听端口 |
 | `APP_ADDRESS` | string | `127.0.0.1` | 监听地址 |
 | `APP_BASE_URL` | string | `http://${APP_ADDRESS}:${APP_PORT}` | 基础 URL |
-| `APP_MASTER_KEY` | hex64 | — | 应用主密钥，32 字节（64 位 hex）；游标 AES-256-GCM 等。生产用 `openssl rand -hex 32` |
+| `APP_MASTER_KEY` | hex64 | — | 应用主密钥。AES-256-GCM 固定要 256 bit（32 字节）key，此处把 64 位 hex 解码后直接当 key（不经口令派生），故必须正好 32 字节高熵材料。生成：`openssl rand -hex 32`（生产务必替换示例值） |
 
 ## MySQL（DatabaseModule）
 
@@ -137,6 +137,7 @@ export default myConfig;
 ```env
 APP_NAME=my-api
 APP_PORT=3000
+# AES-256-GCM 要 32 字节 key；64 位 hex 解码后直接使用。生成：openssl rand -hex 32
 APP_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
 #MySQL

@@ -69,7 +69,7 @@
 
 ### 游标分页（默认推荐，加密 nextCursor）
 
-筛选与 `limit`/`order`/`cursor` 均在 **URL query**。`cursor` / `meta.nextCursor` 为 **AES-256-GCM 密文**（密钥 `APP_MASTER_KEY`），明文载荷为：
+筛选与 `limit`/`order`/`cursor` 均在 **URL query**。`cursor` / `meta.nextCursor` 为 **AES-256-GCM 密文**（密钥 `APP_MASTER_KEY`：AES-256 固定 32 字节，env 为 64 位 hex，解码后直接当 key；生成 `openssl rand -hex 32`），明文载荷为：
 
 ```ts
 { scope: string; order: Array<{ column; direction; value }> }

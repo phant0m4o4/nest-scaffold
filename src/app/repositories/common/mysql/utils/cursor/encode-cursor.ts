@@ -22,6 +22,9 @@ const cursorPayloadSchema = z.object({
  * 将游标载荷加密为不透明字符串（AES-256-GCM）
  *
  * 形态：`iv.authTag.ciphertext`（均为 base64url）
+ *
+ * `masterKey` 须为 32 字节：AES-256-GCM 密钥长度固定 256 bit；来自 `APP_MASTER_KEY`
+ *（64 位 hex 解码，直接当 key，不经口令派生）。生成：`openssl rand -hex 32`
  */
 export function encodeCursor(
   payload: CursorPayload,
@@ -74,8 +77,11 @@ export function decodeCursor(token: string, masterKey: Buffer): CursorPayload {
   }
 }
 
+/** AES-256-GCM 要求 32 字节 key；对应 env 为 64 位 hex（openssl rand -hex 32） */
 function assertMasterKey(masterKey: Buffer): void {
   if (masterKey.length !== 32) {
-    throw new Error('APP_MASTER_KEY 必须为 32 字节');
+    throw new Error(
+      'APP_MASTER_KEY 必须为 32 字节（64 位 hex；生成：openssl rand -hex 32）',
+    );
   }
 }
