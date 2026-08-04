@@ -242,9 +242,9 @@ PGSQL_PASSWORD=root_password
 
 `docker-compose.yml` 包含：
 
-- `mysql:8.0`（端口 3306，命令 `--character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci`）
+- `mysql:9`（端口 3306，命令 `--character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci`）
 - `phpmyadmin`（端口 8081）
-- `postgres:16`（端口 5432，仅在需要 PG 时用；见 `PGSQL_*` 环境变量）
+- `postgres:18`（端口 5432，仅在需要 PG 时用；见 `PGSQL_*` 环境变量；数据卷挂 `/var/lib/postgresql`）
 - `pgadmin`（端口 8082）
 - `redis`（端口 6379，`requirepass`）
 - `phpRedisAdmin`（端口 8080）
