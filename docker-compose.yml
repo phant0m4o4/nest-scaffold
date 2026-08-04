@@ -2,7 +2,7 @@
 services:
   mysql:
     container_name: ${APP_NAME}-mysql
-    image: mysql:8.0
+    image: mysql:9
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
     #    image: mysql:5.7
     #    platform: linux/amd64
@@ -43,7 +43,7 @@ services:
 
   postgres:
     container_name: ${APP_NAME}-postgres
-    image: postgres:16
+    image: postgres:18
     restart: always
     environment:
       POSTGRES_DB: ${PGSQL_DATABASE:-nest-scaffold}
@@ -52,7 +52,8 @@ services:
     ports:
       - ${PGSQL_PORT:-5432}:5432
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # PG 18+ 官方镜像 VOLUME 改为 /var/lib/postgresql（不再是 .../data）
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${PGSQL_USER:-postgres}']
       interval: 5s

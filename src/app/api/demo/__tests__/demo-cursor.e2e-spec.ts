@@ -31,7 +31,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 const TEST_TIMEOUT_MS = 180_000;
-const MYSQL_IMAGE = 'mysql:8.0';
+const MYSQL_IMAGE = 'mysql:9';
 const MYSQL_INNER_PORT = 3306;
 const MYSQL_DATABASE = 'cursor_e2e';
 const MYSQL_USER = 'root';

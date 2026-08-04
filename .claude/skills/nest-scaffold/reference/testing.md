@@ -145,7 +145,7 @@ describe('Demo E2E', () => {
   let redisContainer: StartedRedisContainer;
 
   beforeAll(async () => {
-    mysqlContainer = await new MySqlContainer('mysql:8.0').start();
+    mysqlContainer = await new MySqlContainer('mysql:9').start();
     redisContainer = await new RedisContainer('redis:7-alpine').start();
 
     const moduleRef: TestingModule = await Test.createTestingModule({

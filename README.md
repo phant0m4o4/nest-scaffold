@@ -33,12 +33,21 @@ docker-compose 启动的服务（含管理界面、弱密码默认值，**生产
 
 | 服务          | 端口 | 说明                |
 | ------------- | ---- | ------------------- |
-| MySQL 8.0     | 3306 | 数据库（默认）      |
-| PostgreSQL 16 | 5432 | 数据库（可选）      |
+| MySQL 9       | 3306 | 数据库（默认）      |
+| PostgreSQL 18 | 5432 | 数据库（可选）      |
 | phpMyAdmin    | 8081 | MySQL 管理界面      |
 | pgAdmin       | 8082 | PostgreSQL 管理界面 |
 | Redis         | 6379 | 缓存/队列           |
 | phpRedisAdmin | 8080 | Redis 管理界面      |
+
+停基础设施时，**容器与数据卷要分开考虑**：
+
+```bash
+docker compose down          # 只停并删容器/网络，保留 volumes（本地库数据还在）
+docker compose down -v       # 连带删全部 named volumes（mysql / postgres / redis 数据一并清空）
+```
+
+日常停机用前者即可。需要换大版本镜像、清脏数据、或彻底重来时再用 `-v`（或只删个别卷，如 `docker volume rm <项目名>_mysql-data`），然后再 `up -d` 并重跑迁移。
 
 <details>
 <summary>.env 完整示例（与 .env.example 一致）</summary>
