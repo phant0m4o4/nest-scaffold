@@ -88,8 +88,7 @@ function asPageBody(res: Response): PageListBody {
 class TestZodValidationPipe implements PipeTransform {
   transform(value: unknown, metadata: ArgumentMetadata): unknown {
     const metatype = metadata.metatype as
-      | (Type<unknown> & { isZodDto?: boolean; schema?: z.ZodType })
-      | undefined;
+      (Type<unknown> & { isZodDto?: boolean; schema?: z.ZodType }) | undefined;
     if (!metatype?.isZodDto || !metatype.schema) {
       return value;
     }

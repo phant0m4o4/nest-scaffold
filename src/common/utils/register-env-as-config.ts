@@ -59,7 +59,7 @@ export function registerEnvAsConfig<
     if (!result.success) {
       throw new Error(buildValidationErrorMessage(configToken, result.error));
     }
-    return configFactory(result.data as z.output<TEnvironmentSchema>);
+    return configFactory(result.data);
   });
 }
 
