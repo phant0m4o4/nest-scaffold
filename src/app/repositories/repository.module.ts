@@ -8,8 +8,7 @@ import { BaseRepository as PgsqlBaseRepository } from './common/pgsql/base.repos
  * 任意方言的仓储基类（MySQL / PostgreSQL）
  */
 export type AnyBaseRepositoryType =
-  | MysqlBaseRepository<MySqlTable>
-  | PgsqlBaseRepository<PgTable>;
+  MysqlBaseRepository<MySqlTable> | PgsqlBaseRepository<PgTable>;
 
 /**
  * RepositoryModule 配置选项

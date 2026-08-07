@@ -79,7 +79,7 @@ services:
 
   redis:
     container_name: ${APP_NAME}-redis
-    image: redis:7-alpine
+    image: redis:8-alpine
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password} --appendonly yes
     restart: always
     ports:
