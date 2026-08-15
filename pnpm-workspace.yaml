@@ -1,0 +1,18 @@
+# pnpm v11 项目配置（原 package.json#pnpm 迁至此）
+#
+# minimumReleaseAge：新发布包需满 N 分钟才可解析进 lockfile（默认 1440=1 天，防供应链投毒）
+# allowBuilds：仅允许列出的依赖跑 install 脚本（默认全拒；native/bindgen 包必须显式放行）
+overrides:
+  ioredis: ^6.0.0
+allowBuilds:
+  '@swc/core': true
+  argon2: true
+  # drizzle-kit / nest 构建链路
+  esbuild: true
+  # BullMQ 可选原生加速
+  msgpackr-extract: true
+  # testcontainers → dockerode → ssh2
+  ssh2: true
+  cpu-features: true
+  # nest/protobuf 链路偶发 postinstall
+  protobufjs: true

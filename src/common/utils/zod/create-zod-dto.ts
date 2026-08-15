@@ -32,7 +32,7 @@ export function createZodDto<TSchema extends z.ZodType>(
     static readonly isZodDto = true as const;
     static readonly schema = schema;
     static create(input: unknown): z.output<TSchema> {
-      return schema.parse(input) as z.output<TSchema>;
+      return schema.parse(input);
     }
   }
   return ZodDto as unknown as IZodDtoClass<TSchema>;

@@ -29,9 +29,7 @@ interface IRedisClusterModeConfig {
 
 /** 解析后的 Redis 连接配置（三种模式联合） */
 export type RedisConnectionConfig =
-  | IRedisSingleModeConfig
-  | IRedisSentinelModeConfig
-  | IRedisClusterModeConfig;
+  IRedisSingleModeConfig | IRedisSentinelModeConfig | IRedisClusterModeConfig;
 
 /**
  * 各模块环境变量映射后的连接入参

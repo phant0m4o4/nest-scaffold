@@ -1,0 +1,49 @@
+=== node/pnpm ===
+v24.19.0
+11.20.0
+=== lint:check ===
+$ eslint . --max-warnings 0
+=== build ===
+$ nest build
+-  TSC  Initializing type checker...
+✔  TSC  Initializing type checker...
+>  TSC  Found 0 issues.
+>  SWC  Running...
+Successfully compiled: 155 files with swc (92.95ms)
+=== test ===
+$ vitest run
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 ./
+
+
+ Test Files  23 passed (23)
+      Tests  149 passed (149)
+   Start at  03:07:28
+   Duration  1.01s (transform 946ms, setup 0ms, import 4.59s, tests 107ms, environment 1ms)
+
+=== test:e2e ===
+$ vitest run --config ./vitest-e2e.config.ts
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest-e2e.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 ./
+
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  03:07:29
+   Duration  7.08s (transform 163ms, setup 0ms, import 980ms, tests 7.00s, environment 0ms)
+
+=== docker build --target build (prior run exit 0) ===
+=== round2 gates 2026-08-04T19:24Z ===
+v24.19.0
+11.20.0
+argon2 0.45.1
+testcontainers 12.0.4
+bull-board
+inquirer 14.0.2

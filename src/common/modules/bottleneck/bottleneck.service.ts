@@ -157,9 +157,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     const BottleneckCtor = Bottleneck as unknown as new (
       opts: Record<string, unknown>,
     ) => IBottleneckLimiter;
-    const limiter = new BottleneckCtor(
-      limiterOptions as Record<string, unknown>,
-    );
+    const limiter = new BottleneckCtor(limiterOptions);
     this._setupLimiterEvents(limiter, key);
     this._limiters.set(key, limiter);
     this._logger.info(

@@ -73,10 +73,7 @@ export class DemoService {
   ) {
     const { cursor, limit, order: orderRaw, ...filterOptions } = query;
     const order = parseOrderQuery(orderRaw, DEMO_ORDERABLE_COLUMNS);
-    const scope = buildCursorScope(
-      resourceKey,
-      filterOptions as Record<string, unknown>,
-    );
+    const scope = buildCursorScope(resourceKey, filterOptions);
 
     let keyset: ICursorKeysetItem[] | undefined;
     if (cursor) {

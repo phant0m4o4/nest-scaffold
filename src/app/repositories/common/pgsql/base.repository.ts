@@ -46,6 +46,15 @@ export abstract class BaseRepository<TSchema extends PgTable> {
   /** 表配置元数据 */
   protected readonly _tableConfig: ReturnType<typeof getTableConfig>;
 
+  /**
+   * 供 Drizzle `.from()` 使用的表引用。
+   * 泛型 `TSchema` 在 drizzle-orm 的 `TableLikeHasEmptySelection` 条件类型下无法直接传入，
+   * 拓宽为 `PgTable` 后查询结果再断言回 `TSchema['$inferSelect']`。
+   */
+  protected get _tableForQuery(): PgTable {
+    return this._schema;
+  }
+
   protected constructor(schema: TSchema, db: PgsqlDatabaseType) {
     this._schema = schema;
     this._db = db;
@@ -119,7 +128,7 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     } = {},
   ): Promise<TSchema['$inferSelect'][]> {
     const { db = this._db, filter, limit, order } = options;
-    const query = db.select().from(this._schema as PgTable);
+    const query = db.select().from(this._tableForQuery);
     const whereFilter = this._buildWhereFilter(filter);
     if (whereFilter) {
       query.where(whereFilter);
@@ -130,7 +139,7 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     if (limit) {
       query.limit(limit);
     }
-    return (await query) as TSchema['$inferSelect'][];
+    return await query;
   }
 
   /**
@@ -153,15 +162,13 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     const offset = (page - 1) * pageSize;
     // 无业务 filter 时仍须走 _buildWhereFilter，否则软删除条件会被跳过
     const whereFilter = this._buildWhereFilter(filter);
-    const countQuery = db
-      .select({ count: count() })
-      .from(this._schema as PgTable);
+    const countQuery = db.select({ count: count() }).from(this._tableForQuery);
     if (whereFilter) {
       countQuery.where(whereFilter);
     }
     const totalResult = await countQuery;
     const total = totalResult[0]?.count ?? 0;
-    const dataQuery = db.select().from(this._schema as PgTable);
+    const dataQuery = db.select().from(this._tableForQuery);
     if (whereFilter) {
       dataQuery.where(whereFilter);
     }
@@ -206,7 +213,7 @@ export abstract class BaseRepository<TSchema extends PgTable> {
       this._assertCursorMatchesOrder(cursor, normalizedOrder);
       filters.push(this._buildKeysetWhere(cursor));
     }
-    const query = db.select().from(this._schema as PgTable);
+    const query = db.select().from(this._tableForQuery);
     const whereFilter = this._buildWhereFilter(filters);
     if (whereFilter) {
       query.where(whereFilter);
@@ -405,7 +412,7 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     } = {},
   ): Promise<number> {
     const { db = this._db, filter } = options;
-    const query = db.select({ count: count() }).from(this._schema as PgTable);
+    const query = db.select({ count: count() }).from(this._tableForQuery);
     const whereFilter = this._buildWhereFilter(filter);
     if (whereFilter) {
       query.where(whereFilter);

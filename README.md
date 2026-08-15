@@ -10,7 +10,7 @@
 - **测试**：Vitest（SWC）+ Supertest + Testcontainers
 - **规范**：ESLint + Prettier + Commitizen + GitHub Flow（main 受保护，全量 PR）
 
-**环境要求**：Node.js >= 22、pnpm >= 10、Docker & Docker Compose（本地基础设施）。
+**环境要求**：Node.js >= 24、pnpm >= 11、Docker & Docker Compose（本地基础设施）。
 
 **文档地图**：本文覆盖开发/生产两条主线的操作；开发规范细节见 [.claude/skills/nest-scaffold/SKILL.md](.claude/skills/nest-scaffold/SKILL.md)（含 [各场景端到端工作流](.claude/skills/nest-scaffold/reference/workflows.md)、[工程约定](.claude/skills/nest-scaffold/reference/engineering-conventions.md)、[任务验收四档约定](.claude/skills/nest-scaffold/reference/task-acceptance.md)、[Git/提交规范](.claude/skills/nest-scaffold/reference/git-commit.md)），AI 代理行为约束见 [CLAUDE.md](CLAUDE.md)；验收报告归档见 [reports/](reports/README.md)。
 
@@ -289,7 +289,7 @@ NODE_ENV=production pnpm start:dist                         # 3) 启动（node d
 <details>
 <summary>CD 示例 workflow：CI 通过后 SSH 上传产物并 PM2 重启（保存为 .github/workflows/cd.yml）</summary>
 
-> 前置：服务器预装 Node 22 + pnpm + PM2；仓库 Secrets 配置 `SSH_HOST` / `SSH_USER` / `SSH_KEY`（部署专用私钥）；`.env` 在服务器部署目录内维护，不随部署覆盖。
+> 前置：服务器预装 Node 24 + pnpm + PM2；仓库 Secrets 配置 `SSH_HOST` / `SSH_USER` / `SSH_KEY`（部署专用私钥）；`.env` 在服务器部署目录内维护，不随部署覆盖。
 
 ```yaml
 name: CD
@@ -314,7 +314,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build

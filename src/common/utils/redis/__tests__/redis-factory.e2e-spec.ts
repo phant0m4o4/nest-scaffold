@@ -7,7 +7,7 @@ import { closeRedisClient, createRedisClient } from '../redis.factory';
 import type { RedisClient } from '../redis.types';
 
 /** Redis 容器镜像 */
-const REDIS_IMAGE = 'redis:7-alpine';
+const REDIS_IMAGE = 'redis:8-alpine';
 /** Redis 容器内端口 */
 const REDIS_INNER_PORT = 6379;
 /** 容器启动 / 测试整体超时（ms） */

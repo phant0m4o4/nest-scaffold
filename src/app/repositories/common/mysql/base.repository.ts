@@ -219,7 +219,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     const nextCursor =
       hasNextPage && results.length > 0
         ? this._buildNextCursorKeyset(
-            results[results.length - 1] as TSchema['$inferSelect'],
+            results[results.length - 1],
             normalizedOrder,
           )
         : null;

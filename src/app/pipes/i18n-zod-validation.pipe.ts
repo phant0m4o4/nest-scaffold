@@ -111,8 +111,7 @@ function resolveFieldLabel(
  */
 function renderCatalogMessage(issue: z.core.$ZodRawIssue): string | undefined {
   const i18n = I18nContext.current() as unknown as
-    | IDynamicTranslator
-    | undefined;
+    IDynamicTranslator | undefined;
   if (!i18n || typeof i18n.t !== 'function') {
     return undefined;
   }
