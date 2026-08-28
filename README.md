@@ -389,11 +389,12 @@ src/
 │   ├── exceptions/         # ZodValidationException（自带 422 响应体）
 │   ├── interceptors/       # GlobalResponseInterceptor（统一响应包装）
 │   ├── pipes/              # I18nZodValidationPipe（全局 zod 校验）
-│   └── repositories/       # 仓储层（继承 BaseRepository，mysql/pgsql 两套实现）
+│   └── repositories/       # 业务仓储（继承对应数据库方言的 BaseRepository）
 ├── common/
 │   ├── enums/
 │   ├── modules/            # 通用基础设施模块（全部 @Global()）
-│   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/
+│   │   ├── database/       # 数据库连接、仓储基类/异常/工具、RepositoryModule
+│   │   ├── bottleneck/ cache/ distributed-lock/ i18n/ logger/ queue/
 │   └── utils/              # 工具函数（date-time / zod / register-env-as-config 等）
 ├── configs/                # 环境变量校验与映射（zod schema）
 └── database/

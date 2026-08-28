@@ -1,13 +1,13 @@
 import { MySqlDatabaseType } from '@/common/modules/database/mysql/common/types/mysql-database.type';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
+import { RecordAlreadyExistsException } from '@/common/modules/database/common/repositories/exceptions/record-already-exists-exception';
+import { RepositoryException } from '@/common/modules/database/common/repositories/exceptions/repository-exception';
+import { BaseRepository } from '@/common/modules/database/mysql/repositories/base.repository';
 import { generatePublicId } from '@/common/utils/public-id';
 import { demosSchema } from '@/database/mysql/schemas/demos.schema';
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { RecordAlreadyExistsException } from './common/exceptions/record-already-exists-exception';
-import { RepositoryException } from './common/exceptions/repository-exception';
-import { BaseRepository } from './common/mysql/base.repository';
 
 /** 短码查空最大尝试次数（含首次）；查到空闲后再 insert */
 const SHORT_PUBLIC_ID_MAX_PROBE_ATTEMPTS = 8;

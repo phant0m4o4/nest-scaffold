@@ -15,7 +15,7 @@
 - **主键**：`bigint GENERATED ALWAYS AS IDENTITY`（MySQL 为 `bigint unsigned auto_increment`），见 `src/database/pgsql/utils/create-primary-key.ts`。
 - **updatedAt**：PostgreSQL 没有 `ON UPDATE CURRENT_TIMESTAMP`，由 Drizzle 的 `$onUpdate` 在应用层写入（仅经由 Drizzle 的更新生效）。
 - **枚举**：`pgEnum` 是独立的数据库类型（`CREATE TYPE`），需要在 schema 文件中声明并导出。
-- **返回 id**：插入用 `.returning()`（MySQL 为 `$returningId()`），已在 `src/app/repositories/common/pgsql/base.repository.ts` 中封装。
+- **返回 id**：插入用 `.returning()`（MySQL 为 `$returningId()`），已在 `src/common/modules/database/pgsql/repositories/base.repository.ts` 中封装。
 - **错误码**：PG 走 SQLSTATE（唯一冲突 `23505`、外键 `23503` 等），由 `pgsql-error-mapper.util.ts` 映射为与 MySQL 版一致的领域异常。
 
 ## 依赖
@@ -90,7 +90,7 @@ await this._databaseService.db.transaction(async (tx: PgsqlTransactionType) => {
 import { DatabaseService } from '@/common/modules/database/pgsql/database.service';
 import { demosSchema } from '@/database/pgsql/schemas/demos.schema';
 import { Injectable } from '@nestjs/common';
-import { BaseRepository } from '@/app/repositories/common/pgsql/base.repository';
+import { BaseRepository } from '@/common/modules/database/pgsql/repositories/base.repository';
 
 @Injectable()
 export class DemoRepository extends BaseRepository<typeof demosSchema> {

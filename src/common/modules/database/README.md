@@ -1,30 +1,95 @@
 # DatabaseModule
 
-数据库模块入口，按数据库方言拆分为两套平行实现，项目按需二选一或同时导入：
+数据库基础设施入口，包含数据库连接、Drizzle 仓储基类、错误映射、分页接口、游标工具，以及按业务注册仓储的 `RepositoryModule`。
 
-- [`mysql/`](mysql/README.md) — 基于 Drizzle ORM + MySQL2，业务 Schema（`src/database/mysql/schemas`）与仓储层（`src/app/repositories/common/mysql`）均已实现，可直接使用。
-- [`pgsql/`](pgsql/README.md) — 基于 Drizzle ORM + node-postgres，业务 Schema（`src/database/pgsql/schemas`）与仓储层（`src/app/repositories/common/pgsql`）均已实现，可直接使用。
+业务 Schema 仍放在 `src/database/<dialect>/schemas/`，业务仓储仍放在 `src/app/repositories/`。基础设施与业务实现只通过继承和依赖注入连接，`DatabaseModule` 不反向依赖或集中注册业务仓储。
 
-两套实现各自完整、自包含（`database.module.ts` / `database.service.ts` / `common/types/*` / `tools/*` 均在各自目录内），互不依赖，方便脚手架按方言取舍其中一套。
+## 目录结构
 
-## 共享部分（与方言无关，位于本目录）
+```
+src/common/modules/database/
+├── common/
+│   ├── repositories/
+│   │   ├── exceptions/             # 两种方言共享的仓储异常
+│   │   └── interfaces/             # 分页、排序与 keyset 接口
+│   ├── types/
+│   └── utils/
+├── mysql/
+│   ├── common/types/
+│   ├── repositories/
+│   │   ├── base.repository.ts      # MySQL 通用 CRUD、分页与软删除
+│   │   └── utils/                  # 错误映射与游标工具
+│   ├── tools/
+│   ├── database.module.ts
+│   └── database.service.ts
+├── pgsql/
+│   └── ...                         # 与 MySQL 平行
+├── constants/
+├── interfaces/
+└── repository.module.ts            # forFeature(...) 按业务模块注册仓储
+```
 
-| 路径                                        | 用途                                                       |
-| ------------------------------------------- | ------------------------------------------------------------ |
-| `constants/database.tokens.ts`              | `DATABASE_SEEDER` Token                                     |
-| `interfaces/seeder.interface.ts`            | `ISeeder`，seed CLI 契约                                     |
-| `common/utils/unique.ts`                    | `unique` / `uniqueArray`，seed 脚本用的唯一值生成工具         |
-| `common/types/not-empty-array.type.ts`      | 通用非空数组类型（与数据库方言无关）                          |
+## 模块职责
 
-各方言的 `tools/`（`db:seed` / `db:reset` CLI）复用以上 Token 与接口，绑定各自的 `DatabaseModule`。
+- `DatabaseModule`：全局提供对应方言的 `DatabaseService`，管理连接和生命周期。
+- `RepositoryModule`：不持有连接，也不集中注册业务仓储；业务模块通过 `forFeature(...)` 按需声明。
+- `BaseRepository`：提供 CRUD、普通分页、keyset 游标分页和软删除。
+- `src/app/repositories/`：存放了解具体业务表和业务查询的仓储实现。
 
-## 选择哪一套
+目录上把仓储基础设施放进 database，NestJS 模块职责上仍保持连接管理与业务仓储注册分离。
 
-- 两套模块的类名都是 `DatabaseModule`，靠导入路径区分：`@/common/modules/database/mysql/database.module` 与 `@/common/modules/database/pgsql/database.module`。
-- 只用 MySQL：在 `AppModule` 中导入 mysql 侧的 `DatabaseModule`（见 `mysql/README.md`）。当前脚手架默认使用 MySQL。
-- 只用 PG：改为导入 pgsql 侧的 `DatabaseModule`（见 `pgsql/README.md`），业务仓储改继承 `src/app/repositories/common/pgsql/base.repository`。
-- 两者都要：以别名区分导入即可（均为 `@Global()`，`DatabaseService` 各自独立，不冲突）：
-  ```typescript
-  import { DatabaseModule as MysqlDatabaseModule } from '@/common/modules/database/mysql/database.module';
-  import { DatabaseModule as PgsqlDatabaseModule } from '@/common/modules/database/pgsql/database.module';
-  ```
+## 按数据库方言选择
+
+- [`mysql/`](mysql/README.md)：Drizzle ORM + MySQL2，脚手架默认启用。
+- [`pgsql/`](pgsql/README.md)：Drizzle ORM + node-postgres。
+- 只使用一种数据库时，在 `AppModule` 导入对应方言的 `DatabaseModule`。
+- 同时使用两种数据库时，用导入别名区分两个同名模块；两个 `DatabaseService` 也必须从各自路径注入。
+
+```typescript
+import { DatabaseModule as MysqlDatabaseModule } from '@/common/modules/database/mysql/database.module';
+import { DatabaseModule as PgsqlDatabaseModule } from '@/common/modules/database/pgsql/database.module';
+```
+
+## 定义业务仓储
+
+```typescript
+import { DatabaseService } from '@/common/modules/database/mysql/database.service';
+import { BaseRepository } from '@/common/modules/database/mysql/repositories/base.repository';
+import { usersSchema } from '@/database/mysql/schemas/users.schema';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class UsersRepository extends BaseRepository<typeof usersSchema> {
+  constructor(private readonly _databaseService: DatabaseService) {
+    super(usersSchema, _databaseService.db);
+  }
+}
+```
+
+## 按业务模块注册
+
+```typescript
+import { UsersRepository } from '@/app/repositories/users.repository';
+import { RepositoryModule } from '@/common/modules/database/repository.module';
+import { Module } from '@nestjs/common';
+
+@Module({
+  imports: [RepositoryModule.forFeature([UsersRepository])],
+})
+export class UsersModule {}
+```
+
+不要把业务仓储加入 `DatabaseModule` 的 providers；这样会让数据库基础设施反向依赖业务代码，并把本应按领域可见的仓储扩大为全局依赖。
+
+## 共享部分
+
+| 路径 | 用途 |
+| --- | --- |
+| `common/repositories/exceptions/` | 方言无关的仓储异常 |
+| `common/repositories/interfaces/` | 分页、排序和 keyset 类型 |
+| `common/utils/unique.ts` | seed 脚本使用的唯一值生成工具 |
+| `common/types/not-empty-array.type.ts` | 通用非空数组类型 |
+| `constants/database.tokens.ts` | `DATABASE_SEEDER` Token |
+| `interfaces/seeder.interface.ts` | seed CLI 契约 |
+
+各方言的 `tools/` 提供 `db:seed` 和 `db:reset` CLI，并复用上述 Token 与接口。

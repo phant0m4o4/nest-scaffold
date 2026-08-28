@@ -1,5 +1,5 @@
 import { DemoRepository } from '@/app/repositories/demo.repository';
-import { RepositoryModule } from '@/app/repositories/repository.module';
+import { RepositoryModule } from '@/common/modules/database/repository.module';
 import appConfig from '@/configs/app.config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';

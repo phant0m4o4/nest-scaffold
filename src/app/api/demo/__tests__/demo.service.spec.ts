@@ -4,8 +4,8 @@ import {
   DemoService,
 } from '@/app/api/demo/demo.service';
 import { DemoRepository } from '@/app/repositories/demo.repository';
-import { buildCursorScope } from '@/app/repositories/common/mysql/utils/cursor/build-cursor-scope';
-import { encodeCursor } from '@/app/repositories/common/mysql/utils/cursor/encode-cursor';
+import { buildCursorScope } from '@/common/modules/database/mysql/repositories/utils/cursor/build-cursor-scope';
+import { encodeCursor } from '@/common/modules/database/mysql/repositories/utils/cursor/encode-cursor';
 import appConfig from '@/configs/app.config';
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';

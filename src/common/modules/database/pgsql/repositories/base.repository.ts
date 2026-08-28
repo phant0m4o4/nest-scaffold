@@ -2,7 +2,7 @@ import { PgsqlDatabaseType } from '@/common/modules/database/pgsql/common/types/
 import {
   coerceCursorValueForQuery,
   serializeCursorValue,
-} from '@/app/repositories/common/pgsql/utils/cursor/serialize-cursor-value';
+} from '@/common/modules/database/pgsql/repositories/utils/cursor/serialize-cursor-value';
 import { UTC } from '@/common/utils/date-time';
 import {
   and,
@@ -18,11 +18,11 @@ import {
   SQL,
 } from 'drizzle-orm';
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
-import { RecordNotFoundException } from '../exceptions/record-not-found-exception';
-import { ICursorKeysetItem } from '../interfaces/cursor-keyset.interface';
-import { ICursorPaginationResult } from '../interfaces/cursor-pagination-result.interface';
-import { IOrderOption } from '../interfaces/order-option.interface';
-import { IPaginationResult } from '../interfaces/pagination-result.interface';
+import { RecordNotFoundException } from '@/common/modules/database/common/repositories/exceptions/record-not-found-exception';
+import { ICursorKeysetItem } from '@/common/modules/database/common/repositories/interfaces/cursor-keyset.interface';
+import { ICursorPaginationResult } from '@/common/modules/database/common/repositories/interfaces/cursor-pagination-result.interface';
+import { IOrderOption } from '@/common/modules/database/common/repositories/interfaces/order-option.interface';
+import { IPaginationResult } from '@/common/modules/database/common/repositories/interfaces/pagination-result.interface';
 import { mapPgsqlErrorAndThrow } from './utils/pgsql-error-mapper.util';
 
 /**
@@ -30,7 +30,7 @@ import { mapPgsqlErrorAndThrow } from './utils/pgsql-error-mapper.util';
  *
  * 封装 Drizzle ORM 常用 CRUD、分页、软删除等数据访问逻辑，
  * 业务仓储只需继承并传入对应 Schema 即可获得完整能力。
- * 与 `../mysql/base.repository.ts` 是平行的两套实现。
+ * 与 `../../mysql/repositories/base.repository.ts` 是平行的两套实现。
  *
  * 约束：表必须拥有 `id` 列（integer 类型、主键）。
  */

@@ -191,7 +191,7 @@ describe('Demo E2E', () => {
 - `src/common/utils/redis/__tests__/redis.factory.spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
 - `src/common/utils/redis/__tests__/redis-factory.e2e-spec.ts` —— testcontainers E2E 样例
 - `src/app/api/demo/__tests__/demo.service.spec.ts` —— 加密游标 Service 单测
-- `src/app/repositories/common/mysql/__tests__/base.repository.cursor.spec.ts` —— 多列 keyset 仓储单测
+- `src/common/modules/database/mysql/repositories/__tests__/base.repository.cursor.spec.ts` —— 多列 keyset 仓储单测
 - `src/app/api/demo/__tests__/demo-cursor.e2e-spec.ts` —— MySQL testcontainers 游标/页码集测
 
 ## 覆盖范围要求

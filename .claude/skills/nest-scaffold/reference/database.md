@@ -114,7 +114,7 @@ export const demosSchema = pgTable('demos', {
 
 - 工具函数来自 `src/database/pgsql/utils/`（含 `createPublicIdColumn`），签名与 MySQL 版一致。
 - `updatedAt` 用 Drizzle `$onUpdate` 在应用层写入（PG 无 `ON UPDATE CURRENT_TIMESTAMP`）。
-- 仓储基类：`src/app/repositories/common/pgsql/base.repository.ts`（API 与 MySQL 版完全一致）；错误映射走 PG SQLSTATE（`mapPgsqlErrorAndThrow`：23505 唯一冲突、23503 外键、40P01 死锁、55P03 锁不可用、23502/22001/22P02 数据完整性）。
+- 仓储基类：`src/common/modules/database/pgsql/repositories/base.repository.ts`（API 与 MySQL 版完全一致）；错误映射走 PG SQLSTATE（`mapPgsqlErrorAndThrow`：23505 唯一冲突、23503 外键、40P01 死锁、55P03 锁不可用、23502/22001/22P02 数据完整性）。
 - 事务类型：`PgsqlTransactionType`（`@/common/modules/database/pgsql/common/types/pgsql-transaction.type`）。
 - seed：`src/database/pgsql/seed.ts`，命令为 `NODE_ENV=development pnpm db:seed:pgsql`；基础数据用自定义数据迁移（`pnpm db:generate:pgsql --custom --name=<name>`，示例 `drizzle/pgsql/0001_base-data.sql`）。
 - Drizzle Kit：`drizzle-pgsql.config.ts`，命令统一带 `:pgsql` 后缀（见下方命令表）。

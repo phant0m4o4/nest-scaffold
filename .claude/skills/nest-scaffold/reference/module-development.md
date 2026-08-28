@@ -14,7 +14,7 @@
 | `interfaces/` | 业务领域接口（`I*.interface.ts`） |
 | `__tests__/` | `*.spec.ts` 单测 + `*.e2e-spec.ts` E2E |
 
-仓储 `<Domain>Repository` 放在 `src/app/repositories/<domain>.repository.ts`。
+仓储 `<Domain>Repository` 放在 `src/app/repositories/<domain>.repository.ts`。仓储基础设施放在 `src/common/modules/database/`：业务仓储从对应方言的 `repositories/base.repository.ts` 继承，模块从 `@/common/modules/database/repository.module` 导入。
 
 ## 控制器写法
 
@@ -186,6 +186,8 @@ export class <Domain>Repository extends BaseRepository<typeof <domain>Schema> {
 ## 模块装配
 
 ```ts
+import { RepositoryModule } from '@/common/modules/database/repository.module';
+
 @Module({
   imports: [RepositoryModule.forFeature([<Domain>Repository])],
   controllers: [<Domain>Controller],

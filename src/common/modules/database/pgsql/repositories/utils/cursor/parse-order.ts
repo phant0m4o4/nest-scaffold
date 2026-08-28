@@ -4,4 +4,4 @@
 export {
   isSameOrderDeclaration,
   parseOrderQuery,
-} from '@/app/repositories/common/mysql/utils/cursor/parse-order';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/parse-order';

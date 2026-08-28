@@ -1,14 +1,14 @@
-import { ICursorKeysetItem } from '@/app/repositories/common/interfaces/cursor-keyset.interface';
+import { ICursorKeysetItem } from '@/common/modules/database/common/repositories/interfaces/cursor-keyset.interface';
 import { __Feature__Repository } from '@/app/repositories/__feature__.repository';
-import { buildCursorScope } from '@/app/repositories/common/mysql/utils/cursor/build-cursor-scope';
+import { buildCursorScope } from '@/common/modules/database/mysql/repositories/utils/cursor/build-cursor-scope';
 import {
   decodeCursor,
   encodeCursor,
-} from '@/app/repositories/common/mysql/utils/cursor/encode-cursor';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/encode-cursor';
 import {
   isSameOrderDeclaration,
   parseOrderQuery,
-} from '@/app/repositories/common/mysql/utils/cursor/parse-order';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/parse-order';
 import appConfig from '@/configs/app.config';
 import type { AppConfigType } from '@/configs/app.config';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';

@@ -1,10 +1,10 @@
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
+import { RecordAlreadyExistsException } from '@/common/modules/database/common/repositories/exceptions/record-already-exists-exception';
+import { RepositoryException } from '@/common/modules/database/common/repositories/exceptions/repository-exception';
+import { BaseRepository } from '@/common/modules/database/mysql/repositories/base.repository';
 import type { PinoLogger } from 'nestjs-pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RecordAlreadyExistsException } from '../common/exceptions/record-already-exists-exception';
-import { RepositoryException } from '../common/exceptions/repository-exception';
-import { BaseRepository } from '../common/mysql/base.repository';
 import { DemoRepository } from '../demo.repository';
 
 describe('DemoRepository.create', () => {

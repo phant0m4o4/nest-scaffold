@@ -1,13 +1,13 @@
-import { ICursorKeysetItem } from '@/app/repositories/common/interfaces/cursor-keyset.interface';
-import { buildCursorScope } from '@/app/repositories/common/mysql/utils/cursor/build-cursor-scope';
+import { ICursorKeysetItem } from '@/common/modules/database/common/repositories/interfaces/cursor-keyset.interface';
+import { buildCursorScope } from '@/common/modules/database/mysql/repositories/utils/cursor/build-cursor-scope';
 import {
   decodeCursor,
   encodeCursor,
-} from '@/app/repositories/common/mysql/utils/cursor/encode-cursor';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/encode-cursor';
 import {
   isSameOrderDeclaration,
   parseOrderQuery,
-} from '@/app/repositories/common/mysql/utils/cursor/parse-order';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/parse-order';
 import { DemoRepository } from '@/app/repositories/demo.repository';
 import type { AppConfigType } from '@/configs/app.config';
 import appConfig from '@/configs/app.config';
