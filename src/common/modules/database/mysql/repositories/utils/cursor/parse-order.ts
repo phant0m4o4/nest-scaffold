@@ -1,4 +1,4 @@
-import { IOrderOption } from '@/app/repositories/common/interfaces/order-option.interface';
+import { IOrderOption } from '@/common/modules/database/common/repositories/interfaces/order-option.interface';
 import { BadRequestException } from '@nestjs/common';
 
 /**

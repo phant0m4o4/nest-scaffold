@@ -3,7 +3,7 @@ import { UTC } from '@/common/utils/date-time';
 import {
   coerceCursorValueForQuery,
   serializeCursorValue,
-} from '@/app/repositories/common/mysql/utils/cursor/serialize-cursor-value';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/serialize-cursor-value';
 import {
   and,
   asc,
@@ -18,11 +18,11 @@ import {
   SQL,
 } from 'drizzle-orm';
 import { getTableConfig, MySqlTable } from 'drizzle-orm/mysql-core';
-import { RecordNotFoundException } from '../exceptions/record-not-found-exception';
-import { ICursorKeysetItem } from '../interfaces/cursor-keyset.interface';
-import { ICursorPaginationResult } from '../interfaces/cursor-pagination-result.interface';
-import { IOrderOption } from '../interfaces/order-option.interface';
-import { IPaginationResult } from '../interfaces/pagination-result.interface';
+import { RecordNotFoundException } from '@/common/modules/database/common/repositories/exceptions/record-not-found-exception';
+import { ICursorKeysetItem } from '@/common/modules/database/common/repositories/interfaces/cursor-keyset.interface';
+import { ICursorPaginationResult } from '@/common/modules/database/common/repositories/interfaces/cursor-pagination-result.interface';
+import { IOrderOption } from '@/common/modules/database/common/repositories/interfaces/order-option.interface';
+import { IPaginationResult } from '@/common/modules/database/common/repositories/interfaces/pagination-result.interface';
 import { mapMysqlErrorAndThrow } from './utils/mysql-error-mapper.util';
 
 /**

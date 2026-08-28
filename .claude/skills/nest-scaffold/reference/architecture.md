@@ -50,27 +50,17 @@ src/
 │   ├── interceptors/
 │   │   └── global-response.interceptor.ts  # 包装 { statusCode, data?, meta? }
 │   └── repositories/
-│       ├── repository.module.ts            # forFeature(...) 注册仓储 Provider
-│       ├── <domain>.repository.ts          # 继承 BaseRepository
-│       └── common/
-│           ├── mysql/
-│           │   ├── base.repository.ts      # 通用 CRUD + 分页 + 软删除（MySQL 方言）
-│           │   └── utils/
-│           │       ├── mysql-error-mapper.util.ts
-│           │       └── cursor/             # 加密游标编解码 / scope / order（实现）
-│           ├── pgsql/                      # 与 mysql/ 平行的 PostgreSQL 实现
-│           │   ├── base.repository.ts
-│           │   └── utils/
-│           │       ├── pgsql-error-mapper.util.ts
-│           │       └── cursor/             # 再导出 mysql 实现，统一 PG 侧引用路径
-│           ├── exceptions/                 # RepositoryException 体系（两方言共享）
-│           └── interfaces/                 # 分页/排序/keyset 接口（两方言共享）
+│       └── <domain>.repository.ts          # 业务仓储，继承对应方言的 BaseRepository
 ├── common/
 │   ├── enums/environment.enum.ts           # development / test / production
 │   ├── modules/                            # 全部 @Global() 基础设施模块
 │   │   ├── bottleneck/                     # 进程内速率限流
 │   │   ├── cache/                          # 缓存（独立 Redis 连接，CACHE_REDIS_DB）
-│   │   ├── database/                       # Drizzle MySQL/PostgreSQL 两套平行实现 + Tools(seed/reset CLI)
+│   │   ├── database/                       # 数据库连接 + 仓储基础设施；业务仓储仍在 app/repositories
+│   │   │   ├── repository.module.ts        # forFeature(...) 按业务注册仓储 Provider
+│   │   │   ├── common/repositories/        # 两方言共享的异常、分页与 keyset 接口
+│   │   │   ├── mysql/repositories/         # MySQL BaseRepository、错误映射与游标工具
+│   │   │   └── pgsql/repositories/         # PostgreSQL 对应实现
 │   │   ├── distributed-lock/               # Redlock（独立 Redis 连接，DISTRIBUTED_LOCK_REDIS_DB）
 │   │   ├── i18n/                           # nestjs-i18n（项目实际不强依赖）
 │   │   ├── logger/                         # nestjs-pino + pino-roll

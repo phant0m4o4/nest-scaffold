@@ -73,7 +73,7 @@
 ## 异常
 
 - 不要用异常控制业务流程。
-- 仓储层用 `RepositoryException`/`RecordNotFoundException`/`RecordAlreadyExistsException` 等（见 `src/app/repositories/common/exceptions/`），通过 `mapMysqlErrorAndThrow` 把 mysql2 错误映射出来。
+- 仓储层用 `RepositoryException`/`RecordNotFoundException`/`RecordAlreadyExistsException` 等（见 `src/common/modules/database/common/repositories/exceptions/`），通过 `mapMysqlErrorAndThrow` 把 mysql2 错误映射出来。
 - 业务层捕获是为修复或加上下文，否则交全局过滤器。
 
 ## 异步

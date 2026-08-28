@@ -1,10 +1,10 @@
-import { DataIntegrityViolationException } from '@/app/repositories/common/exceptions/data-integrity-violation-exception';
-import { DeadlockDetectedException } from '@/app/repositories/common/exceptions/deadlock-detected-exception';
-import { ForeignKeyConstraintViolationException } from '@/app/repositories/common/exceptions/foreign-key-constraint-violation-exception';
-import { LockWaitTimeoutException } from '@/app/repositories/common/exceptions/lock-wait-timeout-exception';
-import { RecordAlreadyExistsException } from '@/app/repositories/common/exceptions/record-already-exists-exception';
-import { RecordNotFoundException } from '@/app/repositories/common/exceptions/record-not-found-exception';
-import { RepositoryException } from '@/app/repositories/common/exceptions/repository-exception';
+import { DataIntegrityViolationException } from '@/common/modules/database/common/repositories/exceptions/data-integrity-violation-exception';
+import { DeadlockDetectedException } from '@/common/modules/database/common/repositories/exceptions/deadlock-detected-exception';
+import { ForeignKeyConstraintViolationException } from '@/common/modules/database/common/repositories/exceptions/foreign-key-constraint-violation-exception';
+import { LockWaitTimeoutException } from '@/common/modules/database/common/repositories/exceptions/lock-wait-timeout-exception';
+import { RecordAlreadyExistsException } from '@/common/modules/database/common/repositories/exceptions/record-already-exists-exception';
+import { RecordNotFoundException } from '@/common/modules/database/common/repositories/exceptions/record-not-found-exception';
+import { RepositoryException } from '@/common/modules/database/common/repositories/exceptions/repository-exception';
 import {
   ArgumentsHost,
   Catch,

@@ -1,8 +1,8 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { PgTable } from 'drizzle-orm/pg-core';
-import { BaseRepository as MysqlBaseRepository } from './common/mysql/base.repository';
-import { BaseRepository as PgsqlBaseRepository } from './common/pgsql/base.repository';
+import { BaseRepository as MysqlBaseRepository } from './mysql/repositories/base.repository';
+import { BaseRepository as PgsqlBaseRepository } from './pgsql/repositories/base.repository';
 
 /**
  * 任意方言的仓储基类（MySQL / PostgreSQL）
@@ -21,13 +21,14 @@ export interface IRepositoryModuleOptions {
 }
 
 /**
- * 仓储模块
+ * 仓储注册模块
  *
- * 统一管理仓储类的注册与导出。
+ * 统一管理业务仓储类的注册与导出，但不在数据库模块中集中注册业务仓储。
  * - `forRoot`：在 AppModule 中一次性注册核心仓储，可选全局
  * - `forFeature`：在业务子模块中按需注册领域仓储
  *
  * 依赖已在 `AppModule` 中导入的 `DatabaseModule`（全局 `DatabaseService`）。
+ * 本模块与数据库连接基础设施放在同一目录，但保持独立的按业务注册边界。
  */
 @Module({})
 export class RepositoryModule {

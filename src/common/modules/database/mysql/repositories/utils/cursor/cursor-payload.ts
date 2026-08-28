@@ -1,4 +1,4 @@
-import { ICursorKeysetItem } from '@/app/repositories/common/interfaces/cursor-keyset.interface';
+import { ICursorKeysetItem } from '@/common/modules/database/common/repositories/interfaces/cursor-keyset.interface';
 
 /**
  * 加密游标明文载荷（无版本号；结构变更则旧 cursor 全体作废）

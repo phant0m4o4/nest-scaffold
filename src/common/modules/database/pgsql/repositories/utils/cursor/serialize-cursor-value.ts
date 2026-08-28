@@ -4,4 +4,4 @@
 export {
   coerceCursorValueForQuery,
   serializeCursorValue,
-} from '@/app/repositories/common/mysql/utils/cursor/serialize-cursor-value';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/serialize-cursor-value';

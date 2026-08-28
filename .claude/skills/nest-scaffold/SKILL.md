@@ -45,13 +45,13 @@ src/
 │   │   ├── common/             # 跨业务复用 DTO/Entity（分页等）
 │   │   └── <domain>/           # 单域：controller/service/module/dtos/entities/__tests__
 │   ├── interceptors/           # 全局响应拦截器等
-│   ├── repositories/           # 仓储层（继承 BaseRepository）
-│   │   └── common/             # mysql/ 与 pgsql/ 各自的 BaseRepository + 共享的异常、分页接口
+│   ├── repositories/           # 业务仓储（按领域继承对应方言的 BaseRepository）
 │   └── app.module.ts
 ├── common/
 │   ├── enums/                  # 跨模块通用枚举
 │   ├── modules/                # 通用基础设施模块（全部 @Global()）
-│   │   ├── bottleneck/ cache/ database/ distributed-lock/ i18n/ logger/ queue/
+│   │   ├── database/           # 数据库连接、仓储基础设施与按业务注册的 RepositoryModule
+│   │   ├── bottleneck/ cache/ distributed-lock/ i18n/ logger/ queue/
 │   └── utils/                  # 通用工具：register-env-as-config、date-time、hash 等
 ├── configs/                    # 各模块的 ConfigModule（registerEnvAsConfig）
 ├── database/

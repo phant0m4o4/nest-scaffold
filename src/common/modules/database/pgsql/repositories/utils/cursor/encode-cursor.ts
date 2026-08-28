@@ -4,4 +4,4 @@
 export {
   decodeCursor,
   encodeCursor,
-} from '@/app/repositories/common/mysql/utils/cursor/encode-cursor';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/encode-cursor';

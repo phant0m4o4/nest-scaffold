@@ -78,7 +78,7 @@
 - `scope` = `resourceKey` + 筛选字段的稳定 hash（防改筛选或用户/管理列表互串；空串/null 不计入 hash）
 - `order` 多列 keyset，**最后一列必须是 `id`**、列名不重复；query 如 `createdAt:desc,id:desc`，缺省 `id:desc`
 - 无版本号；载荷结构变更则旧 cursor 全体作废
-- 仓储层仍使用内部 keyset；Service 负责编解码（实现：`repositories/common/mysql/utils/cursor/`，PG 侧再导出）
+- 仓储层仍使用内部 keyset；Service 负责编解码（实现：`common/modules/database/mysql/repositories/utils/cursor/`，PG 侧再导出）
 
 请求 query：
 

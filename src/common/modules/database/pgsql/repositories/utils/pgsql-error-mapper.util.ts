@@ -1,8 +1,8 @@
-import { DataIntegrityViolationException } from '../../exceptions/data-integrity-violation-exception';
-import { DeadlockDetectedException } from '../../exceptions/deadlock-detected-exception';
-import { ForeignKeyConstraintViolationException } from '../../exceptions/foreign-key-constraint-violation-exception';
-import { LockWaitTimeoutException } from '../../exceptions/lock-wait-timeout-exception';
-import { RecordAlreadyExistsException } from '../../exceptions/record-already-exists-exception';
+import { DataIntegrityViolationException } from '@/common/modules/database/common/repositories/exceptions/data-integrity-violation-exception';
+import { DeadlockDetectedException } from '@/common/modules/database/common/repositories/exceptions/deadlock-detected-exception';
+import { ForeignKeyConstraintViolationException } from '@/common/modules/database/common/repositories/exceptions/foreign-key-constraint-violation-exception';
+import { LockWaitTimeoutException } from '@/common/modules/database/common/repositories/exceptions/lock-wait-timeout-exception';
+import { RecordAlreadyExistsException } from '@/common/modules/database/common/repositories/exceptions/record-already-exists-exception';
 
 /** PostgreSQL 错误对象的类型安全访问结构 */
 interface IPgsqlErrorLike {

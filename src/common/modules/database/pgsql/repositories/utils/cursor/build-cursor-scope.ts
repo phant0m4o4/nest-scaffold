@@ -4,4 +4,4 @@
 export {
   buildCursorScope,
   canonicalizeFilterForScope,
-} from '@/app/repositories/common/mysql/utils/cursor/build-cursor-scope';
+} from '@/common/modules/database/mysql/repositories/utils/cursor/build-cursor-scope';

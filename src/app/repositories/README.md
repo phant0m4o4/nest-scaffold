@@ -1,54 +1,31 @@
-# Repository 模块
+# 业务仓储
 
-通用仓储层，基于 Drizzle ORM 封装 CRUD、分页、软删除等数据访问能力。
+`src/app/repositories/` 只放按业务领域定义的仓储，例如 `DemoRepository`、`UserRepository`。通用仓储基类、异常、分页接口、错误映射和游标工具属于数据库基础设施，统一放在 `src/common/modules/database/`。
 
-## 功能特性
+## 职责边界
 
-- **BaseRepository 抽象基类** — 提供完整的 CRUD + 分页 + 软删除能力，业务仓储零样板继承；MySQL / PostgreSQL 两套平行实现（`common/mysql` / `common/pgsql`），API 完全一致
-- **两种分页模式** — 普通分页（page/pageSize）与游标分页（cursor/limit）
-- **自动软删除** — 表含 `deletedAt` 列时自动启用，查询/删除无感知切换
-- **错误映射** — 将数据库错误码（MySQL `ER_xxx` / PG SQLSTATE）转换为同一套语义化领域异常
-- **RepositoryModule** — 支持 `forRoot` / `forFeature` 动态注册仓储
+- 业务仓储了解具体业务表、业务唯一键和表特有查询。
+- `DatabaseModule` 只负责数据库连接、Drizzle 实例和连接生命周期，不集中注册业务仓储。
+- `RepositoryModule.forFeature(...)` 在对应业务模块中按需注册仓储，避免业务仓储成为全局 Provider。
+- `BaseRepository` 等通用能力见 [DatabaseModule](../../common/modules/database/README.md)。
 
 ## 目录结构
 
 ```
 src/app/repositories/
-├── common/
-│   ├── mysql/
-│   │   ├── base.repository.ts              # 抽象基类（MySQL）
-│   │   └── utils/
-│   │       └── mysql-error-mapper.util.ts  # MySQL 错误码 → 领域异常映射
-│   ├── pgsql/
-│   │   ├── base.repository.ts              # 抽象基类（PostgreSQL，与 mysql 版 API 一致）
-│   │   └── utils/
-│   │       └── pgsql-error-mapper.util.ts  # PG SQLSTATE → 领域异常映射
-│   ├── interfaces/                         # 方言无关，两套实现共享
-│   │   ├── pagination-result.interface.ts        # 普通分页结果
-│   │   ├── cursor-pagination-result.interface.ts  # 游标分页结果
-│   │   └── order-option.interface.ts              # 排序选项
-│   └── exceptions/                         # 方言无关，两套实现共享
-│       ├── repository-exception.ts                 # 基础异常
-│       ├── record-not-found-exception.ts           # 记录未找到
-│       ├── record-already-exists-exception.ts      # 记录已存在（唯一键冲突）
-│       ├── foreign-key-constraint-violation-exception.ts  # 外键约束冲突
-│       ├── deadlock-detected-exception.ts          # 死锁
-│       ├── lock-wait-timeout-exception.ts          # 锁等待超时
-│       └── data-integrity-violation-exception.ts   # 数据完整性异常
-├── demo.repository.ts                  # 示例仓储（MySQL）
-├── repository.module.ts                # 模块定义（两种方言的仓储类均可注册）
+├── __tests__/
+│   └── demo.repository.spec.ts
+├── demo.repository.ts
 └── README.md
 ```
 
-## 快速开始
-
-### 1. 定义仓储
+## 定义业务仓储
 
 ```typescript
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
+import { BaseRepository } from '@/common/modules/database/mysql/repositories/base.repository';
 import { usersSchema } from '@/database/mysql/schemas/users.schema';
 import { Injectable } from '@nestjs/common';
-import { BaseRepository } from './common/mysql/base.repository';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<typeof usersSchema> {
@@ -58,126 +35,20 @@ export class UsersRepository extends BaseRepository<typeof usersSchema> {
 }
 ```
 
-PostgreSQL 版完全对应：`DatabaseService` 换 `@/common/modules/database/pgsql/database.service`、
-Schema 换 `@/database/pgsql/schemas/*`、基类换 `./common/pgsql/base.repository` 即可。
+PostgreSQL 业务仓储使用对应的 `DatabaseService` 和 `pgsql/repositories/base.repository`，同一个业务仓储不要混用两种方言。
 
-### 2. 注册仓储
-
-**根模块（全局）：**
+## 按业务模块注册
 
 ```typescript
-RepositoryModule.forRoot({
-  isGlobal: true,
-  repositories: [UsersRepository],
-});
+import { UsersRepository } from '@/app/repositories/users.repository';
+import { RepositoryModule } from '@/common/modules/database/repository.module';
+import { Module } from '@nestjs/common';
+
+@Module({
+  imports: [RepositoryModule.forFeature([UsersRepository])],
+  providers: [UsersService],
+})
+export class UsersModule {}
 ```
 
-**业务子模块（按需）：**
-
-```typescript
-RepositoryModule.forFeature([OrdersRepository]);
-```
-
-### 3. 使用仓储
-
-```typescript
-@Injectable()
-export class UserService {
-  constructor(private readonly _usersRepo: UsersRepository) {}
-
-  async findUser(id: number) {
-    return this._usersRepo.findOne({ id });
-  }
-
-  async listUsers(page: number, pageSize: number) {
-    return this._usersRepo.findManyWithPagination({ page, pageSize });
-  }
-
-  async createUser(data: typeof usersSchema.$inferInsert) {
-    return this._usersRepo.create({ data });
-  }
-}
-```
-
-## API 概览
-
-### BaseRepository\<TSchema\>
-
-所有方法均支持可选的 `db` 参数，用于在事务中传入事务实例。
-
-| 方法                                                                | 说明                  | 返回值                             |
-| ------------------------------------------------------------------- | --------------------- | ---------------------------------- |
-| `findOne({ id })`                                                   | 主键查找单条          | `TSchema['$inferSelect'] \| null`  |
-| `findAll({ order? })`                                               | 查询所有记录（含软删过滤） | `TSchema['$inferSelect'][]`        |
-| `findMany({ filter?, limit?, order? })`                             | 条件查询              | `TSchema['$inferSelect'][]`        |
-| `findManyWithPagination({ page, pageSize, filter?, order? })`       | 普通分页              | `IPaginationResult<TSchema>`       |
-| `findManyWithCursorPagination({ limit, cursor?, filter?, order? })` | 多列 keyset 游标分页（`cursor`/`nextCursor` 为 keyset；对外密文由 Service 经 `common/<dialect>/utils/cursor` 编解码） | `ICursorPaginationResult<TSchema>` |
-| `create({ data })`                                                  | 创建单条              | `id`；有公开标识列时业务仓储可重载（长码直插、短码先查空；列名随业务，demo 返回泛化字段名仅示例） |
-| `batchCreate({ data })`                                             | 批量创建              | `{ id }[]`                         |
-| `update({ id, data })`                                              | 更新                  | `void`                             |
-| `delete({ id })`                                                    | 删除（自动判断软/硬） | `void`                             |
-| `batchDelete({ ids })`                                              | 批量删除              | `void`                             |
-| `isExists({ filters })`                                             | 是否存在              | `boolean`                          |
-| `count({ filter? })`                                                | 统计数量              | `number`                           |
-
-### RepositoryModule
-
-| 方法                                    | 说明               |
-| --------------------------------------- | ------------------ |
-| `forRoot({ isGlobal?, repositories? })` | 根模块注册，可全局 |
-| `forFeature(repositories)`              | 子模块按需注册     |
-
-## 异常体系
-
-所有仓储异常继承自 `RepositoryException`（→ `Error`），可在全局过滤器中统一处理。
-
-| 异常类                                   | MySQL 错误码        | PG SQLSTATE         | 建议 HTTP 状态码 | 说明                         |
-| ---------------------------------------- | ------------------- | ------------------- | ---------------- | ---------------------------- |
-| `RecordNotFoundException`                | —                   | —                   | 404              | 记录不存在                   |
-| `RecordAlreadyExistsException`           | 1062 (ER_DUP_ENTRY) | 23505               | 409              | 唯一键冲突                   |
-| `ForeignKeyConstraintViolationException` | 1451, 1452          | 23503               | 409              | 外键约束冲突                 |
-| `DeadlockDetectedException`              | 1213                | 40P01               | 503 / 重试       | 死锁                         |
-| `LockWaitTimeoutException`               | 1205                | 55P03               | 503 / 重试       | 锁等待超时                   |
-| `DataIntegrityViolationException`        | 1048, 1366, 1406    | 23502, 22P02, 22001 | 400              | 数据完整性（非空/类型/长度） |
-
-## 软删除机制
-
-- 表中包含 `deletedAt` 列时**自动启用**软删除
-- `findOne` / `findMany` / `findAll` 等查询方法自动过滤已软删除记录
-- `delete` / `batchDelete` 自动选择软删除（设置 `deletedAt` 为当前 UTC 时间）或硬删除
-- 可通过 `_buildWhereFilter(filter, true)` 的 `ignoreSoftDelete` 参数跳过软删除过滤
-
-## 事务支持
-
-所有方法均支持 `db` 参数，在事务中传入事务实例即可：
-
-```typescript
-await this._db.transaction(async (tx) => {
-  const id = await this._usersRepo.create({ db: tx, data: userData });
-  await this._ordersRepo.create({ db: tx, data: { userId: id, ...orderData } });
-});
-```
-
-## 排序选项
-
-通过 `IOrderOption` 接口指定排序列和方向：
-
-```typescript
-// 单列排序
-await repo.findMany({ order: { column: 'createdAt', direction: 'desc' } });
-
-// 多列排序
-await repo.findMany({
-  order: [
-    { column: 'priority', direction: 'desc' },
-    { column: 'id', direction: 'asc' },
-  ],
-});
-```
-
-## 注意事项
-
-- 表**必须**拥有 `id` 列（整型、主键），否则构造时抛出错误
-- 游标分页仅支持按 `id` 列进行游标定位
-- `mapMysqlErrorAndThrow` / `mapPgsqlErrorAndThrow` 始终抛出异常（返回类型 `never`），不会静默吞掉错误
-- 业务仓储应继承对应方言的 `BaseRepository` 并通过 `@Injectable()` 注册；同一个仓储类不要混用两种方言的 `DatabaseService`
+业务 Service 注入仓储，不直接使用 `databaseService.db`；只有需要协调多个仓储的事务边界时才注入 `DatabaseService`。

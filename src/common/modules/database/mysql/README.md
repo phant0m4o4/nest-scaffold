@@ -8,6 +8,7 @@
 - `DatabaseService`：MySQL2 连接池 + Drizzle ORM 实例（绑定全部 Schema）
 - 连接池生命周期管理：启动时自动验证连接、销毁时平滑关闭
 - 开发环境自动输出参数化 SQL 查询日志
+- `repositories/`：MySQL `BaseRepository`、错误映射和游标分页工具
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
 - CLI 工具脚本（`ToolsModule`）：`db:seed:mysql`（演示数据）与 `db:reset:mysql`（重置到迁移基线），均仅限开发环境
 - Seed 专用工具函数：`unique` / `uniqueArray` 确保生成唯一值
@@ -49,25 +50,23 @@ import { DatabaseModule } from '@/common/modules/database/mysql/database.module'
 export class AppModule {}
 ```
 
-### 2. 在 Repository / Service 中使用
+### 2. 定义业务仓储
 
 ```typescript
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
-import { demosSchema } from '@/database/mysql/schemas';
+import { BaseRepository } from '@/common/modules/database/mysql/repositories/base.repository';
+import { demosSchema } from '@/database/mysql/schemas/demos.schema';
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
 
 @Injectable()
-export class DemoRepository {
-  constructor(private readonly _databaseService: DatabaseService) {}
-
-  async findById(id: number) {
-    return await this._databaseService.db.query.demosSchema.findFirst({
-      where: eq(demosSchema.id, id),
-    });
+export class DemoRepository extends BaseRepository<typeof demosSchema> {
+  constructor(private readonly _databaseService: DatabaseService) {
+    super(demosSchema, _databaseService.db);
   }
 }
 ```
+
+业务模块通过 `RepositoryModule.forFeature([DemoRepository])` 按需注册。Service 不直接访问 `databaseService.db`；只有协调多个仓储的事务边界时才注入 `DatabaseService`。
 
 ### 3. 使用事务
 
