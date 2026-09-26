@@ -123,20 +123,25 @@ export class QueueModule {
   private static _buildConcurrencyProviders(
     options: Array<{ name?: string } & IQueueConcurrencyOptions>,
   ): Provider[] {
+    for (const option of options) {
+      const value = option.globalConcurrency;
+      if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
+        throw new Error('globalConcurrency 必须为非负安全整数');
+      }
+    }
     return options
       .filter(
-        (
-          opt,
-        ): opt is { name: string; globalConcurrency: number } & typeof opt =>
-          typeof opt.name === 'string' &&
-          opt.name.length > 0 &&
-          typeof opt.globalConcurrency === 'number' &&
-          opt.globalConcurrency > 0,
+        (opt): opt is { globalConcurrency: number } & typeof opt =>
+          opt.globalConcurrency !== undefined,
       )
       .map((opt) => ({
         provide: Symbol(`QueueGlobalConcurrency:${opt.name}`),
         useFactory: async (queue: Queue) => {
-          await queue.setGlobalConcurrency(opt.globalConcurrency);
+          if (opt.globalConcurrency === 0) {
+            await queue.removeGlobalConcurrency();
+          } else {
+            await queue.setGlobalConcurrency(opt.globalConcurrency);
+          }
         },
         inject: [getQueueToken(opt.name)],
       }));

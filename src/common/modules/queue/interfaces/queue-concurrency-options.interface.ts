@@ -10,7 +10,7 @@ export interface IQueueConcurrencyOptions {
    *
    * 设置后，模块初始化时通过 BullMQ 的 Queue.setGlobalConcurrency() 生效。
    * 所有进程的 Worker 加起来同时最多执行指定数量的任务。
-   * @remarks 值为正整数；0 或 undefined 表示不限制全局并发
+   * @remarks 正安全整数设置上限；0 清除 Redis 中已有上限；undefined 不修改已有配置。
    */
   globalConcurrency?: number;
 }

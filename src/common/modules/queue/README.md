@@ -152,6 +152,14 @@ export class OrderModule {}
 
 **原理**：模块初始化时自动调用 BullMQ 的 `Queue.setGlobalConcurrency()`，通过 Redis 原子操作控制全局并发。
 
+并发上限保存在 Redis 中，不会随进程重启自动消失：
+
+- 正安全整数：设置或更新已有上限；负数、小数、无穷值等非法值在注册时抛错。
+- `0`：显式调用 `removeGlobalConcurrency()` 清除已有上限。
+- `undefined` 或不传：不修改已有上限，避免未配置的生产者进程覆盖消费者的配置。
+
+同步与异步注册、未命名的默认队列均遵循这套规则；Redis 写入失败会使应用初始化失败。共享同一队列的多个实例应保持配置一致，不能让一个实例设置上限、另一个实例以 `0` 清除。
+
 ### 单 Worker 并发（per-process）
 
 通过 `@Processor` 装饰器的 `concurrency` 选项控制单个 Worker 实例的并发数。
