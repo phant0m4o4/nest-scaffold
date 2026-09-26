@@ -14,7 +14,7 @@ export interface IBottleneckLimiter {
   currentReservoir(): Promise<number | null>;
   disconnect(): Promise<void>;
   on(event: string, handler: (...args: unknown[]) => void): void;
-  ready: Promise<unknown>;
+  ready(): Promise<unknown>;
 }
 
 /** Bottleneck.counts() 返回值 */

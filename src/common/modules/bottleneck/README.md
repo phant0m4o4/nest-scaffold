@@ -215,7 +215,7 @@ const remaining =
 | `createLimiter(key, options?)`   | 创建或获取限流器（同 key 复用） |
 | `wrap<T>(key, fn, options?)`     | 包装函数，自动限流执行          |
 | `schedule<T>(key, fn, options?)` | 调度任务执行                    |
-| `count(key)`                     | 获取排队 + 执行中的任务数       |
+| `count(key)`                     | 获取当前实例排队、等待开始和执行中的任务数（QUEUED + RUNNING + EXECUTING） |
 | `currentReservoir(key)`          | 获取剩余令牌数                  |
 
 ## 常用 Bottleneck 配置项
@@ -258,6 +258,7 @@ configs/
 ## 注意事项
 
 - `wrap` 和 `schedule` 的 `options` 参数仅在首次创建限流器时生效，后续调用同 key 会复用已有实例
-- Redis 模式下，限流器需等待 `ready` Promise 完成才能使用（`wrap`/`schedule`/`currentReservoir` 已自动处理）
+- Redis 模式下，`wrap`/`schedule`/`currentReservoir` 会等待 `ready()` 返回的 Promise；就绪失败会记录日志并向调用方抛出原始错误。
+- `count()` 统计当前实例的 QUEUED、RUNNING、EXECUTING 状态，不包含尚未被接受的 RECEIVED 或已完成的 DONE，也不是跨实例总数。
 - 所有限流器共享一个 `IORedisConnection`，销毁时会依次清理限流器 → 关闭连接
 - `_isInfoCommandError` 用于过滤 Redis 初始化阶段可能产生的 `INFO` 命令错误，降为 debug 级别

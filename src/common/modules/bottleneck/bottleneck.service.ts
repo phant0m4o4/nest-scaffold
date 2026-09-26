@@ -220,7 +220,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       return 0;
     }
     const counts = limiter.counts();
-    return counts.RUNNING + counts.QUEUED;
+    return counts.QUEUED + counts.RUNNING + counts.EXECUTING;
   }
 
   /**
@@ -289,7 +289,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     try {
-      await limiter.ready;
+      await limiter.ready();
     } catch (error: unknown) {
       this._logger.error(
         {
