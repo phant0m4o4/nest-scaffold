@@ -18,7 +18,7 @@
 | S2 | **本机/个人信息不入库** | 真实姓名、个人邮箱、本机用户名、绝对路径、主机名等禁止出现在代码/文档/提交/PR（见仓库根 CLAUDE.md 规则 A） |
 | S3 | **AI 署名不入库** | 禁止 `Co-Authored-By: Claude`、会话链接、`Generated with …` 等 |
 | S4 | **对外错误不泄露内部细节** | 未知异常 → 统一 500 信封；公开标识碰撞等分配失败 → 不透明错误（见 [database.md](database.md)）；日志可记细节，响应不给攻击面 |
-| S5 | **信任边界默认收紧** | `APP_TRUST_PROXY` 默认 false；生产 CORS 过松只 warn 不静默当安全；管理端暴露 bigint `id` 的路由必须视为需鉴权面 |
+| S5 | **信任边界默认收紧** | `APP_TRUST_PROXY` 默认 false；生产 CORS（跨域访问控制）未配置来源或允许任意来源携带凭证时拒绝启动；仅确由可信上游统一管理时显式设置 `APP_CORS_MANAGED_BY_PROXY=true` 豁免并保留告警；管理端暴露 bigint `id` 的路由必须视为需鉴权面 |
 
 ## 2. 配置与环境
 

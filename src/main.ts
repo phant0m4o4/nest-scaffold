@@ -26,8 +26,15 @@ async function bootstrap() {
   // 获取配置服务
   const configService = app.get(ConfigService);
   const appConfig = configService.getOrThrow<AppConfigType>('app');
-  const { port, address, name, corsDomains, corsCredentials, trustProxy } =
-    appConfig;
+  const {
+    port,
+    address,
+    name,
+    corsDomains,
+    corsCredentials,
+    corsManagedByProxy,
+    trustProxy,
+  } = appConfig;
 
   // trust proxy：默认 false，即不信任 X-Forwarded-For，req.ip 取 TCP 对端地址、客户端伪造不了。
   // 仅当应用确实部署在 CDN / Nginx / 负载均衡之后，才通过 APP_TRUST_PROXY 开启，
@@ -37,7 +44,7 @@ async function bootstrap() {
   app.set('trust proxy', trustProxy);
 
   // CORS：APP_CORS_DOMAINS 未配置或含 `*` 时反射任意来源，否则按白名单精确匹配。
-  // 生产环境宽松配置只打 warning、不阻断启动——很多部署把 CORS 放在 CDN / 网关上管。
+  // 生产环境默认 fail-closed。若 CORS 由可信网关统一管理，必须通过显式配置放行。
   const allowAllOrigins = corsDomains.length === 0 || corsDomains.includes('*');
   app.enableCors({
     origin: allowAllOrigins ? true : corsDomains,
@@ -46,13 +53,21 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Content-Type'],
   });
-  for (const warning of getProductionCorsSecurityWarnings({
+  const corsSecurityWarnings = getProductionCorsSecurityWarnings({
     isProduction: process.env.NODE_ENV === EnvironmentEnum.PRODUCTION,
     corsDomains,
     corsCredentials,
-  })) {
+  });
+  for (const warning of corsSecurityWarnings) {
     // 与业务模块 InjectPinoLogger 一致：第一个参数为绑定字段，第二个为消息正文
-    logger.warn({ context: 'Main', event: 'cors_security_warn' }, warning);
+    logger.warn(
+      {
+        context: 'Main',
+        event: 'cors_security_warn',
+        managedByProxy: corsManagedByProxy,
+      },
+      warning,
+    );
   }
 
   // 设置全局前缀 会触发warn 所以暂时注释

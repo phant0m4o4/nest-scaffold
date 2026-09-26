@@ -1,7 +1,10 @@
 import { EnvironmentEnum } from '@/common/enums/environment.enum';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import appConfig, { getProductionCorsSecurityWarnings } from '../app.config';
+import appConfig, {
+  assertProductionCorsSecurity,
+  getProductionCorsSecurityWarnings,
+} from '../app.config';
 
 /** 每个用例只声明自己关心的变量，其余由本函数补齐必填项 */
 /** 测试用 32 字节主密钥（64 hex），非生产密钥 */
@@ -219,14 +222,47 @@ describe('appConfig', () => {
       expect(actual).toEqual([]);
     });
 
-    it('生产环境宽松 CORS 仍允许启动（配置校验不 fail-fast）', () => {
+    it('生产环境宽松 CORS 默认应在配置加载阶段阻断启动', () => {
       stubEnvironment({
         NODE_ENV: EnvironmentEnum.PRODUCTION,
         APP_CORS_DOMAINS: undefined,
       });
 
-      expect(() => appConfig()).not.toThrow();
-      expect(appConfig().corsDomains).toEqual([]);
+      expect(() => appConfig()).toThrow(/APP_CORS_MANAGED_BY_PROXY=true/);
+    });
+
+    it('生产环境显式声明由可信上游接管时允许宽松 CORS', () => {
+      stubEnvironment({
+        NODE_ENV: EnvironmentEnum.PRODUCTION,
+        APP_CORS_DOMAINS: undefined,
+        APP_CORS_MANAGED_BY_PROXY: 'true',
+      });
+
+      expect(appConfig().corsManagedByProxy).toBe(true);
+    });
+  });
+
+  describe('assertProductionCorsSecurity', () => {
+    it('生产环境宽松 CORS 且未声明上游接管时应阻断启动', () => {
+      expect(() =>
+        assertProductionCorsSecurity({
+          isProduction: true,
+          corsDomains: [],
+          corsCredentials: true,
+          managedByProxy: false,
+        }),
+      ).toThrow(/APP_CORS_MANAGED_BY_PROXY=true/);
+    });
+
+    it('显式声明由可信上游接管时允许启动但保留告警', () => {
+      const warnings = assertProductionCorsSecurity({
+        isProduction: true,
+        corsDomains: [],
+        corsCredentials: true,
+        managedByProxy: true,
+      });
+
+      expect(warnings).toHaveLength(1);
     });
   });
 

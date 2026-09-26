@@ -56,11 +56,12 @@ docker compose down -v       # 连带删全部 named volumes（mysql / postgres 
 APP_NAME=nest-scaffold
 APP_PORT=3000
 # CORS 允许来源白名单（英文逗号分隔，精确匹配协议+域名+端口）。
-# 留空或含 `*` 表示允许任意来源。生产环境若留空 / `*`+凭证，启动时打 warning、不阻断
-# （常见于 CDN / Nginx / API Gateway 已统一管 CORS；本服务直接对外时请配具体白名单）。
+# 留空或含 `*` 表示允许任意来源。生产环境若留空 / `*`+凭证，默认拒绝启动。
 # APP_CORS_DOMAINS=https://a.example.com,https://b.example.com
 # 是否允许跨域请求携带 Cookie，默认 true（本项目使用 Cookie Session）。
 # APP_CORS_CREDENTIALS=true
+# 若且仅若 CORS 已由可信 CDN / Nginx / API Gateway 统一管理才设为 true。
+APP_CORS_MANAGED_BY_PROXY=false
 # 是否信任反向代理的 X-Forwarded-For。默认 false（不信任，req.ip 取 TCP 对端地址，客户端伪造不了）。
 # 只有确实部署在 CDN / Nginx / 负载均衡之后才开启，否则任何人都能伪造该头绕过限流与 IP 名单。
 # 推荐填代理层数而非 true：APP_TRUST_PROXY=1；也支持 loopback / uniquelocal / IP 段列表

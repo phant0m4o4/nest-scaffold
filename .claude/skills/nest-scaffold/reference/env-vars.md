@@ -48,6 +48,10 @@ export default myConfig;
 | `APP_PORT` | int | `3000` | 监听端口 |
 | `APP_ADDRESS` | string | `127.0.0.1` | 监听地址 |
 | `APP_BASE_URL` | string | `http://${APP_ADDRESS}:${APP_PORT}` | 基础 URL |
+| `APP_CORS_DOMAINS` | string | 空 | CORS（跨域访问控制）允许来源，逗号分隔；生产环境留空时拒绝启动 |
+| `APP_CORS_CREDENTIALS` | boolean | `true` | 是否允许携带 Cookie；生产环境来源含 `*` 且此项为 true 时拒绝启动 |
+| `APP_CORS_MANAGED_BY_PROXY` | boolean | `false` | 仅当可信上游统一管理跨域访问时设为 true，显式豁免上述启动检查，仍记录告警 |
+| `APP_TRUST_PROXY` | boolean / number / string | `false` | 是否信任代理头；反向代理场景按实际代理层数或地址配置 |
 | `APP_MASTER_KEY` | hex64 | — | 应用主密钥。AES-256-GCM 固定要 256 bit（32 字节）key，此处把 64 位 hex 解码后直接当 key（不经口令派生），故必须正好 32 字节高熵材料。生成：`openssl rand -hex 32`（生产务必替换示例值） |
 
 ## MySQL（DatabaseModule）
