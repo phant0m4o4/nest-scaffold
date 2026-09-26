@@ -39,7 +39,7 @@
 | `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB，禁止与缓存/锁共用（cluster 模式禁止设置，会启动报错） | —（必填，推荐 `2`）|
 | `QUEUE_REDIS_SENTINEL_MASTER_NAME` / `QUEUE_REDIS_SENTINELS` | sentinel 模式必填 | — |
 | `QUEUE_REDIS_CLUSTER_NODES` | cluster 模式必填，`host:port,host:port`  | —                 |
-| `QUEUE_KEY_PREFIX`      | 队列 key 前缀                                | `queue`           |
+| `QUEUE_KEY_PREFIX`      | 队列 key 前缀；Cluster 模式必须含 `{hash-tag}` | single/sentinel: `queue`；cluster: `{queue}` |
 | `QUEUE_DASHBOARD_ROUTE` | Bull Board 仪表盘路由                        | `/queues`         |
 
 **.env 示例（引用公共锚点变量，见 `.env.example`）：**
@@ -54,6 +54,7 @@ QUEUE_REDIS_DB=2
 # QUEUE_REDIS_SENTINEL_MASTER_NAME=${REDIS_SENTINEL_MASTER_NAME}
 # QUEUE_REDIS_SENTINELS=${REDIS_SENTINELS}
 # QUEUE_REDIS_MODE=cluster
+# QUEUE_KEY_PREFIX={queue} # 多队列高吞吐场景可按队列拆分不同 hash tag
 # QUEUE_REDIS_CLUSTER_NODES=${REDIS_CLUSTER_NODES}
 ```
 

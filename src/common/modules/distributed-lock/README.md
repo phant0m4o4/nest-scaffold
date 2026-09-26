@@ -7,7 +7,7 @@
 - **Redlock 算法**：基于 Redis 的分布式锁，支持多 Redis 实例的容错与法定人数决策
 - **自动重试与续期**：加锁失败可重试，持锁期间支持自动续期，避免长任务超时
 - **统一 API**：通过 `DistributedLockService.using()` 在锁保护下执行回调，自动加锁/解锁与异常处理
-- **可配置**：调用时可自定义 TTL、重试次数、重试间隔、续期阈值及 `AbortSignal` 中断
+- **可配置**：调用时可自定义 TTL、重试次数、重试间隔和续期阈值
 
 ## 重要说明：与数据库锁的关系
 
@@ -108,13 +108,13 @@ export class OrderService {
 | `resources`     | `string \| string[]`                                                 | 资源键（不带前缀），单键或键数组，多键时需全部加锁才进入 |
 | `execute`       | `(signal?: RedlockAbortSignal) => Promise<T> \| T`                   | 受锁保护的执行函数，可接收中止信号 |
 | `ttlMs`         | `number`（可选）                                                     | 锁 TTL（毫秒），默认 30_000 |
-| `options`       | `DistributedLockUsingOptions`（可选）                                | 重试/续期/漂移及 AbortSignal，见下表 |
+| `options`       | `DistributedLockUsingOptions`（可选）                                | 重试/续期/漂移设置，见下表 |
 
 **返回值**：`Promise<T>`，即 `execute` 的返回结果。
 
 ### `DistributedLockUsingOptions`
 
-单次调用时可传入的 Redlock 行为与中止控制：
+单次调用时可传入的 Redlock 行为设置：
 
 | 字段                         | 类型           | 说明 |
 | ---------------------------- | -------------- | ---- |
@@ -123,7 +123,6 @@ export class OrderService {
 | `retryDelay`                 | `number`       | 重试间隔（毫秒） |
 | `retryJitter`                | `number`       | 重试抖动（毫秒） |
 | `automaticExtensionThreshold`| `number`       | 自动续期阈值（毫秒） |
-| `signal`                     | `AbortSignal`  | 外部中止信号，用于主动取消 |
 
 ### `RedlockAbortSignal`
 
@@ -159,7 +158,7 @@ export class OrderService {
 | ---------- | ------------------- | ------ |
 | 订单       | `order`             | `order:123`, `order:pay:123` |
 | 库存       | `inventory`         | `inventory:sku-001` |
-| 账户/资金  | `account`           | `account:user-1`, 多键 `account:1`, `account:2` |
+| 账户/资金  | `account`           | `account:user-1`；Cluster 多键使用同一标签，如 `account:{transfer-1}:from` / `account:{transfer-1}:to` |
 | 定时任务   | `cron`              | `cron:daily-report:2025-01-15` |
 | 结算/对账  | `settlement`        | `settlement:merchant-1:2025-01-15` |
 | 活动/营销  | `campaign`          | `campaign:claim:act-1:user-1` |
@@ -185,8 +184,8 @@ export const LockResource = {
 
 ```typescript
 resources: LockResource.orderPay(orderId)
-// 多键
-resources: [LockResource.account(fromId), LockResource.account(toId)]
+// Cluster 多键必须使用相同的 hash tag；single / sentinel 也可沿用该命名
+resources: [`account:{${transferId}}:${fromId}`, `account:{${transferId}}:${toId}`]
 ```
 
 ## 使用示例
@@ -206,7 +205,10 @@ await this._lock.using({
 
 ```typescript
 await this._lock.using({
-  resources: [`account:${fromId}`, `account:${toId}`],
+  resources: [
+    `account:{${transferId}}:${fromId}`,
+    `account:{${transferId}}:${toId}`,
+  ],
   execute: async () => {
     await this._transfer(fromId, toId, amount);
   },
@@ -230,15 +232,12 @@ await this._lock.using({
 });
 ```
 
-### 使用 AbortSignal 与处理续期失败
+### 处理自动续期失败
 
 ```typescript
-const ac = new AbortController();
-
 await this._lock.using({
   resources: 'long-running',
   ttlMs: 10_000,
-  options: { signal: ac.signal },
   execute: async (signal) => {
     for (const item of items) {
       if (signal?.aborted) {
@@ -248,9 +247,6 @@ await this._lock.using({
     }
   },
 });
-
-// 需要时主动取消
-// ac.abort();
 ```
 
 ## 真实场景示例

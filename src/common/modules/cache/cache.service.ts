@@ -147,7 +147,37 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
    * @private
    */
   private _serialize<T>(value: T): string {
-    return JSON.stringify(value);
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) {
+      throw new Error('缓存值必须是可 JSON 序列化的数据，不能是 undefined');
+    }
+    return serialized;
+  }
+
+  /**
+   * Redis Cluster 的单条多键命令要求所有键属于同一 hash slot。
+   * 为避免依赖偶然的 CRC16 碰撞，多键原子操作必须显式使用相同的 `{hash-tag}`。
+   */
+  private _assertClusterKeysShareHashTag(
+    operation: string,
+    fullKeys: string[],
+  ): void {
+    if (this._connection.mode !== 'cluster' || fullKeys.length < 2) {
+      return;
+    }
+    if (new Set(fullKeys).size === 1) {
+      return;
+    }
+    const tags = fullKeys.map((key) => {
+      const match = key.match(/\{([^{}]+)\}/);
+      return match?.[1] ?? null;
+    });
+    const firstTag = tags[0];
+    if (!firstTag || tags.some((tag) => tag !== firstTag)) {
+      throw new Error(
+        `Redis Cluster 下 ${operation} 的所有键必须包含相同的 {hash-tag}`,
+      );
+    }
   }
 
   /**
@@ -251,10 +281,30 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return [];
     }
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    const rawValues = await this._redis.mget(...fullKeys);
+    if (this._connection.mode !== 'cluster') {
+      const rawValues = await this._redis.mget(...fullKeys);
+      return keys.map((key, index) => {
+        const rawValue = rawValues[index];
+        try {
+          const value = rawValue ? this._deserialize<T>(rawValue) : null;
+          return { key, value, success: true };
+        } catch {
+          return { key, value: null, success: false };
+        }
+      });
+    }
+
+    // 手动 pipeline 也只能发往一个主节点；交给 Cluster 逐键路由。
+    const results = await Promise.allSettled(
+      fullKeys.map((fullKey) => this._redis.get(fullKey)),
+    );
     return keys.map((key, index) => {
-      const rawValue = rawValues[index];
+      const result = results[index];
+      if (result.status === 'rejected') {
+        return { key, value: null, success: false };
+      }
       try {
+        const rawValue = result.value;
         const value = rawValue ? this._deserialize<T>(rawValue) : null;
         return { key, value, success: true };
       } catch {
@@ -264,7 +314,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 批量设置缓存值（使用 Redis Pipeline 提升性能）
+   * 批量设置缓存值（单机用 pipeline，Cluster 逐键路由）
    * @param items 要设置的键值对数组
    * @param ttlSeconds TTL 时间（秒），-1 表示永不过期
    * @returns 设置成功的键数量
@@ -279,10 +329,25 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     if (ttlSeconds === 0) {
       throw new Error('缓存 TTL 时间不能为 0');
     }
+    // 先校验并序列化全部输入，避免后续项非法时前面的键已经写入。
+    const preparedItems = items.map((item) => ({
+      fullKey: this._buildFullKey(item.key),
+      serializedValue: this._serialize(item.value),
+    }));
+    if (this._connection.mode === 'cluster') {
+      const results = await Promise.allSettled(
+        preparedItems.map(({ fullKey, serializedValue }) =>
+          ttlSeconds < 0
+            ? this._redis.set(fullKey, serializedValue)
+            : this._redis.setex(fullKey, ttlSeconds, serializedValue),
+        ),
+      );
+      return results.filter(
+        (result) => result.status === 'fulfilled' && result.value === 'OK',
+      ).length;
+    }
     const pipeline = this._redis.pipeline();
-    for (const item of items) {
-      const fullKey = this._buildFullKey(item.key);
-      const serializedValue = this._serialize(item.value);
+    for (const { fullKey, serializedValue } of preparedItems) {
       if (ttlSeconds < 0) {
         pipeline.set(fullKey, serializedValue);
       } else {
@@ -317,7 +382,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return 0;
     }
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    return await this._redis.del(...fullKeys);
+    if (this._connection.mode !== 'cluster') {
+      return await this._redis.del(...fullKeys);
+    }
+    const results = await Promise.allSettled(
+      fullKeys.map((fullKey) => this._redis.del(fullKey)),
+    );
+    let deletedCount = 0;
+    for (const result of results) {
+      if (result.status === 'rejected') throw result.reason;
+      deletedCount += result.value;
+    }
+    return deletedCount;
   }
 
   /**
@@ -341,7 +417,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return 0;
     }
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    return await this._redis.exists(...fullKeys);
+    if (this._connection.mode !== 'cluster') {
+      return await this._redis.exists(...fullKeys);
+    }
+    const results = await Promise.allSettled(
+      fullKeys.map((fullKey) => this._redis.exists(fullKey)),
+    );
+    let existsCount = 0;
+    for (const result of results) {
+      if (result.status === 'rejected') throw result.reason;
+      existsCount += result.value;
+    }
+    return existsCount;
   }
 
   /**
@@ -389,11 +476,15 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   public async rename(oldKey: string, newKey: string): Promise<boolean> {
     const oldFullKey = this._buildFullKey(oldKey);
     const newFullKey = this._buildFullKey(newKey);
+    this._assertClusterKeysShareHashTag('rename()', [oldFullKey, newFullKey]);
     try {
       await this._redis.rename(oldFullKey, newFullKey);
       return true;
-    } catch {
-      return false;
+    } catch (error: unknown) {
+      if (/\bno such key\b/i.test(normalizeError(error).message)) {
+        return false;
+      }
+      throw error;
     }
   }
 
@@ -454,6 +545,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     args: (string | number)[] = [],
   ): Promise<unknown> {
     const fullKeys = keys.map((key) => this._buildFullKey(key));
+    this._assertClusterKeysShareHashTag('executeScript()', fullKeys);
     const numKeys = fullKeys.length;
     return await this._redis.eval(script, numKeys, ...fullKeys, ...args);
   }

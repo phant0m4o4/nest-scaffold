@@ -108,7 +108,7 @@ export default myConfig;
 | `QUEUE_REDIS_PORT` | —（必填） | |
 | `QUEUE_REDIS_PASSWORD` | — | 可选 |
 | `QUEUE_REDIS_DB` | —（必填） | 队列专用 DB，禁止与缓存/锁共用（推荐 `2`） |
-| `QUEUE_KEY_PREFIX` | `queue` | 队列 key 前缀 |
+| `QUEUE_KEY_PREFIX` | single/sentinel 为 `queue`，cluster 为 `{queue}` | 队列 key 前缀；cluster 模式必须包含非空 `{hash-tag}`（让相关键位于同一分片），否则拒绝启动 |
 | `QUEUE_DASHBOARD_ROUTE` | `/queues` | Bull Board 路由（仅开发环境） |
 
 ## LoggerModule

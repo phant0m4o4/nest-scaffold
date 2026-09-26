@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import Redlock, {
   type RedlockAbortSignal,
+  ResourceLockedError,
   type Settings as RedlockSettings,
 } from 'redlock';
 
@@ -37,17 +38,14 @@ const DEFAULT_REDLOCK_SETTINGS: Partial<RedlockSettings> = {
 };
 
 /**
- * 单次 using 调用时可自定义的参数（Redlock 行为 + 可选中止信号）
+ * 单次 using 调用时可自定义的 Redlock 参数
  * - driftFactor: 时钟漂移系数
  * - retryCount: 重试次数
  * - retryDelay: 重试间隔（毫秒）
  * - retryJitter: 重试抖动（毫秒）
  * - automaticExtensionThreshold: 自动续期阈值（毫秒）
- * - signal: 可选 AbortSignal，用于外部中断
  */
-export type DistributedLockUsingOptions = Partial<RedlockSettings> & {
-  signal?: AbortSignal;
-};
+export type DistributedLockUsingOptions = Partial<RedlockSettings>;
 
 /**
  * 分布式锁服务
@@ -112,6 +110,14 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     }
     this._redlock = new Redlock([this._client], DEFAULT_REDLOCK_SETTINGS);
     this._redlock.on('error', (error: unknown) => {
+      // 竞争失败是锁的正常控制流；真正的 Redis/法定人数错误才进入 error 日志。
+      if (error instanceof ResourceLockedError) {
+        this._logger.debug(
+          { event: 'redlock_contention' },
+          'Redlock 资源正在被其他持有者占用',
+        );
+        return;
+      }
       this._logger.error(
         { error: normalizeError(error), event: 'redlock_error' },
         'Redlock 错误',
@@ -173,7 +179,19 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     if (list.length === 0) {
       throw new Error('资源标识符数组不能为空');
     }
-    return list.map((r) => this._buildLockKey(String(r)));
+    const keys = [
+      ...new Set(list.map((resource) => this._buildLockKey(resource))),
+    ];
+    if (this._connection.mode === 'cluster' && keys.length > 1) {
+      const tags = keys.map((key) => key.match(/\{([^{}]+)\}/)?.[1] ?? null);
+      const firstTag = tags[0];
+      if (!firstTag || tags.some((tag) => tag !== firstTag)) {
+        throw new Error(
+          'Redis Cluster 下多资源锁必须为所有资源使用相同的 {hash-tag}',
+        );
+      }
+    }
+    return keys;
   }
 
   /**
@@ -200,6 +218,9 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     const { resources, execute, ttlMs, options } = params;
     const keys = this._buildLockKeys(resources);
     const ttl = ttlMs ?? DEFAULT_TTL_MS;
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+      throw new Error('锁 TTL 必须是大于 0 的有限毫秒数');
+    }
     return this._redlock.using(keys, ttl, options ?? {}, (signal) =>
       Promise.resolve(execute(signal)),
     );

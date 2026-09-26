@@ -34,21 +34,35 @@ const environmentSchema = z.object({
   QUEUE_DASHBOARD_ROUTE: z.string().optional(),
 });
 
+/** BullMQ 的 Lua 脚本会同时访问多键，Cluster 前缀必须显式固定到一个 hash slot。 */
+function hasRedisHashTag(value: string): boolean {
+  return /\{[^{}]+\}/.test(value);
+}
+
 const queueConfig = registerEnvAsConfig('queue', environmentSchema, (env) => {
+  const connection = resolveRedisConnection({
+    envPrefix: 'QUEUE_REDIS',
+    mode: env.QUEUE_REDIS_MODE,
+    host: env.QUEUE_REDIS_HOST,
+    port: env.QUEUE_REDIS_PORT,
+    password: env.QUEUE_REDIS_PASSWORD,
+    db: env.QUEUE_REDIS_DB,
+    sentinelMasterName: env.QUEUE_REDIS_SENTINEL_MASTER_NAME,
+    sentinels: env.QUEUE_REDIS_SENTINELS,
+    clusterNodes: env.QUEUE_REDIS_CLUSTER_NODES,
+  });
+  const keyPrefix =
+    env.QUEUE_KEY_PREFIX ??
+    (connection.mode === 'cluster' ? '{queue}' : 'queue');
+  if (connection.mode === 'cluster' && !hasRedisHashTag(keyPrefix)) {
+    throw new Error(
+      'QUEUE_KEY_PREFIX 在 Redis Cluster 模式下必须包含非空 {hash-tag}，例如 {queue}',
+    );
+  }
   return {
-    keyPrefix: env.QUEUE_KEY_PREFIX ?? 'queue',
+    keyPrefix,
     dashboardRoute: env.QUEUE_DASHBOARD_ROUTE ?? '/queues',
-    connection: resolveRedisConnection({
-      envPrefix: 'QUEUE_REDIS',
-      mode: env.QUEUE_REDIS_MODE,
-      host: env.QUEUE_REDIS_HOST,
-      port: env.QUEUE_REDIS_PORT,
-      password: env.QUEUE_REDIS_PASSWORD,
-      db: env.QUEUE_REDIS_DB,
-      sentinelMasterName: env.QUEUE_REDIS_SENTINEL_MASTER_NAME,
-      sentinels: env.QUEUE_REDIS_SENTINELS,
-      clusterNodes: env.QUEUE_REDIS_CLUSTER_NODES,
-    }),
+    connection,
   };
 });
 export default queueConfig;

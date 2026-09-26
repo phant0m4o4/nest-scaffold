@@ -123,8 +123,8 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 | `set<T>(key, value, ttl?)`            | 设置缓存值（JSON 序列化）   |
 | `getRaw(key)`                         | 获取原始字符串              |
 | `setRaw(key, value, ttl?)`            | 设置原始字符串              |
-| `getBatch<T>(keys)`                   | 批量获取（mget）            |
-| `setBatch<T>(items, ttl?)`            | 批量设置（pipeline）        |
+| `getBatch<T>(keys)`                   | 批量获取（单机 mget，Cluster 逐键路由） |
+| `setBatch<T>(items, ttl?)`            | 批量设置（单机 pipeline，Cluster 逐键路由） |
 | `delete(key)`                         | 删除单个键                  |
 | `deleteBatch(keys)`                   | 批量删除                    |
 | `exists(key)`                         | 检查键是否存在              |
@@ -139,6 +139,14 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 | `executeScript(script, keys?, args?)` | 执行 Lua 脚本               |
 | `getConnectionStatus()`               | 获取连接状态                |
 | `isHealthy()`                         | 健康检查                    |
+
+Redis Cluster 下，`getBatch` / `setBatch` / `deleteBatch` / `existsBatch` 并发发送单键命令，
+由客户端分别路由到对应主节点，不使用只能访问同一主节点的手动 pipeline（命令批量发送）。
+这些批次允许键分布在不同 slot（分片槽），但不保证跨键原子性。读取保留输入顺序，
+单项命令错误或 JSON 解析失败标记 `success: false`；写入返回成功项数；删除和存在性检查
+遇到命令错误会抛出，部分操作可能已经成功。批量写入先校验、序列化全部输入再发送命令。
+`rename` 与多键 `executeScript` 是原子多键命令，调用方必须为所有键使用相同的
+`{hash-tag}`（将多个键固定到同一分片槽），否则服务会在发送命令前直接抛错。
 
 ## 架构设计
 

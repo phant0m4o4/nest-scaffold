@@ -8,27 +8,32 @@ import {
 } from '@/common/utils/redis/redis.factory';
 import { DistributedLockService } from '../distributed-lock.service';
 
+const redlockUsing = vi.hoisted(() => vi.fn());
+
 vi.mock('@/common/utils/redis/redis.factory', () => ({
   createRedisClient: vi.fn(),
   closeRedisClient: vi.fn(),
 }));
 
 vi.mock('redlock', () => ({
+  ResourceLockedError: class MockResourceLockedError extends Error {},
   default: class MockRedlock {
     on = vi.fn();
-    using = vi.fn();
+    using = redlockUsing;
   },
 }));
 
 /** 构造仅含 getOrThrow 的 ConfigService 桩 */
-function buildConfigService(): ConfigService {
+function buildConfigService(
+  connection: Record<string, unknown> = {
+    mode: 'single',
+    single: { host: '127.0.0.1', port: 6379, db: 0 },
+  },
+): ConfigService {
   return {
     getOrThrow: vi.fn().mockReturnValue({
       keyPrefix: 'distributed-lock',
-      connection: {
-        mode: 'single',
-        single: { host: '127.0.0.1', port: 6379, db: 0 },
-      },
+      connection,
     }),
   } as unknown as ConfigService;
 }
@@ -39,6 +44,7 @@ function buildLogger(): PinoLogger {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    debug: vi.fn(),
   } as unknown as PinoLogger;
 }
 
@@ -91,5 +97,59 @@ describe('DistributedLockService（生命周期）', () => {
     await service.onModuleDestroy();
 
     expect(closeRedisClient).not.toHaveBeenCalled();
+  });
+
+  it('重复资源应在交给 redlock 前去重', async () => {
+    redlockUsing.mockResolvedValue('done');
+    await service.onModuleInit();
+
+    await service.using({
+      resources: ['order:1', 'order:1'],
+      execute: () => 'done',
+    });
+
+    expect(redlockUsing).toHaveBeenCalledWith(
+      ['distributed-lock:order:1'],
+      30_000,
+      {},
+      expect.any(Function),
+    );
+  });
+
+  it('cluster 多资源锁应拒绝不同或缺失 hash tag 的资源', async () => {
+    const clusterService = new DistributedLockService(
+      buildConfigService({
+        mode: 'cluster',
+        cluster: { nodes: [{ host: '127.0.0.1', port: 7000 }] },
+      }),
+      buildLogger(),
+    );
+    await clusterService.onModuleInit();
+
+    await expect(
+      clusterService.using({
+        resources: ['account:1', 'account:2'],
+        execute: () => undefined,
+      }),
+    ).rejects.toThrow(/hash-tag/);
+  });
+
+  it('cluster 多资源锁应接受相同 hash tag', async () => {
+    redlockUsing.mockResolvedValue('done');
+    const clusterService = new DistributedLockService(
+      buildConfigService({
+        mode: 'cluster',
+        cluster: { nodes: [{ host: '127.0.0.1', port: 7000 }] },
+      }),
+      buildLogger(),
+    );
+    await clusterService.onModuleInit();
+
+    await clusterService.using({
+      resources: ['account:{transfer-1}:from', 'account:{transfer-1}:to'],
+      execute: () => 'done',
+    });
+
+    expect(redlockUsing).toHaveBeenCalled();
   });
 });
