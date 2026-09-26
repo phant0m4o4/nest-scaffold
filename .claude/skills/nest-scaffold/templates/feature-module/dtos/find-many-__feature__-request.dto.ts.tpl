@@ -18,7 +18,7 @@ export const __FEATURE___CURSOR_ORDERABLE_COLUMNS = getTableConfig(
   )
   .map((col) => col.name);
 
-const __feature__FilterFieldsSchema = z.object({
+const __featureCamel__FilterFieldsSchema = z.object({
   /** 名称（模糊匹配），例如 'test' */
   name: z.string().optional(),
   // TODO: 按业务补充过滤字段（与服务层 _buildFilters 对应）
@@ -26,13 +26,13 @@ const __feature__FilterFieldsSchema = z.object({
 
 export class FindMany__Feature__ByCursoredPaginationRequestDto extends createZodDto(
   FindManyByCursoredPaginationDto.schema.extend(
-    __feature__FilterFieldsSchema.shape,
+    __featureCamel__FilterFieldsSchema.shape,
   ),
 ) {}
 
 export class FindMany__Feature__ByPaginationRequestDto extends createZodDto(
   FindManyByPaginationDto.schema
-    .extend(__feature__FilterFieldsSchema.shape)
+    .extend(__featureCamel__FilterFieldsSchema.shape)
     .extend({
       orderColumn: z.enum(__FEATURE___ORDERABLE_COLUMNS).optional(),
     }),

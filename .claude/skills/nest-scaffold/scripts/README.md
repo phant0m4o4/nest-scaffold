@@ -59,6 +59,10 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh <feature-kebab-singular>
    - `src/database/mysql/schemas/<features>.schema.ts`（如不存在，从 `templates/schema.ts.tpl` 生成桩）
 4. 输出后续手动步骤（更新 schemas/index.ts、api.module.ts、db:generate:mysql + db:migrate:mysql、补 TODO、跑测试）。
 
+生成的更新 DTO 会拒绝空对象及只有未知字段的对象；追加仅更新字段时，在非空校验之前调用 `.extend()`。游标排序仅接受表中非空的字符串、数字、日期列，页码排序仍保留全部列。
+
+生成器回归测试：`pnpm test:unit src/__tests__/new-module.unit-spec.ts`。测试仅在临时目录生成模块，不连接数据库或读取本地环境配置。
+
 约束：
 
 - 输入必须是合法 kebab-case（`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`）。
