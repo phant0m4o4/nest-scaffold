@@ -12,8 +12,11 @@
 ├── drizzle-mysql.config.ts   # Drizzle Kit 配置（MySQL，指向 src/database/mysql/schemas）
 ├── drizzle-pgsql.config.ts   # Drizzle Kit 配置（PostgreSQL，指向 src/database/pgsql/schemas）
 ├── eslint.config.mjs         # ESLint 9 + typescript-eslint + prettier
-├── vitest.config.ts          # Vitest 单测配置（带 SWC + path alias）
-├── vitest-e2e.config.ts      # Vitest E2E 配置
+├── vitest.config.mts         # Vitest 全量入口（聚合 unit/integration/e2e）
+├── vitest-base.config.mts    # 共享编译、别名与测试环境配置
+├── vitest-unit.config.mts    # Vitest 单测与单测覆盖率配置
+├── vitest-integration.config.mts # Vitest 集成测试配置
+├── vitest-e2e.config.mts     # Vitest E2E 配置
 ├── nest-cli.json             # SWC builder（typeCheck）+ i18n 资产复制配置
 ├── .swcrc                    # SWC 编译配置（@/* 别名解析、装饰器元数据）
 ├── tsconfig.json             # paths={"@/*":["./src/*"]}（无 baseUrl）, strictNullChecks
@@ -103,7 +106,7 @@ src/
 ## 路径别名
 
 - `tsconfig.json` 的 `paths`：`{"@/*": ["src/*"]}`
-- Vitest 通过 `resolve.alias`：`{ '@': resolve(__dirname, './src') }`
+- Vitest 的 ESM（标准模块格式）配置通过 `resolve.alias`：`{ '@': resolve(import.meta.dirname, './src') }`
 
 新代码跨目录一律使用 `@/...`，不要使用 `../../../`。
 

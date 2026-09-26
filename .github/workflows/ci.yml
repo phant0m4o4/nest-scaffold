@@ -1,4 +1,4 @@
-# 持续集成：lint + 构建 + 单元测试 + E2E（testcontainers 使用 runner 自带 Docker）
+# 持续集成：lint + 构建 + 单元测试 + 集成测试（testcontainers 使用 runner 自带 Docker）
 # docker 任务并行验证生产镜像可构建（只构建不推送，在干净环境暴露"本地能跑"的依赖假象）
 name: CI
 
@@ -37,10 +37,10 @@ jobs:
         run: pnpm build
 
       - name: 单元测试（含覆盖率阈值检查）
-        run: pnpm test:cov
+        run: pnpm test:unit:cov
 
-      - name: E2E 测试（testcontainers）
-        run: pnpm test:e2e
+      - name: 集成测试（testcontainers）
+        run: pnpm test:integration
 
   docker:
     runs-on: ubuntu-latest

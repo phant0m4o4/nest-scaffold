@@ -33,7 +33,7 @@ import { z } from 'zod';
 const TEST_TIMEOUT_MS = 180_000;
 const MYSQL_IMAGE = 'mysql:9';
 const MYSQL_INNER_PORT = 3306;
-const MYSQL_DATABASE = 'cursor_e2e';
+const MYSQL_DATABASE = 'cursor_integration';
 const MYSQL_USER = 'root';
 const MYSQL_PASSWORD = 'test';
 const TEST_MASTER_KEY = Buffer.from(
@@ -110,9 +110,10 @@ function buildLoggerStub(): PinoLogger {
 }
 
 /**
- * Demo 加密游标 / 页码分页集测（真实 MySQL + HTTP）
+ * Demo 模块集成测试（真实 MySQL + 内进程 Nest HTTP 适配器）。
+ * 此处自行装配测试模块并替换全局 Pipe/配置，因此不属于完整应用 E2E。
  */
-describe('Demo cursor pagination (e2e)', () => {
+describe('Demo cursor pagination (integration)', () => {
   let mysqlContainer: StartedTestContainer;
   let pool: mysql.Pool;
   let app: INestApplication;
@@ -175,10 +176,10 @@ describe('Demo cursor pagination (e2e)', () => {
         },
       ],
     })
-    class DemoCursorE2eModule {}
+    class DemoCursorIntegrationModule {}
 
     const moduleRef: TestingModule = await Test.createTestingModule({
-      imports: [DemoCursorE2eModule],
+      imports: [DemoCursorIntegrationModule],
     }).compile();
 
     app = moduleRef.createNestApplication();

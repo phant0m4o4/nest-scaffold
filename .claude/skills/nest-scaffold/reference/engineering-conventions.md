@@ -91,7 +91,7 @@
 |---|--------|------|
 | T1 | **能自动化的必须进 `pnpm test` / CI** | 一次性手工检查不能替代回归 |
 | T2 | **断言必须能红** | 禁止无断言、恒真断言、无故 skip；失败路径要有会变红的用例 |
-| T3 | **推送前本地门禁全绿** | `pnpm lint && pnpm build && pnpm test`（涉及 e2e 加 `pnpm test:e2e`） |
+| T3 | **推送前本地门禁全绿** | `pnpm lint && pnpm build && pnpm test`（全量测试包含 unit/integration/e2e，需 Docker） |
 | T4 | **测前有覆盖清单** | 有风险改动：正常 / 边界 / 失败 / 幂等 / 并发按需枚举；缺口显式写明不测理由（见 [task-acceptance.md](task-acceptance.md)） |
 
 详见 [testing.md](testing.md)。

@@ -20,7 +20,7 @@ git checkout -b <type>/<kebab-topic>   # type 与提交规范一致：feature/ f
 **验证**（所有场景相同；有风险改动按 [task-acceptance.md](task-acceptance.md) 四档推进，不可跳过第 0 档直接开写测试）：
 
 ```bash
-pnpm lint && pnpm build && pnpm test   # 涉及 e2e 面时加 pnpm test:e2e
+pnpm lint && pnpm build && pnpm test   # 全部测试；需可用的 Docker 环境
 ```
 
 自动化命令全绿只覆盖第 1 档的一部分；第 0 档循环 review、第 1 档覆盖清单对照、第 2 档人工取证、第 3 档审核导读见 `task-acceptance.md`。报告落盘 `reports/<里程碑>/<任务>/`。
@@ -58,7 +58,7 @@ git checkout main && git pull && git branch -d <branch>
 2. 数据库：定义 schema → `pnpm db:generate:mysql --name=<kebab>`（务必带 `--name`）→ **检查生成的 SQL** → `pnpm db:migrate:mysql`；需要基础数据用 `--custom --name=<n>`（详见 [database.md](database.md)）。
 3. 实现：Repository 确认表名与特殊查询 → Service 业务逻辑 → Controller/DTO 遵循 [rest-api.md](rest-api.md)（zod DTO、param DTO、`Entity.create()` 净化）。
 4. 注册：`api.module.ts` 的 `imports` 加入新模块。
-5. 测试：Service 单测（`useMocker` mock 仓储）+ 按需 e2e（testcontainers），写法见 [testing.md](testing.md)。
+5. 测试：Service 单测（`useMocker` 模拟仓储）+ 按需集成测试（Testcontainers 启动真实依赖）；完整应用的 E2E（端到端测试）另放 `test/e2e/`，写法见 [testing.md](testing.md)。
 6. 同步受影响的文档（模块 README / skill reference）。
 7. 验证 → 交付（迁移文件随本次 PR 一起提交）。
 

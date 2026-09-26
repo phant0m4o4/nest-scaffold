@@ -229,7 +229,9 @@ src/app/api/<domain>/
 ├── interfaces/
 │   └── <domain>-payload.interface.ts
 └── __tests__/
-    ├── <domain>.controller.spec.ts
-    ├── <domain>.service.spec.ts
-    └── <domain>.e2e-spec.ts
+    ├── <domain>.controller.unit-spec.ts
+    ├── <domain>.service.unit-spec.ts
+    └── <domain>.integration-spec.ts
 ```
+
+完整应用的 E2E（端到端测试）放在 `test/e2e/<domain>.e2e-spec.ts`。

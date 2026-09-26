@@ -147,7 +147,7 @@
 
 - 提交格式:`type(scope): subject`(type/scope 必须英文,subject 可中文),body 必须中文、说清"为什么改"。详见 [.claude/skills/nest-scaffold/reference/git-commit.md](.claude/skills/nest-scaffold/reference/git-commit.md),交互式提交可用 `pnpm commit`。
 - **原子提交**:一次提交只做一件事;因本次改动而需要同步的文档/模板/配置放进同一个提交,不留"文档稍后补"的尾巴。
-- **推送前验证**:`pnpm lint && pnpm build && pnpm test` 必须全绿(改动涉及 e2e 面时加 `pnpm test:e2e`),工作区不留未跟踪的临时文件——别把红的推给 CI。
+- **推送前验证**:`pnpm lint && pnpm build && pnpm test` 必须全绿；`pnpm test` 已包含单元、集成和 E2E 测试，需可用的 Docker 环境。开发时可用 `pnpm test:unit`、`pnpm test:integration`、`pnpm test:e2e` 分别验证。工作区不留未跟踪的临时文件——别把红的推给 CI。
 - PR 上 CI 全绿由分支保护强制,合并后关注 CD(如已配置)的部署结果。
 
 **6. 任务验收(四档,有风险改动必走满)。**

@@ -6,27 +6,34 @@
 
 ## 文件位置与命名
 
-- 单测：与被测代码同目录的 `__tests__/` 文件夹（双下划线，唯一例外），文件名 `<name>.spec.ts`。
-- E2E：同样放 `__tests__/`，文件名 `<name>.e2e-spec.ts`。
+- 单测：与被测代码同目录的 `__tests__/` 文件夹（双下划线，唯一例外），文件名 `<name>.unit-spec.ts`。
+- 集成测试：同样放 `__tests__/`，文件名 `<name>.integration-spec.ts`。
+- E2E：放在 `test/e2e/`，文件名 `<name>.e2e-spec.ts`；按项目约定从完整应用公开边界验证。
 - 被测代码：与测试文件路径对应。
 
 ## 配置文件
 
-- `vitest.config.ts`：单测配置。include `src/**/*.spec.ts`，`globals: true`，SWC 插件，alias `@` → `src`，`env` 注入 `NODE_ENV=test`。
-- `vitest-e2e.config.ts`：E2E 配置。include `src/**/*.e2e-spec.ts`。
+- `vitest.config.mts`：默认全量入口，通过 `test.projects` 聚合 unit、integration、e2e 三份专用配置。
+- `vitest-base.config.mts`：只共享 SWC 插件、alias `@` → `src`、`NODE_ENV=test` 等基础配置，不包含收集范围、覆盖率阈值或项目列表；测试 API 显式导入。
+- `vitest-unit.config.mts`：单测配置，只 include `src/**/*.unit-spec.ts`，独立维护单测覆盖率与阈值。
+- `vitest-integration.config.mts`：集成测试配置。include `src/**/*.integration-spec.ts`。
+- `vitest-e2e.config.mts`：E2E 配置。include `test/e2e/**/*.e2e-spec.ts`。
 
 ## 命令
 
 | 命令 | 说明 |
 |------|------|
-| `pnpm test <文件路径>` | 运行单个文件单测（`vitest run`） |
-| `pnpm test:watch` | 监听 |
-| `pnpm test:cov` | 覆盖率（`--coverage`） |
-| `pnpm test:e2e <文件路径>` | E2E（`--config ./vitest-e2e.config.ts`） |
+| `pnpm test <文件路径>` | 全部测试（unit + integration + e2e）；可附文件路径过滤 |
+| `pnpm test:unit <文件路径>` | 单元测试（只收集 `*.unit-spec.ts`） |
+| `pnpm test:unit:watch` | 单元测试监听 |
+| `pnpm test:unit:cov` | 单元测试覆盖率（`--coverage`） |
+| `pnpm test:integration <文件路径>` | 集成测试（`--config ./vitest-integration.config.mts`） |
+| `pnpm test:e2e <文件路径>` | E2E（`--config ./vitest-e2e.config.mts`） |
 
-`NODE_ENV=test` 由 `vitest.config.ts` 的 `env` 配置注入。
+三份专用配置均从 `vitest-base.config.mts` 继承 `NODE_ENV=test` 等基础设置；单测覆盖率独立，`pnpm test` 聚合单元、集成和 E2E 测试。集成测试需要 Docker，当前 E2E 入口允许空测试集。
 
-调试：优先在 VS Code 的 JavaScript Debug Terminal 里直接跑 `pnpm test <文件路径>`（断点自动生效）；不依赖 IDE 时用 `pnpm exec vitest run --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
+
+调试单测：优先在 VS Code 的 JavaScript Debug Terminal 里直接跑 `pnpm test:unit <文件路径>`（断点自动生效）；不依赖 IDE 时用 `pnpm exec vitest run --config ./vitest-unit.config.mts --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
 
 ## 风格总则
 
@@ -96,7 +103,7 @@ describe('DemoService', () => {
 2. 工厂内需要的类可放独立文件，在工厂内 `await import()` 引入。
 3. mock 构造函数时实现必须用**普通 `function`**（可被 `new` 调用），不能用箭头函数。
 
-参考 `src/common/utils/redis/__tests__/redis.factory.spec.ts` 的实际写法：
+参考 `src/common/utils/redis/__tests__/redis.factory.unit-spec.ts` 的实际写法：
 
 ```ts
 const { redisInstances } = vi.hoisted(() => ({
@@ -130,7 +137,7 @@ vi.mock('ioredis', async () => {
 }
 ```
 
-## E2E 测试：overrideProvider + Testcontainers
+## 集成测试：overrideProvider + Testcontainers
 
 ```ts
 import { Test, TestingModule } from '@nestjs/testing';
@@ -139,7 +146,7 @@ import { MySqlContainer, RedisContainer } from 'testcontainers';
 import * as request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-describe('Demo E2E', () => {
+describe('Demo integration', () => {
   let app: INestApplication;
   let mysqlContainer: StartedMySqlContainer;
   let redisContainer: StartedRedisContainer;
@@ -182,17 +189,18 @@ describe('Demo E2E', () => {
 
 注意：
 
-- E2E 用 **`overrideProvider`** 覆盖配置 / 三方依赖；须提供合法 `APP_MASTER_KEY`（或 mock `appConfig`）。
+- 集成测试可用 **`overrideProvider`** 覆盖配置 / 三方依赖；须提供合法 `APP_MASTER_KEY`（或 mock `appConfig`）。
 - 容器化依赖用 **testcontainers**，测试自启自销，避免污染本地环境。
-- 不要在 e2e 里用真实 `.env.development`。
+- 不要在测试里用真实 `.env.development`。
+- 使用 Testcontainers 本身不决定测试层级；本项目 E2E 要求完整应用装配、通过公开接口验证，不替换内部 Provider/Pipe/Filter/配置。当前预留 E2E 入口。
 
 ## 已存在的测试参考
 
-- `src/common/utils/redis/__tests__/redis.factory.spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
-- `src/common/utils/redis/__tests__/redis-factory.e2e-spec.ts` —— testcontainers E2E 样例
-- `src/app/api/demo/__tests__/demo.service.spec.ts` —— 加密游标 Service 单测
-- `src/common/modules/database/mysql/repositories/__tests__/base.repository.cursor.spec.ts` —— 多列 keyset 仓储单测
-- `src/app/api/demo/__tests__/demo-cursor.e2e-spec.ts` —— MySQL testcontainers 游标/页码集测
+- `src/common/utils/redis/__tests__/redis.factory.unit-spec.ts` —— 单测样例（含 `vi.hoisted` + `vi.mock` 构造函数 mock）
+- `src/common/utils/redis/__tests__/redis-factory.integration-spec.ts` —— Testcontainers Redis 集成测试样例
+- `src/app/api/demo/__tests__/demo.service.unit-spec.ts` —— 加密游标 Service 单测
+- `src/common/modules/database/mysql/repositories/__tests__/base.repository.cursor.unit-spec.ts` —— 多列 keyset 仓储单测
+- `src/app/api/demo/__tests__/demo-cursor.integration-spec.ts` —— MySQL Testcontainers 游标/页码集测
 
 ## 覆盖范围要求
 

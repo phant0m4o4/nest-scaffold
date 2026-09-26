@@ -1,14 +1,15 @@
 import { AppModule } from '@/app/app.module';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-describe('__Feature__ E2E', () => {
+describe('__Feature__ 集成测试', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    // TODO: 用 testcontainers 启动 mysql/redis 容器，并通过 overrideProvider(ConfigService) 注入容器地址
+    // TODO: 用 Testcontainers 启动 MySQL/Redis 容器，覆盖对应配置 Provider，并应用迁移。
+    // 本模板自行装配测试应用、覆盖内部配置，属于集成测试；完成上述准备后再运行。
     const moduleRef: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

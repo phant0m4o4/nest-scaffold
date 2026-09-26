@@ -24,10 +24,10 @@ function buildLoggerStub(): PinoLogger {
 
 /**
  * 集成测试：使用 testcontainers 启动真实 Redis，
- * 验证 createRedisClient / closeRedisClient 与 ioredis 的端到端可用性
+ * 验证 createRedisClient / closeRedisClient 与真实 ioredis 服务的协作。
  * （各模块自建连接的基础设施正是这两个工具函数）。
  */
-describe('redis.factory (e2e)', () => {
+describe('redis.factory (integration)', () => {
   let redisContainer: StartedTestContainer;
   let client: RedisClient;
 
@@ -63,7 +63,7 @@ describe('redis.factory (e2e)', () => {
   }, TEST_TIMEOUT_MS);
 
   it('应能完成 set/get/delete 基础读写', async () => {
-    const inputKey = 'redis-factory-e2e:hello';
+    const inputKey = 'redis-factory-integration:hello';
     const inputValue = 'world';
 
     await client.set(inputKey, inputValue);
@@ -85,7 +85,7 @@ describe('redis.factory (e2e)', () => {
       config: buildSingleConfig(1),
       logger: buildLoggerStub(),
     });
-    const inputKey = 'redis-factory-e2e:isolation';
+    const inputKey = 'redis-factory-integration:isolation';
 
     await client.set(inputKey, 'db0');
     const actualOnDb1 = await isolatedClient.get(inputKey);

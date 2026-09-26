@@ -196,14 +196,23 @@ pnpm db:migrate:mysql         # 2) 应用到本地库
 
 ## 4. 测试与调试
 
-| 命令                       | 说明                                                    |
-| -------------------------- | ------------------------------------------------------- |
-| `pnpm test <文件路径>`     | 单元测试（`vitest run`）                                |
-| `pnpm test:watch`          | 监听模式                                                |
-| `pnpm test:cov`            | 覆盖率报告 + 阈值检查（CI 同款）                        |
-| `pnpm test:e2e <文件路径>` | 端到端测试（testcontainers 拉真实容器）                 |
+| 命令                               | 说明                                                               |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `pnpm test <文件路径>`             | 运行全部测试：单元测试、集成测试和端到端测试                       |
+| `pnpm test:unit <文件路径>`        | 单元测试：依赖使用 mock/fake，不启动外部服务                        |
+| `pnpm test:unit:watch`             | 单元测试监听模式                                                   |
+| `pnpm test:unit:cov`               | 单元测试覆盖率报告 + 阈值检查（CI 同款）                            |
+| `pnpm test:integration <文件路径>` | 集成测试：模块/适配器与真实 MySQL、Redis 等依赖协作（Testcontainers） |
+| `pnpm test:e2e <文件路径>`         | 端到端测试：完整应用公开边界，当前预留入口           |
 
-调试：应用用 `pnpm start:debug` + IDE Attach；测试推荐在 VS Code 的 **JavaScript Debug Terminal** 里直接 `pnpm test <文件路径>`（断点自动生效），无 IDE 时 `pnpm exec vitest run --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
+测试类型按“被测边界”划分，而不是按是否使用真实数据库划分：使用 Testcontainers 不会自动成为 E2E；自行装配 Nest 测试模块、替换 Provider/Pipe/配置的测试仍属于集成测试。真正的 E2E 必须启动完整应用装配，不替换应用内部依赖，只通过 HTTP 等公开边界进行验证。
+
+文件命名统一为 `*.unit-spec.ts`（单元测试）、`*.integration-spec.ts`（集成测试）、`*.e2e-spec.ts`（端到端测试）。默认的 `vitest.config.mts` 通过 `test.projects` 聚合 `vitest-unit.config.mts`、`vitest-integration.config.mts` 和 `vitest-e2e.config.mts`。三个分类配置都从 `vitest-base.config.mts` 继承 SWC 编译、路径别名和 `NODE_ENV=test`；单测覆盖率及阈值只配置在 `vitest-unit.config.mts` 中。
+
+运行 `pnpm test` 或 `pnpm test:integration` 前需要启动 Docker；集成测试会自动创建并清理临时依赖容器。当前 E2E 入口允许空测试集。
+
+
+调试：应用用 `pnpm start:debug` + IDE Attach；测试推荐在 VS Code 的 **JavaScript Debug Terminal** 里直接 `pnpm test:unit <文件路径>`（断点自动生效），无 IDE 时 `pnpm exec vitest run --config ./vitest-unit.config.mts --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
 
 ---
 
@@ -218,7 +227,7 @@ pnpm db:migrate:mysql         # 2) 应用到本地库
 
 ## 方式 A · 容器部署（推荐）
 
-脚手架提供生产镜像定义（`Dockerfile`：多阶段构建 → 仅生产依赖 → 非 root 运行 `node dist/main`，**自带迁移文件与 drizzle-kit**），CI 每次提交都验证其可构建。发布节奏：打版本标签（`git tag v0.1.0 && git push origin v0.1.0`），镜像是版本化制品、可按版本回滚。
+脚手架提供生产镜像定义（`Dockerfile`：多阶段构建 → 仅生产依赖 → 非 root 运行 `node dist/main`，**自带迁移文件与 drizzle-kit**），CI 每次提交都验证镜像可构建。发布节奏：打版本标签（`git tag v0.1.0 && git push origin v0.1.0`），镜像是版本化制品、可按版本回滚。
 
 ```bash
 # 部署机拉取并运行（镜像由下方 CD 工作流构建推送）
@@ -352,7 +361,7 @@ jobs:
 
 ## CI 与发布说明
 
-- **CI**（`.github/workflows/ci.yml`，随仓库自带）：push 到 `main` 或 PR 时自动运行两个并行任务——① 安装（frozen-lockfile）→ lint → 构建 → 单测（含覆盖率阈值）→ E2E；② 生产镜像构建验证。`ci` / `docker` 即分支保护的必需检查。
+- **CI**（`.github/workflows/ci.yml`，随仓库自带）：push 到 `main` 或 PR 时自动运行两个并行任务——① 安装（frozen-lockfile）→ lint → 构建 → 单测（含覆盖率阈值）→ 集成测试；② 生产镜像构建验证。`ci` / `docker` 即分支保护的必需检查。
 - **CD 不内置**：发布节奏与部署目标是业务项目的决策；脚手架交付 `Dockerfile` 与上面两份可直接采用的示例 workflow。
 - **多环境 / 发布审批**：不要用常驻环境分支（可变、会漂移，与"常态只保留 main"冲突）；需要审批或多环境时用 **GitHub Environments**（部署 job 声明 `environment: production` + required reviewers），原生获得审批门禁、环境专属 Secrets 与部署历史。
 - 镜像/产物之后的编排（K8s / Swarm / systemd）依基础设施而定，不在脚手架内约定。
@@ -369,7 +378,7 @@ jobs:
 | 启动 | `pnpm start:dev` | 开发模式，热重载（内置 NODE_ENV=development） |
 | 启动 | `pnpm start:debug` | 热重载 + Node.js inspector |
 | 启动 | `pnpm start:dist` | 运行构建产物（生产：前缀 `NODE_ENV=production`） |
-| 测试 | `pnpm test` / `test:watch` / `test:cov` / `test:e2e` | 见「开发环境 · 测试与调试」 |
+| 测试 | `pnpm test` / `test:unit` / `test:unit:watch` / `test:unit:cov` / `test:integration` / `test:e2e` | `test` 运行全部测试，其余按类型执行；见「开发环境 · 测试与调试」 |
 | 数据库 | `pnpm db:generate:mysql --name=<kebab>` | schema 变更后生成迁移（务必带 `--name`；`--custom --name=<n>` 生成数据迁移） |
 | 数据库 | `pnpm db:migrate:mysql` | 应用迁移（开发/生产统一方式） |
 | 数据库 | `pnpm db:seed:mysql` | 演示数据（仅开发，需 NODE_ENV=development） |

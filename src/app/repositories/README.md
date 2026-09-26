@@ -14,7 +14,7 @@
 ```
 src/app/repositories/
 ├── __tests__/
-│   └── demo.repository.spec.ts
+│   └── demo.repository.unit-spec.ts
 ├── demo.repository.ts
 └── README.md
 ```

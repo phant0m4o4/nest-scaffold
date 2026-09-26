@@ -131,8 +131,8 @@ render "$TEMPLATE_DIR/dtos/find-one-__feature__-by-public-id-param.dto.ts.tpl" \
 render "$TEMPLATE_DIR/entities/__feature__-public.entity.ts.tpl" \
   "$API_DIR/entities/$FEATURE_SINGULAR-public.entity.ts"
 
-render "$TEMPLATE_DIR/__tests__/__feature__.service.spec.ts.tpl" "$API_DIR/__tests__/$FEATURE_SINGULAR.service.spec.ts"
-render "$TEMPLATE_DIR/__tests__/__feature__.e2e-spec.ts.tpl"     "$API_DIR/__tests__/$FEATURE_SINGULAR.e2e-spec.ts"
+render "$TEMPLATE_DIR/__tests__/__feature__.service.unit-spec.ts.tpl" "$API_DIR/__tests__/$FEATURE_SINGULAR.service.unit-spec.ts"
+render "$TEMPLATE_DIR/__tests__/__feature__.integration-spec.ts.tpl" "$API_DIR/__tests__/$FEATURE_SINGULAR.integration-spec.ts"
 
 # 生成 schema 桩（如果不存在）
 if [[ ! -f "$SCHEMA_FILE" ]]; then
@@ -163,6 +163,7 @@ cat <<EOF
    - src/app/api/$FEATURE_SINGULAR/entities/$FEATURE_SINGULAR-public.entity.ts
    - src/app/api/$FEATURE_SINGULAR/$FEATURE_SINGULAR.service.ts （_buildFilters 与业务逻辑）
    - src/app/repositories/$FEATURE_SINGULAR.repository.ts （按需裁剪短码列）
+   - src/app/api/$FEATURE_SINGULAR/__tests__/$FEATURE_SINGULAR.integration-spec.ts （补容器、配置与迁移准备）
 
 4. 生成并应用迁移（迁移文件随代码提交；务必带 --name）：
    pnpm db:generate:mysql --name=<kebab>
@@ -170,5 +171,6 @@ cat <<EOF
 
 5. 验证：
    pnpm lint && pnpm build
-   pnpm test src/app/api/$FEATURE_SINGULAR/__tests__/$FEATURE_SINGULAR.service.spec.ts
+   pnpm test:unit src/app/api/$FEATURE_SINGULAR/__tests__/$FEATURE_SINGULAR.service.unit-spec.ts
+   pnpm test:integration src/app/api/$FEATURE_SINGULAR/__tests__/$FEATURE_SINGULAR.integration-spec.ts
 EOF

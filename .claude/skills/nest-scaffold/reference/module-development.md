@@ -12,7 +12,7 @@
 | `dtos/` | 请求/参数 DTO（zod + `createZodDto`，来自 `@/common/utils/zod/create-zod-dto`） |
 | `entities/<domain>.entity.ts` | 响应实体（`createZodDto` 定义，返回前 `.create()` 净化） |
 | `interfaces/` | 业务领域接口（`I*.interface.ts`） |
-| `__tests__/` | `*.spec.ts` 单测 + `*.e2e-spec.ts` E2E |
+| `__tests__/` | `*.unit-spec.ts` 单测 + `*.integration-spec.ts` 集成测试；E2E 放在 `test/e2e/` |
 
 仓储 `<Domain>Repository` 放在 `src/app/repositories/<domain>.repository.ts`。仓储基础设施放在 `src/common/modules/database/`：业务仓储从对应方言的 `repositories/base.repository.ts` 继承，模块从 `@/common/modules/database/repository.module` 导入。
 

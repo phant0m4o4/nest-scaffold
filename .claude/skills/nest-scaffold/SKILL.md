@@ -9,12 +9,12 @@ NestJS 11 + TypeScript 5 + Drizzle ORM (MySQL) + ioredis + BullMQ + nestjs-pino 
 
 适用场景：
 
-1. 在**本仓库或同款脚手架内**开发新业务模块、新 Drizzle 表、新仓储/服务/控制器、对应单元/E2E 测试。
+1. 在**本仓库或同款脚手架内**开发新业务模块、新 Drizzle 表、新仓储/服务/控制器、对应单元/集成/E2E（端到端）测试。
 2. 在新目录从零 **bootstrap** 一个同款脚手架，复用所有基础设施模块（Cache / Queue / DistributedLock / Logger / Database / I18n / Bottleneck，需要 Redis 的模块各自建连）。
 
 ## 何时使用本 Skill
 
-- 用户要"新增一个业务模块"、"新加一张表"、"写 Repository / Service / Controller"、"补单元/E2E 测试"。
+- 用户要"新增一个业务模块"、"新加一张表"、"写 Repository / Service / Controller"、"补单元/集成/E2E（端到端）测试"。
 - 用户要重构、补全、修改现有模块，需要遵循项目命名/分层/依赖注入/响应格式约定。
 - 用户要起新项目，希望与本仓库一致：`docker-compose.yml`、`.env`、`AppModule`、`common/modules/*`、Drizzle 配置、Vitest、Commitizen、ESLint/Prettier 等。
 
@@ -105,7 +105,7 @@ bash .claude/skills/nest-scaffold/scripts/new-module.sh user-profile
 2. 在 `<Feature>Repository` 中确认表名、特殊查询方法。
 3. 在 `<Feature>Service` 中实现真实业务逻辑（脚本只生成 CRUD 桩）。
 4. 在 `src/app/api/api.module.ts` 中 `imports` 新模块。
-5. `pnpm lint && pnpm build` 验证；按需 `pnpm test` / `pnpm test:e2e`。
+5. 完成生成的单元与集成测试模板；`pnpm lint && pnpm build && pnpm test` 验证，`pnpm test` 聚合全部测试并需要 Docker。开发时可分别用 `pnpm test:unit` / `pnpm test:integration`；完整应用的 E2E（端到端测试）另放 `test/e2e/`。
 
 ### 手写时的最小骨架
 
