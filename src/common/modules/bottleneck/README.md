@@ -260,5 +260,7 @@ configs/
 - `wrap` 和 `schedule` 的 `options` 参数仅在首次创建限流器时生效，后续调用同 key 会复用已有实例
 - Redis 模式下，`wrap`/`schedule`/`currentReservoir` 会等待 `ready()` 返回的 Promise；就绪失败会记录日志并向调用方抛出原始错误。
 - `count()` 统计当前实例的 QUEUED、RUNNING、EXECUTING 状态，不包含尚未被接受的 RECEIVED 或已完成的 DONE，也不是跨实例总数。
-- 所有限流器共享一个 `IORedisConnection`，销毁时会依次清理限流器 → 关闭连接
+- Redis 模式启动时等待命令与订阅两条连接就绪；首次连接错误立即使启动失败，始终未就绪则在 10 秒后失败，并释放两条连接。启动成功后的短暂断线仍交由 ioredis 重连。
+- 所有限流器共享一个 `IORedisConnection`。销毁时先终止共享连接（它同时拥有命令与订阅连接），再清理限流器，避免尚未完成的取消订阅命令被断连而产生未处理异常；重复销毁不会重复关闭连接。
+- 销毁沿用 `disconnect()` 的断开语义，不等待或取消已执行的业务函数，也不保证排队任务完成。需要处理完任务再停机的业务，应先停止接收任务并自行等待完成，再销毁服务。
 - `_isInfoCommandError` 用于过滤 Redis 初始化阶段可能产生的 `INFO` 命令错误，降为 debug 级别
