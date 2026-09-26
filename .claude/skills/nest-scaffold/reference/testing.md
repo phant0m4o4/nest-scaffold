@@ -30,8 +30,9 @@
 | `pnpm test:integration <文件路径>` | 集成测试（`--config ./vitest-integration.config.mts`） |
 | `pnpm test:e2e <文件路径>` | E2E（`--config ./vitest-e2e.config.mts`） |
 
-三份专用配置均从 `vitest-base.config.mts` 继承 `NODE_ENV=test` 等基础设置；单测覆盖率独立，`pnpm test` 聚合单元、集成和 E2E 测试。集成测试需要 Docker，当前 E2E 入口允许空测试集。
+三份专用配置均从 `vitest-base.config.mts` 继承 `NODE_ENV=test` 等基础设置，不互相继承，也不导入全量入口。`test:unit`、`test:unit:watch` 和 `test:unit:cov` 均只运行单元测试；`pnpm test` 包含需要 Docker 的集成测试和生产镜像 E2E（端到端测试）。镜像内应用仍以 `NODE_ENV=production` 运行。
 
+生产镜像测试要求 Docker 已启动且 `docker` 命令在 `PATH` 中；默认构建临时镜像，首次构建及拉取 MySQL 9、Redis 8 镜像需要网络。测试不读取本地 `.env`，使用临时容器和独立网络，结束后清理测试资源。`E2E_APP_IMAGE=<本地镜像标签> pnpm test:e2e` 可复用已有生产镜像，调用方指定的镜像不会被删除。CI（持续集成检查）在 `docker` 任务中构建并加载镜像，再通过该变量运行测试；不允许空 E2E 测试集通过。
 
 调试单测：优先在 VS Code 的 JavaScript Debug Terminal 里直接跑 `pnpm test:unit <文件路径>`（断点自动生效）；不依赖 IDE 时用 `pnpm exec vitest run --config ./vitest-unit.config.mts --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
 
@@ -192,7 +193,7 @@ describe('Demo integration', () => {
 - 集成测试可用 **`overrideProvider`** 覆盖配置 / 三方依赖；须提供合法 `APP_MASTER_KEY`（或 mock `appConfig`）。
 - 容器化依赖用 **testcontainers**，测试自启自销，避免污染本地环境。
 - 不要在测试里用真实 `.env.development`。
-- 使用 Testcontainers 本身不决定测试层级；本项目 E2E 要求完整应用装配、通过公开接口验证，不替换内部 Provider/Pipe/Filter/配置。当前预留 E2E 入口。
+- 使用 Testcontainers 本身不决定测试层级；本项目 E2E 要求完整应用装配、通过公开接口验证，不替换内部 Provider/Pipe/Filter/配置。生产镜像测试从镜像默认启动命令进入应用。
 
 ## 已存在的测试参考
 
@@ -201,6 +202,7 @@ describe('Demo integration', () => {
 - `src/app/api/demo/__tests__/demo.service.unit-spec.ts` —— 加密游标 Service 单测
 - `src/common/modules/database/mysql/repositories/__tests__/base.repository.cursor.unit-spec.ts` —— 多列 keyset 仓储单测
 - `src/app/api/demo/__tests__/demo-cursor.integration-spec.ts` —— MySQL Testcontainers 游标/页码集测
+- `test/e2e/production-image.e2e-spec.ts` —— 生产镜像完整启动、重复迁移、HTTP 响应与生产限制、错误配置、原生依赖及真实信号停机
 
 ## 覆盖范围要求
 

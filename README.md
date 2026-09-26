@@ -203,14 +203,15 @@ pnpm db:migrate:mysql         # 2) 应用到本地库
 | `pnpm test:unit:watch`             | 单元测试监听模式                                                   |
 | `pnpm test:unit:cov`               | 单元测试覆盖率报告 + 阈值检查（CI 同款）                            |
 | `pnpm test:integration <文件路径>` | 集成测试：模块/适配器与真实 MySQL、Redis 等依赖协作（Testcontainers） |
-| `pnpm test:e2e <文件路径>`         | 端到端测试：完整应用公开边界，当前预留入口           |
+| `pnpm test:e2e <文件路径>`         | 端到端测试：构建生产镜像，验证完整应用启动、外部响应和停机           |
 
 测试类型按“被测边界”划分，而不是按是否使用真实数据库划分：使用 Testcontainers 不会自动成为 E2E；自行装配 Nest 测试模块、替换 Provider/Pipe/配置的测试仍属于集成测试。真正的 E2E 必须启动完整应用装配，不替换应用内部依赖，只通过 HTTP 等公开边界进行验证。
 
 文件命名统一为 `*.unit-spec.ts`（单元测试）、`*.integration-spec.ts`（集成测试）、`*.e2e-spec.ts`（端到端测试）。默认的 `vitest.config.mts` 通过 `test.projects` 聚合 `vitest-unit.config.mts`、`vitest-integration.config.mts` 和 `vitest-e2e.config.mts`。三个分类配置都从 `vitest-base.config.mts` 继承 SWC 编译、路径别名和 `NODE_ENV=test`；单测覆盖率及阈值只配置在 `vitest-unit.config.mts` 中。
 
-运行 `pnpm test` 或 `pnpm test:integration` 前需要启动 Docker；集成测试会自动创建并清理临时依赖容器。当前 E2E 入口允许空测试集。
+运行 `pnpm test`、`pnpm test:integration` 或 `pnpm test:e2e` 前需要启动 Docker，并确保 `docker` 命令在 `PATH` 中。测试会自动创建并清理临时依赖容器。生产镜像 E2E（端到端测试）默认从 `Dockerfile` 构建临时镜像，首次构建与拉取依赖镜像需要网络；它使用独立网络中的 MySQL 9、Redis 8，不读取本地 `.env`。测试覆盖迁移重复执行、生产路由限制、CORS（跨域访问控制）、错误配置、原生依赖、非 root 运行和信号停机，详见 [E2E 说明](test/e2e/README.md)。
 
+已有本地生产镜像时可运行 `E2E_APP_IMAGE=<本地镜像标签> pnpm test:e2e`，跳过构建；测试只清理自己构建的临时镜像，不删除指定的镜像。CI（持续集成检查）的 `docker` 任务先构建并加载镜像，再用该变量运行同一套测试。
 
 调试：应用用 `pnpm start:debug` + IDE Attach；测试推荐在 VS Code 的 **JavaScript Debug Terminal** 里直接 `pnpm test:unit <文件路径>`（断点自动生效），无 IDE 时 `pnpm exec vitest run --config ./vitest-unit.config.mts --inspect-brk --no-file-parallelism --test-timeout=0 <文件路径>` + Chrome `chrome://inspect`。
 
@@ -227,7 +228,7 @@ pnpm db:migrate:mysql         # 2) 应用到本地库
 
 ## 方式 A · 容器部署（推荐）
 
-脚手架提供生产镜像定义（`Dockerfile`：多阶段构建 → 仅生产依赖 → 非 root 运行 `node dist/main`，**自带迁移文件与 drizzle-kit**），CI 每次提交都验证镜像可构建。发布节奏：打版本标签（`git tag v0.1.0 && git push origin v0.1.0`），镜像是版本化制品、可按版本回滚。
+脚手架提供生产镜像定义（`Dockerfile`：多阶段构建 → 仅生产依赖 → 非 root 运行 `node dist/main`，**自带迁移文件与 drizzle-kit**），CI 每次提交都构建镜像并运行生产镜像 E2E（端到端测试）。发布节奏：打版本标签（`git tag v0.1.0 && git push origin v0.1.0`），镜像是版本化制品、可按版本回滚。
 
 ```bash
 # 部署机拉取并运行（镜像由下方 CD 工作流构建推送）
@@ -361,7 +362,7 @@ jobs:
 
 ## CI 与发布说明
 
-- **CI**（`.github/workflows/ci.yml`，随仓库自带）：push 到 `main` 或 PR 时自动运行两个并行任务——① 安装（frozen-lockfile）→ lint → 构建 → 单测（含覆盖率阈值）→ 集成测试；② 生产镜像构建验证。`ci` / `docker` 即分支保护的必需检查。
+- **CI**（`.github/workflows/ci.yml`，随仓库自带）：push 到 `main` 或 PR 时自动运行两个并行任务——① 安装（frozen-lockfile）→ lint → 构建 → 单测（含覆盖率阈值）→ 集成测试；② 构建并加载生产镜像 → 复用该镜像运行 E2E（端到端测试）。`ci` / `docker` 即分支保护的必需检查。
 - **CD 不内置**：发布节奏与部署目标是业务项目的决策；脚手架交付 `Dockerfile` 与上面两份可直接采用的示例 workflow。
 - **多环境 / 发布审批**：不要用常驻环境分支（可变、会漂移，与"常态只保留 main"冲突）；需要审批或多环境时用 **GitHub Environments**（部署 job 声明 `environment: production` + required reviewers），原生获得审批门禁、环境专属 Secrets 与部署历史。
 - 镜像/产物之后的编排（K8s / Swarm / systemd）依基础设施而定，不在脚手架内约定。

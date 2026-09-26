@@ -6,7 +6,6 @@ export default defineConfig({
   test: {
     ...baseConfig.test,
     name: 'e2e',
-    passWithNoTests: true,
     // 真正的 E2E 只允许从完整应用的外部边界验证，不得自行拼装 Nest 测试模块。
     include: ['test/e2e/**/*.e2e-spec.ts'],
     hookTimeout: 120_000,
