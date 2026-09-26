@@ -31,7 +31,8 @@ services:
       - '8081:80'
     environment:
       PMA_HOST: mysql # 指向上方 mysql 服务名
-      PMA_PORT: ${MYSQL_PORT:-3306}
+      # 容器网络内始终连接 MySQL 的容器端口，不能使用宿主机映射端口
+      PMA_PORT: 3306
       PMA_USER: 'root'
       PMA_PASSWORD: ${MYSQL_PASSWORD:-root_password}
       UPLOAD_LIMIT: 100000000
@@ -102,7 +103,8 @@ services:
       - '8080:80'
     environment:
       REDIS_1_HOST: redis
-      REDIS_1_PORT: ${REDIS_PORT:-6379}
+      # 容器网络内始终连接 Redis 的容器端口，不能使用宿主机映射端口
+      REDIS_1_PORT: 6379
       REDIS_1_AUTH: ${REDIS_PASSWORD:-redis_password}
     depends_on:
       redis:

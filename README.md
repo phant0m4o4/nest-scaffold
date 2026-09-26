@@ -227,7 +227,7 @@ docker run -d --env-file .env.production -e NODE_ENV=production \
 
 # 数据库迁移在部署流程中执行（容器内自带）
 docker run --rm --env-file .env.production ghcr.io/<owner>/<repo>:0.1.0 \
-  npx drizzle-kit migrate --config drizzle-mysql.config.ts
+  node node_modules/drizzle-kit/bin.cjs migrate --config drizzle-mysql.config.ts
 ```
 
 <details>
@@ -283,7 +283,7 @@ pnpm db:migrate:mysql                                       # 2) 迁移（表结
 NODE_ENV=production pnpm start:dist                         # 3) 启动（node dist/main）
 ```
 
-> 仅装生产依赖的机器（`pnpm install --prod`）：迁移直接 `npx drizzle-kit migrate --config drizzle-mysql.config.ts`（drizzle-kit 在生产依赖中，不依赖 @nestjs/cli）。
+> 仅装生产依赖的机器（`pnpm install --prod`）：迁移直接 `node node_modules/drizzle-kit/bin.cjs migrate --config drizzle-mysql.config.ts`（drizzle-kit 和 dotenv 在生产依赖中，不依赖 @nestjs/cli，也不需要运行时下载命令）。
 
 持续部署（合入 `main` 且 CI 全绿即自动发布，与宝塔「Node 项目」的 PM2 托管天然兼容）：
 
@@ -343,7 +343,7 @@ jobs:
             cd ${{ env.DEPLOY_PATH }}
             tar -xzf release.tgz && rm release.tgz
             pnpm install --prod --frozen-lockfile
-            npx drizzle-kit migrate --config drizzle-mysql.config.ts
+            node node_modules/drizzle-kit/bin.cjs migrate --config drizzle-mysql.config.ts
             NODE_ENV=production pm2 restart my-app --update-env \
               || NODE_ENV=production pm2 start dist/main.js --name my-app
 ```
