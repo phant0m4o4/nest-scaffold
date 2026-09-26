@@ -49,7 +49,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
   /** 当前运行模式 */
   private readonly _mode: 'redis' | 'memory';
 
-  /** Redis 连接配置（仅 Redis 模式，支持 single / sentinel / cluster） */
+  /** Redis 连接配置（仅 Redis 模式，支持 single / sentinel） */
   private readonly _connection: BottleneckConfigType['connection'];
 
   /** Redis key 前缀 */
@@ -267,7 +267,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     const ConnectionCtor = BottleneckRef['IORedisConnection'] as new (
       opts: Record<string, unknown>,
     ) => IBottleneckConnection;
-    // 传入自建的 ioredis 客户端（支持 single / sentinel / cluster），
+    // 传入自建的 ioredis 客户端（支持 single / sentinel），
     // 而非平铺的 clientOptions（后者只能表达 single 模式）
     return new ConnectionCtor({ client });
   }

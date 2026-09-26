@@ -44,34 +44,30 @@ describe('CacheService（生命周期与隔离语义）', () => {
     flushdb: ReturnType<typeof vi.fn>;
     pipeline: ReturnType<typeof vi.fn>;
     rename: ReturnType<typeof vi.fn>;
-    get: ReturnType<typeof vi.fn>;
-    set: ReturnType<typeof vi.fn>;
-    setex: ReturnType<typeof vi.fn>;
+    mget: ReturnType<typeof vi.fn>;
+    eval: ReturnType<typeof vi.fn>;
     del: ReturnType<typeof vi.fn>;
     exists: ReturnType<typeof vi.fn>;
   };
   let mockPipeline: {
-    get: ReturnType<typeof vi.fn>;
-    del: ReturnType<typeof vi.fn>;
-    exists: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
+    setex: ReturnType<typeof vi.fn>;
     exec: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     mockPipeline = {
-      get: vi.fn().mockReturnThis(),
-      del: vi.fn().mockReturnThis(),
-      exists: vi.fn().mockReturnThis(),
-      exec: vi.fn(),
+      set: vi.fn().mockReturnThis(),
+      setex: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([[null, 'OK']]),
     };
     mockClient = {
       ping: vi.fn().mockResolvedValue('PONG'),
       flushdb: vi.fn().mockResolvedValue('OK'),
       pipeline: vi.fn().mockReturnValue(mockPipeline),
       rename: vi.fn().mockResolvedValue('OK'),
-      get: vi.fn().mockResolvedValue(null),
-      set: vi.fn().mockResolvedValue('OK'),
-      setex: vi.fn().mockResolvedValue('OK'),
+      mget: vi.fn().mockResolvedValue([]),
+      eval: vi.fn().mockResolvedValue(1),
       del: vi.fn().mockResolvedValue(1),
       exists: vi.fn().mockResolvedValue(1),
     };
@@ -127,37 +123,31 @@ describe('CacheService（生命周期与隔离语义）', () => {
     expect(mockClient.flushdb).toHaveBeenCalled();
   });
 
-  it('cluster 模式下 flush 应直接拒绝（无 DB 隔离且 FLUSHDB 仅达单节点）', async () => {
+  it('哨兵模式 flush 也应仅清空缓存专用 DB', async () => {
     const service = new CacheService(
       buildConfigService({
-        mode: 'cluster',
-        cluster: { nodes: [{ host: '10.0.0.1', port: 7000 }] },
+        mode: 'sentinel',
+        sentinel: {
+          sentinels: [{ host: '127.0.0.1', port: 26379 }],
+          masterName: 'mymaster',
+          db: 1,
+        },
       }),
       buildLogger(),
     );
     await service.onModuleInit();
 
-    await expect(service.flush()).rejects.toThrowError('cluster');
-    expect(mockClient.flushdb).not.toHaveBeenCalled();
+    await expect(service.flush()).resolves.toBeUndefined();
+    expect(mockClient.flushdb).toHaveBeenCalledOnce();
   });
 
-  it('cluster 模式批量读取应逐键路由，不使用跨节点手动 pipeline', async () => {
-    mockClient.get
-      .mockResolvedValueOnce(JSON.stringify({ id: 1 }))
-      .mockResolvedValueOnce(null);
-    const service = new CacheService(
-      buildConfigService({
-        mode: 'cluster',
-        cluster: { nodes: [{ host: '10.0.0.1', port: 7000 }] },
-      }),
-      buildLogger(),
-    );
-    await service.onModuleInit();
+  it('批量读取应使用 MGET 并区分命中与未命中', async () => {
+    mockClient.mget.mockResolvedValueOnce([JSON.stringify({ id: 1 }), null]);
+    const service = await buildService();
 
     const actual = await service.getBatch<{ id: number }>(['a', 'b']);
 
-    expect(mockClient.get).toHaveBeenNthCalledWith(1, 'cache:a');
-    expect(mockClient.get).toHaveBeenNthCalledWith(2, 'cache:b');
+    expect(mockClient.mget).toHaveBeenCalledWith('cache:a', 'cache:b');
     expect(mockClient.pipeline).not.toHaveBeenCalled();
     expect(actual).toEqual([
       { key: 'a', value: { id: 1 }, success: true },
@@ -165,37 +155,29 @@ describe('CacheService（生命周期与隔离语义）', () => {
     ]);
   });
 
-  async function buildClusterService(): Promise<CacheService> {
-    const service = new CacheService(
-      buildConfigService({
-        mode: 'cluster',
-        cluster: { nodes: [{ host: '10.0.0.1', port: 7000 }] },
-      }),
-      buildLogger(),
-    );
+  async function buildService(): Promise<CacheService> {
+    const service = new CacheService(buildConfigService(), buildLogger());
     await service.onModuleInit();
     return service;
   }
 
-  it('cluster 批量读取应保留顺序，并隔离命令失败和无效 JSON', async () => {
-    const service = await buildClusterService();
-    mockClient.get
-      .mockResolvedValueOnce('false')
-      .mockRejectedValueOnce(new Error('WRONGTYPE'))
-      .mockResolvedValueOnce('invalid-json');
+  it('批量读取应保留顺序，并隔离无效 JSON', async () => {
+    const service = await buildService();
+    mockClient.mget.mockResolvedValueOnce(['false', null, 'invalid-json']);
 
     expect(await service.getBatch(['valid', 'wrong-type', 'invalid'])).toEqual([
       { key: 'valid', value: false, success: true },
-      { key: 'wrong-type', value: null, success: false },
+      { key: 'wrong-type', value: null, success: true },
       { key: 'invalid', value: null, success: false },
     ]);
   });
 
-  it('cluster 批量写入应逐键设置 TTL 并统计成功项', async () => {
-    const service = await buildClusterService();
-    mockClient.setex
-      .mockResolvedValueOnce('OK')
-      .mockRejectedValueOnce(new Error('READONLY'));
+  it('批量写入应通过 pipeline 设置 TTL 并统计成功项', async () => {
+    const service = await buildService();
+    mockPipeline.exec.mockResolvedValueOnce([
+      [null, 'OK'],
+      [new Error('READONLY'), null],
+    ]);
 
     expect(
       await service.setBatch([
@@ -203,87 +185,90 @@ describe('CacheService（生命周期与隔离语义）', () => {
         { key: 'b', value: 2 },
       ]),
     ).toBe(1);
-    expect(mockClient.setex).toHaveBeenNthCalledWith(1, 'cache:a', 60, '1');
-    expect(mockClient.setex).toHaveBeenNthCalledWith(2, 'cache:b', 60, '2');
-    expect(mockClient.pipeline).not.toHaveBeenCalled();
+    expect(mockPipeline.setex).toHaveBeenNthCalledWith(1, 'cache:a', 60, '1');
+    expect(mockPipeline.setex).toHaveBeenNthCalledWith(2, 'cache:b', 60, '2');
+    expect(mockPipeline.exec).toHaveBeenCalledOnce();
   });
 
-  it('cluster 批量写入永久缓存应使用 SET', async () => {
-    const service = await buildClusterService();
+  it('批量写入永久缓存应使用 SET', async () => {
+    const service = await buildService();
 
     expect(await service.setBatch([{ key: 'a', value: 0 }], -1)).toBe(1);
-    expect(mockClient.set).toHaveBeenCalledWith('cache:a', '0');
-    expect(mockClient.setex).not.toHaveBeenCalled();
+    expect(mockPipeline.set).toHaveBeenCalledWith('cache:a', '0');
+    expect(mockPipeline.setex).not.toHaveBeenCalled();
   });
 
   it.each([
     { key: 'invalid\nkey', value: 2 },
     { key: 'invalid-value', value: undefined },
-  ])(
-    'cluster 批量写入遇到无效后续项应在任何写入前拒绝',
-    async (invalidItem) => {
-      const service = await buildClusterService();
+  ])('批量写入遇到无效后续项应在任何写入前拒绝', async (invalidItem) => {
+    const service = await buildService();
 
-      await expect(
-        service.setBatch([{ key: 'valid', value: 1 }, invalidItem]),
-      ).rejects.toThrow();
-      expect(mockClient.set).not.toHaveBeenCalled();
-      expect(mockClient.setex).not.toHaveBeenCalled();
-      expect(mockPipeline.exec).not.toHaveBeenCalled();
-    },
-  );
+    await expect(
+      service.setBatch([{ key: 'valid', value: 1 }, invalidItem]),
+    ).rejects.toThrow();
+    expect(mockClient.pipeline).not.toHaveBeenCalled();
+    expect(mockPipeline.exec).not.toHaveBeenCalled();
+  });
 
-  it('cluster 批量删除和存在性检查应逐键路由并累计计数', async () => {
-    const service = await buildClusterService();
-    mockClient.del.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+  it('批量删除和存在性检查应使用多键命令并返回计数', async () => {
+    const service = await buildService();
+    mockClient.del.mockResolvedValueOnce(1);
+    mockClient.exists.mockResolvedValueOnce(2);
 
     expect(await service.deleteBatch(['a', 'b'])).toBe(1);
     expect(await service.existsBatch(['c', 'd'])).toBe(2);
-    expect(mockClient.del).toHaveBeenNthCalledWith(1, 'cache:a');
-    expect(mockClient.del).toHaveBeenNthCalledWith(2, 'cache:b');
-    expect(mockClient.exists).toHaveBeenNthCalledWith(1, 'cache:c');
-    expect(mockClient.exists).toHaveBeenNthCalledWith(2, 'cache:d');
+    expect(mockClient.del).toHaveBeenCalledWith('cache:a', 'cache:b');
+    expect(mockClient.exists).toHaveBeenCalledWith('cache:c', 'cache:d');
     expect(mockClient.pipeline).not.toHaveBeenCalled();
   });
 
-  it.each(['deleteBatch', 'existsBatch'] as const)(
-    'cluster %s 命令出错时应拒绝，不能静默当作零',
+  it.each(['getBatch', 'setBatch', 'deleteBatch', 'existsBatch'] as const)(
+    '%s 命令出错时应拒绝，不能静默当作成功',
     async (method) => {
-      const service = await buildClusterService();
+      const service = await buildService();
+      mockClient.mget.mockRejectedValue(new Error('ECONNRESET'));
+      mockPipeline.exec.mockRejectedValue(new Error('ECONNRESET'));
       mockClient.del.mockRejectedValue(new Error('ECONNRESET'));
       mockClient.exists.mockRejectedValue(new Error('ECONNRESET'));
 
-      await expect(service[method](['a'])).rejects.toThrow('ECONNRESET');
+      const result =
+        method === 'setBatch'
+          ? service.setBatch([{ key: 'a', value: 1 }])
+          : service[method](['a']);
+      await expect(result).rejects.toThrow('ECONNRESET');
     },
   );
 
-  it('cluster 空批次不应发送任何命令', async () => {
-    const service = await buildClusterService();
+  it('空批次不应发送任何命令', async () => {
+    const service = await buildService();
 
     expect(await service.getBatch([])).toEqual([]);
     expect(await service.setBatch([])).toBe(0);
     expect(await service.deleteBatch([])).toBe(0);
     expect(await service.existsBatch([])).toBe(0);
-    expect(mockClient.get).not.toHaveBeenCalled();
-    expect(mockClient.setex).not.toHaveBeenCalled();
+    expect(mockClient.mget).not.toHaveBeenCalled();
     expect(mockClient.del).not.toHaveBeenCalled();
     expect(mockClient.exists).not.toHaveBeenCalled();
     expect(mockClient.pipeline).not.toHaveBeenCalled();
   });
 
-  it('cluster 模式 rename 应拒绝不同 hash tag', async () => {
-    const service = new CacheService(
-      buildConfigService({
-        mode: 'cluster',
-        cluster: { nodes: [{ host: '10.0.0.1', port: 7000 }] },
-      }),
-      buildLogger(),
-    );
-    await service.onModuleInit();
+  it('重命名和多键脚本可使用普通业务键', async () => {
+    const service = await buildService();
 
-    await expect(service.rename('{user-1}:a', '{user-2}:b')).rejects.toThrow(
-      /hash-tag/,
+    await expect(service.rename('user:1', 'user:2')).resolves.toBe(true);
+    await expect(
+      service.executeScript('return 1', ['user:1', 'user:2']),
+    ).resolves.toBe(1);
+    expect(mockClient.rename).toHaveBeenCalledWith(
+      'cache:user:1',
+      'cache:user:2',
     );
-    expect(mockClient.rename).not.toHaveBeenCalled();
+    expect(mockClient.eval).toHaveBeenCalledWith(
+      'return 1',
+      2,
+      'cache:user:1',
+      'cache:user:2',
+    );
   });
 });

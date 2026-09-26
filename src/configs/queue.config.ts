@@ -10,7 +10,7 @@ import { z } from 'zod';
  * BullMQ 的 worker 会使用 blocking / subscribe 等专用连接，必须独享 Redis 连接，
  * 因此队列的 Redis 连接参数在这里独立声明，与其他模块的 Redis 连接隔离。
  * 只读取 `QUEUE_*` 自己的环境变量，必填连接项缺失会直接启动报错，
- * 不会回退读取其他模块的配置。支持 single / sentinel / cluster 三种模式
+ * 不会回退读取其他模块的配置。支持 single / sentinel 两种模式
  * （`QUEUE_REDIS_MODE`，默认 single）。
  *
  * .env 示例（`${REDIS_HOST}` 等为 .env 内的公共锚点变量，见 .env.example）：
@@ -22,22 +22,16 @@ import { z } from 'zod';
  * QUEUE_DASHBOARD_ROUTE=/queues
  */
 const environmentSchema = z.object({
-  QUEUE_REDIS_MODE: z.enum(['single', 'sentinel', 'cluster']).optional(),
+  QUEUE_REDIS_MODE: z.enum(['single', 'sentinel']).optional(),
   QUEUE_REDIS_HOST: z.string().min(1).optional(),
   QUEUE_REDIS_PORT: optionalEnvInt(1),
   QUEUE_REDIS_PASSWORD: z.string().optional(),
   QUEUE_REDIS_DB: optionalEnvInt(0),
   QUEUE_REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
   QUEUE_REDIS_SENTINELS: z.string().min(1).optional(),
-  QUEUE_REDIS_CLUSTER_NODES: z.string().min(1).optional(),
   QUEUE_KEY_PREFIX: z.string().optional(),
   QUEUE_DASHBOARD_ROUTE: z.string().optional(),
 });
-
-/** BullMQ 的 Lua 脚本会同时访问多键，Cluster 前缀必须显式固定到一个 hash slot。 */
-function hasRedisHashTag(value: string): boolean {
-  return /\{[^{}]+\}/.test(value);
-}
 
 const queueConfig = registerEnvAsConfig('queue', environmentSchema, (env) => {
   const connection = resolveRedisConnection({
@@ -49,18 +43,9 @@ const queueConfig = registerEnvAsConfig('queue', environmentSchema, (env) => {
     db: env.QUEUE_REDIS_DB,
     sentinelMasterName: env.QUEUE_REDIS_SENTINEL_MASTER_NAME,
     sentinels: env.QUEUE_REDIS_SENTINELS,
-    clusterNodes: env.QUEUE_REDIS_CLUSTER_NODES,
   });
-  const keyPrefix =
-    env.QUEUE_KEY_PREFIX ??
-    (connection.mode === 'cluster' ? '{queue}' : 'queue');
-  if (connection.mode === 'cluster' && !hasRedisHashTag(keyPrefix)) {
-    throw new Error(
-      'QUEUE_KEY_PREFIX 在 Redis Cluster 模式下必须包含非空 {hash-tag}，例如 {queue}',
-    );
-  }
   return {
-    keyPrefix,
+    keyPrefix: env.QUEUE_KEY_PREFIX ?? 'queue',
     dashboardRoute: env.QUEUE_DASHBOARD_ROUTE ?? '/queues',
     connection,
   };

@@ -2,10 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import queueConfig from '../queue.config';
 
-function stubClusterEnvironment(keyPrefix?: string): void {
-  vi.stubEnv('QUEUE_REDIS_MODE', 'cluster');
-  vi.stubEnv('QUEUE_REDIS_CLUSTER_NODES', '127.0.0.1:7000,127.0.0.1:7001');
-  vi.stubEnv('QUEUE_REDIS_DB', undefined);
+function stubQueueEnvironment(keyPrefix?: string): void {
+  vi.stubEnv('QUEUE_REDIS_MODE', 'single');
+  vi.stubEnv('QUEUE_REDIS_HOST', '127.0.0.1');
+  vi.stubEnv('QUEUE_REDIS_PORT', '6379');
+  vi.stubEnv('QUEUE_REDIS_DB', '2');
   vi.stubEnv('QUEUE_KEY_PREFIX', keyPrefix);
 }
 
@@ -13,22 +14,29 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('queueConfig Redis Cluster hash tag', () => {
-  it('cluster 模式未指定前缀时应使用安全的默认 hash tag', () => {
-    stubClusterEnvironment();
+describe('队列配置', () => {
+  it('未指定前缀时使用普通的 queue 前缀', () => {
+    stubQueueEnvironment();
 
-    expect(queueConfig().keyPrefix).toBe('{queue}');
+    expect(queueConfig().keyPrefix).toBe('queue');
   });
 
-  it('cluster 模式应拒绝不含 hash tag 的自定义前缀', () => {
-    stubClusterEnvironment('queue');
+  it('应接受普通自定义前缀', () => {
+    stubQueueEnvironment('jobs');
 
-    expect(() => queueConfig()).toThrow(/QUEUE_KEY_PREFIX.*hash-tag/);
+    expect(queueConfig().keyPrefix).toBe('jobs');
   });
 
-  it('cluster 模式应接受含非空 hash tag 的前缀', () => {
-    stubClusterEnvironment('{queue:critical}');
+  it('哨兵模式同样使用普通前缀并保留专用 DB', () => {
+    stubQueueEnvironment();
+    vi.stubEnv('QUEUE_REDIS_MODE', 'sentinel');
+    vi.stubEnv('QUEUE_REDIS_SENTINEL_MASTER_NAME', 'mymaster');
+    vi.stubEnv('QUEUE_REDIS_SENTINELS', '127.0.0.1:26379');
 
-    expect(queueConfig().keyPrefix).toBe('{queue:critical}');
+    expect(queueConfig().keyPrefix).toBe('queue');
+    expect(queueConfig().connection).toMatchObject({
+      mode: 'sentinel',
+      sentinel: { db: 2 },
+    });
   });
 });

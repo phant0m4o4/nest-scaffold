@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- **Redlock 算法**：基于 Redis 的分布式锁，支持多 Redis 实例的容错与法定人数决策
+- **Redis 分布式锁**：使用 Redlock 库，连接单机或哨兵管理的 Redis 主节点
 - **自动重试与续期**：加锁失败可重试，持锁期间支持自动续期，避免长任务超时
 - **统一 API**：通过 `DistributedLockService.using()` 在锁保护下执行回调，自动加锁/解锁与异常处理
 - **可配置**：调用时可自定义 TTL、重试次数、重试间隔和续期阈值
@@ -30,12 +30,11 @@
 
 - 缓存场景通常配置 `maxmemory-policy allkeys-lru` 等淘汰策略，内存吃紧时 Redis 会**静默淘汰任意键**——锁键一旦被淘汰，互斥性立即失效，两个实例可以同时持有"同一把锁"。
 - 缓存的运维操作（如 `FLUSHDB` 清缓存）会连带清掉同 DB 内的锁键。
-- 存放锁的 Redis 必须使用 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`），这与缓存 Redis 的推荐配置天然冲突，同一个 DB / 实例无法同时满足两者。
+- 存放锁的 Redis 必须使用 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`）。淘汰策略作用于整个实例，不会被 DB 编号隔离；缓存若需要自动淘汰，应单独部署实例。
 
 脚手架**每个模块各自持有独立的 Redis 连接与独立 DB**：缓存为 `CACHE_REDIS_DB`、锁为 `DISTRIBUTED_LOCK_REDIS_DB`、队列为 `QUEUE_REDIS_DB`（均**必填**，缺失直接启动报错；`.env.example` 推荐分配缓存 `0` / 锁 `1` / 队列 `2`）。部署时仍需注意：
 
-- **single / sentinel 模式**：保持缓存与锁的 DB 编号不同即可；锁所在 DB 不要再放其他可随时清空的数据；
-- **cluster 模式**：Redis Cluster 无 DB 概念，无法靠 DB 编号隔离，**必须为缓存（或锁）部署独立实例/集群**；为防「隔离已生效」的假象，cluster 模式下显式设置 `*_REDIS_DB` 会**启动即报错**；
+- **single / sentinel 模式**：缓存与锁使用不同 DB；锁所在 DB 不要再放其他可随时清空的数据；
 - 存放锁的实例应配置 `maxmemory-policy noeviction` 并开启持久化（至少 AOF `everysec`）。
 
 ## 依赖
@@ -57,7 +56,7 @@ DISTRIBUTED_LOCK_REDIS_HOST=${REDIS_HOST}      # 必填
 DISTRIBUTED_LOCK_REDIS_PORT=${REDIS_PORT}      # 必填
 DISTRIBUTED_LOCK_REDIS_PASSWORD=${REDIS_PASSWORD}
 DISTRIBUTED_LOCK_REDIS_DB=1                    # 必填
-# sentinel / cluster 模式：DISTRIBUTED_LOCK_REDIS_MODE + 对应的 SENTINEL_* / CLUSTER_NODES 变量（cluster 须移除 DB，否则启动报错）
+# 哨兵模式：DISTRIBUTED_LOCK_REDIS_MODE=sentinel，配合 SENTINEL_MASTER_NAME / SENTINELS 变量
 ```
 
 ## 快速开始
@@ -158,7 +157,7 @@ export class OrderService {
 | ---------- | ------------------- | ------ |
 | 订单       | `order`             | `order:123`, `order:pay:123` |
 | 库存       | `inventory`         | `inventory:sku-001` |
-| 账户/资金  | `account`           | `account:user-1`；Cluster 多键使用同一标签，如 `account:{transfer-1}:from` / `account:{transfer-1}:to` |
+| 账户/资金  | `account`           | `account:user-1`、`account:user-2` |
 | 定时任务   | `cron`              | `cron:daily-report:2025-01-15` |
 | 结算/对账  | `settlement`        | `settlement:merchant-1:2025-01-15` |
 | 活动/营销  | `campaign`          | `campaign:claim:act-1:user-1` |
@@ -184,8 +183,8 @@ export const LockResource = {
 
 ```typescript
 resources: LockResource.orderPay(orderId)
-// Cluster 多键必须使用相同的 hash tag；single / sentinel 也可沿用该命名
-resources: [`account:{${transferId}}:${fromId}`, `account:{${transferId}}:${toId}`]
+// 多资源锁按被保护的账户标识构建键
+resources: [LockResource.account(fromId), LockResource.account(toId)]
 ```
 
 ## 使用示例
@@ -206,8 +205,8 @@ await this._lock.using({
 ```typescript
 await this._lock.using({
   resources: [
-    `account:{${transferId}}:${fromId}`,
-    `account:{${transferId}}:${toId}`,
+    `account:${fromId}`,
+    `account:${toId}`,
   ],
   execute: async () => {
     await this._transfer(fromId, toId, amount);

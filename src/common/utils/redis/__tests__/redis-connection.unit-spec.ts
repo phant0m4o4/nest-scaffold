@@ -85,48 +85,31 @@ describe('resolveRedisConnection', () => {
     expect(() =>
       resolveRedisConnection({
         envPrefix: 'MY_REDIS',
-        mode: 'cluster',
-        clusterNodes: ' , ,',
+        mode: 'sentinel',
+        sentinelMasterName: 'mymaster',
+        sentinels: ' , ,',
+        db: 0,
       }),
-    ).toThrowError('MY_REDIS_CLUSTER_NODES');
+    ).toThrowError('MY_REDIS_SENTINELS');
   });
 
-  it('cluster 模式下显式设置 db 应报错（静默丢弃会制造隔离已生效的假象）', () => {
+  it('不支持的模式应明确报错而不是降级连接', () => {
     expect(() =>
       resolveRedisConnection({
         envPrefix: 'MY_REDIS',
-        mode: 'cluster',
-        clusterNodes: '10.0.0.1:7000,10.0.0.2:7001',
-        db: 7,
-      }),
-    ).toThrowError('MY_REDIS_DB 在 cluster 模式下无效');
-  });
-
-  it('cluster 模式应解析节点列表且无 db 字段', () => {
-    const actual = resolveRedisConnection({
-      envPrefix: 'MY_REDIS',
-      mode: 'cluster',
-      clusterNodes: '10.0.0.1:7000,10.0.0.2:7001',
-    });
-
-    expect(actual).toEqual({
-      mode: 'cluster',
-      cluster: {
-        nodes: [
-          { host: '10.0.0.1', port: 7000 },
-          { host: '10.0.0.2', port: 7001 },
-        ],
-        password: undefined,
-      },
-    });
+        mode: 'unsupported',
+      } as unknown as Parameters<typeof resolveRedisConnection>[0]),
+    ).toThrowError('MY_REDIS_MODE 仅支持 single 或 sentinel');
   });
 
   it('节点格式非法（端口非数字）时应报错', () => {
     expect(() =>
       resolveRedisConnection({
         envPrefix: 'MY_REDIS',
-        mode: 'cluster',
-        clusterNodes: '10.0.0.1:abc',
+        mode: 'sentinel',
+        sentinelMasterName: 'mymaster',
+        sentinels: '10.0.0.1:abc',
+        db: 0,
       }),
     ).toThrowError('节点格式错误');
   });

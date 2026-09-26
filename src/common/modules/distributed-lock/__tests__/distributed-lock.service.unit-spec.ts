@@ -116,40 +116,20 @@ describe('DistributedLockService（生命周期）', () => {
     );
   });
 
-  it('cluster 多资源锁应拒绝不同或缺失 hash tag 的资源', async () => {
-    const clusterService = new DistributedLockService(
-      buildConfigService({
-        mode: 'cluster',
-        cluster: { nodes: [{ host: '127.0.0.1', port: 7000 }] },
-      }),
-      buildLogger(),
-    );
-    await clusterService.onModuleInit();
-
-    await expect(
-      clusterService.using({
-        resources: ['account:1', 'account:2'],
-        execute: () => undefined,
-      }),
-    ).rejects.toThrow(/hash-tag/);
-  });
-
-  it('cluster 多资源锁应接受相同 hash tag', async () => {
+  it('多资源锁应直接使用普通业务键', async () => {
     redlockUsing.mockResolvedValue('done');
-    const clusterService = new DistributedLockService(
-      buildConfigService({
-        mode: 'cluster',
-        cluster: { nodes: [{ host: '127.0.0.1', port: 7000 }] },
-      }),
-      buildLogger(),
-    );
-    await clusterService.onModuleInit();
+    await service.onModuleInit();
 
-    await clusterService.using({
-      resources: ['account:{transfer-1}:from', 'account:{transfer-1}:to'],
+    await service.using({
+      resources: ['account:1', 'account:2'],
       execute: () => 'done',
     });
 
-    expect(redlockUsing).toHaveBeenCalled();
+    expect(redlockUsing).toHaveBeenCalledWith(
+      ['distributed-lock:account:1', 'distributed-lock:account:2'],
+      30_000,
+      {},
+      expect.any(Function),
+    );
   });
 });

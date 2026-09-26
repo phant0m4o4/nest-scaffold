@@ -26,7 +26,7 @@
 |---|--------|------|
 | C1 | **配置经 zod 校验** | 环境变量在 `src/configs/*.config.ts` 声明 schema，经 `registerEnvAsConfig` 注册；禁止业务代码直接读未校验的 `process.env` 拼关键路径 |
 | C2 | **模块 Redis 配置自洽** | Cache / Lock / Queue 各自读自己的 `*_REDIS_*`；可引用 `${REDIS_*}` 锚点，但**禁止多模块共用同一 Redis DB**（可清空的缓存 vs 不可丢的锁/队列） |
-| C3 | **Cluster 模式禁止乱设 DB** | Redis cluster 下显式 `*_REDIS_DB` 必须启动失败（fail-fast），不得静默忽略 |
+| C3 | **Redis 模式范围固定** | 仅接受 `single` / `sentinel`；不支持的模式必须在启动时拒绝，不得静默回退 |
 
 详见 [env-vars.md](env-vars.md)、[infra-modules.md](infra-modules.md)。
 
@@ -62,7 +62,7 @@
 | # | 不变量 | 说明 |
 |---|--------|------|
 | R1 | **缓存可丢，锁/队列不可与缓存共 DB** | `CACHE_REDIS_DB` 独立；锁与队列各自独立 DB 或独立实例 |
-| R2 | **禁止业务调用 `cache.flush()` / `flushdb`** | 会清空整库；cluster 下 flush 应拒绝 |
+| R2 | **禁止业务调用 `cache.flush()` / `flushdb`** | 会清空缓存专用 DB 的全部数据 |
 | R3 | **分布式锁不替代 DB 约束** | 余额/库存等必须事务 + 行锁/乐观锁/唯一约束；锁只做跨实例互斥 |
 | R4 | **BullMQ 使用独立连接** | 不把共享 ioredis client 直接塞给 Worker；经 `QueueModule` / 约定工厂 |
 

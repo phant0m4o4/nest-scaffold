@@ -28,18 +28,17 @@
 >
 > **连接配置自带且必填**：`QUEUE_REDIS_HOST`/`PORT`/`DB` 缺失直接启动报错。`.env` 中可用 `${REDIS_HOST}` 等锚点变量引用公共地址（框架启用了 `expandVariables`）；队列走独立 Redis 实例或独立 DB 时改这里的 `QUEUE_REDIS_*` 值即可（`.env.example` 推荐 `QUEUE_REDIS_DB=2`，与缓存 0、锁 1 互不共用）。
 >
-> 支持 `single` / `sentinel` / `cluster` 三种模式（`QUEUE_REDIS_MODE`，默认 single；sentinel/cluster 通过 `QUEUE_REDIS_SENTINEL_MASTER_NAME`/`QUEUE_REDIS_SENTINELS`/`QUEUE_REDIS_CLUSTER_NODES` 配置）。cluster 模式下 BullMQ 只接受现成的 `Cluster` 实例，由模块创建并随进程存续。
+> 支持 `single`（单节点）和 `sentinel`（哨兵）两种模式；默认 single，哨兵模式通过 `QUEUE_REDIS_SENTINEL_MASTER_NAME` / `QUEUE_REDIS_SENTINELS` 配置。模块只提供连接选项，连接创建、Worker 平滑停机与连接关闭均由 BullMQ 管理。
 
 | 变量名                  | 说明                                         | 默认值            |
 | ----------------------- | -------------------------------------------- | ----------------- |
-| `QUEUE_REDIS_MODE`      | 连接拓扑：`single` / `sentinel` / `cluster`  | `single`          |
+| `QUEUE_REDIS_MODE`      | 连接模式：`single` / `sentinel`               | `single`          |
 | `QUEUE_REDIS_HOST`      | BullMQ 专用 Redis 主机（single 模式）        | —（必填）         |
 | `QUEUE_REDIS_PORT`      | BullMQ 专用 Redis 端口（single 模式）        | —（必填）         |
 | `QUEUE_REDIS_PASSWORD`  | BullMQ 专用 Redis 密码（可选）               | —                 |
-| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB，禁止与缓存/锁共用（cluster 模式禁止设置，会启动报错） | —（必填，推荐 `2`）|
+| `QUEUE_REDIS_DB`        | BullMQ 专用 Redis DB，禁止与缓存/锁共用       | —（必填，推荐 `2`）|
 | `QUEUE_REDIS_SENTINEL_MASTER_NAME` / `QUEUE_REDIS_SENTINELS` | sentinel 模式必填 | — |
-| `QUEUE_REDIS_CLUSTER_NODES` | cluster 模式必填，`host:port,host:port`  | —                 |
-| `QUEUE_KEY_PREFIX`      | 队列 key 前缀；Cluster 模式必须含 `{hash-tag}` | single/sentinel: `queue`；cluster: `{queue}` |
+| `QUEUE_KEY_PREFIX`      | 队列 key 前缀                                | `queue`           |
 | `QUEUE_DASHBOARD_ROUTE` | Bull Board 仪表盘路由                        | `/queues`         |
 
 **.env 示例（引用公共锚点变量，见 `.env.example`）：**
@@ -49,13 +48,10 @@ QUEUE_REDIS_HOST=${REDIS_HOST}
 QUEUE_REDIS_PORT=${REDIS_PORT}
 QUEUE_REDIS_PASSWORD=${REDIS_PASSWORD}
 QUEUE_REDIS_DB=2
-# sentinel / cluster 模式：
+# sentinel 模式：
 # QUEUE_REDIS_MODE=sentinel
 # QUEUE_REDIS_SENTINEL_MASTER_NAME=${REDIS_SENTINEL_MASTER_NAME}
 # QUEUE_REDIS_SENTINELS=${REDIS_SENTINELS}
-# QUEUE_REDIS_MODE=cluster
-# QUEUE_KEY_PREFIX={queue} # 多队列高吞吐场景可按队列拆分不同 hash tag
-# QUEUE_REDIS_CLUSTER_NODES=${REDIS_CLUSTER_NODES}
 ```
 
 ## 使用方式
@@ -212,7 +208,7 @@ export class ReportProcessor extends WorkerHost { ... }
 
 ```
 QueueModule (@Module 装饰器)
-├── BullModule.forRootAsync          ← QUEUE_REDIS_* 独立连接配置（通过 ConfigService）
+├── BullModule.forRootAsync          ← QUEUE_REDIS_* 独立连接选项（通过 ConfigService）
 ├── BullBoardModule.forRootAsync     ← 仪表盘根配置（仅开发环境）
 │
 ├── registerQueue(options)           ← 同步注册队列

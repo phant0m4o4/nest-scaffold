@@ -18,18 +18,9 @@ interface IRedisSentinelModeConfig {
     readonly db: number;
   };
 }
-/** cluster 模式连接配置 */
-interface IRedisClusterModeConfig {
-  readonly mode: 'cluster';
-  readonly cluster: {
-    readonly nodes: Array<{ host: string; port: number }>;
-    readonly password?: string;
-  };
-}
-
-/** 解析后的 Redis 连接配置（三种模式联合） */
+/** 解析后的 Redis 连接配置：单机或哨兵 */
 export type RedisConnectionConfig =
-  IRedisSingleModeConfig | IRedisSentinelModeConfig | IRedisClusterModeConfig;
+  IRedisSingleModeConfig | IRedisSentinelModeConfig;
 
 /**
  * 各模块环境变量映射后的连接入参
@@ -39,14 +30,13 @@ export type RedisConnectionConfig =
  */
 interface IRedisConnectionEnvInput {
   readonly envPrefix: string;
-  readonly mode?: 'single' | 'sentinel' | 'cluster';
+  readonly mode?: 'single' | 'sentinel';
   readonly host?: string;
   readonly port?: number;
   readonly password?: string;
   readonly db?: number;
   readonly sentinelMasterName?: string;
   readonly sentinels?: string;
-  readonly clusterNodes?: string;
 }
 
 /** 解析 `host:port,host:port` 形式的节点列表 */
@@ -142,18 +132,7 @@ export function resolveRedisConnection(
       },
     };
   }
-  // cluster 无 DB 概念:显式设置 DB 却被静默丢弃会制造「已隔离」的假象
-  // (实际同处一个 keyspace,只剩键前缀),必须启动即报错
-  if (input.db !== undefined) {
-    throw new Error(
-      `Redis 连接配置冲突: 环境变量 ${envPrefix}_DB 在 cluster 模式下无效——Redis Cluster 无 DB 概念,无法用 DB 隔离。请移除该变量,并为本模块部署独立集群来实现隔离`,
-    );
-  }
-  return {
-    mode,
-    cluster: {
-      nodes: requireNodes(input.clusterNodes, envPrefix, 'CLUSTER_NODES'),
-      password,
-    },
-  };
+  throw new Error(
+    `Redis 连接配置无效: ${envPrefix}_MODE 仅支持 single 或 sentinel`,
+  );
 }

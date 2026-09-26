@@ -9,8 +9,7 @@ import { z } from 'zod';
  *
  * 缓存只读取自己的 `CACHE_*` 环境变量，自建独立 Redis 连接，
  * 必填连接项缺失会直接启动报错，不会回退读取其他模块的配置。
- * 缓存可随时清空/被淘汰，**禁止**与锁、队列等不可丢数据的服务共用一个 DB；
- * cluster 模式无 DB 概念，隔离需部署独立集群。
+ * 缓存可随时清空/被淘汰，**禁止**与锁、队列等不可丢数据的服务共用一个 DB。
  *
  * .env 示例（`${REDIS_HOST}` 等为 .env 内的公共锚点变量，见 .env.example）：
  * CACHE_TTL_SECONDS=604800
@@ -23,14 +22,13 @@ import { z } from 'zod';
 const environmentSchema = z.object({
   CACHE_TTL_SECONDS: optionalEnvInt(1),
   CACHE_KEY_PREFIX: z.string().optional(),
-  CACHE_REDIS_MODE: z.enum(['single', 'sentinel', 'cluster']).optional(),
+  CACHE_REDIS_MODE: z.enum(['single', 'sentinel']).optional(),
   CACHE_REDIS_HOST: z.string().min(1).optional(),
   CACHE_REDIS_PORT: optionalEnvInt(1),
   CACHE_REDIS_PASSWORD: z.string().optional(),
   CACHE_REDIS_DB: optionalEnvInt(0),
   CACHE_REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
   CACHE_REDIS_SENTINELS: z.string().min(1).optional(),
-  CACHE_REDIS_CLUSTER_NODES: z.string().min(1).optional(),
 });
 
 const cacheConfig = registerEnvAsConfig('cache', environmentSchema, (env) => {
@@ -46,7 +44,6 @@ const cacheConfig = registerEnvAsConfig('cache', environmentSchema, (env) => {
       db: env.CACHE_REDIS_DB,
       sentinelMasterName: env.CACHE_REDIS_SENTINEL_MASTER_NAME,
       sentinels: env.CACHE_REDIS_SENTINELS,
-      clusterNodes: env.CACHE_REDIS_CLUSTER_NODES,
     }),
   };
 });

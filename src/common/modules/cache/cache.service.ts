@@ -36,7 +36,7 @@ interface IBatchResult<T> {
  *
  * 缓存持有自己的连接与独立 DB（只读取 `CACHE_*` 自己的配置，连接项缺失
  * 直接启动报错）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
- * 服务共用一个 DB。cluster 模式无 DB 概念，隔离需部署独立集群。
+ * 服务共用一个 DB。
  *
  * @see README.md 查看完整使用示例与配置说明
  */
@@ -62,12 +62,6 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
-    if (this._connection.mode === 'cluster') {
-      this._logger.warn(
-        { event: 'cache_cluster_no_db_isolation' },
-        'cluster 模式无 DB 概念，缓存无法通过 DB 与其他服务隔离，生产环境请为缓存部署独立集群',
-      );
-    }
     this._redis = createRedisClient({
       config: this._connection,
       logger: this._logger,
@@ -101,17 +95,14 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 取当前连接的 DB 编号用于日志（cluster 模式无 DB 概念，返回 undefined）
+   * 取当前连接的 DB 编号用于日志
    * @private
    */
-  private _resolveDbLabel(): number | undefined {
+  private _resolveDbLabel(): number {
     if (this._connection.mode === 'single') {
       return this._connection.single.db;
     }
-    if (this._connection.mode === 'sentinel') {
-      return this._connection.sentinel.db;
-    }
-    return undefined;
+    return this._connection.sentinel.db;
   }
 
   /**
@@ -152,32 +143,6 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       throw new Error('缓存值必须是可 JSON 序列化的数据，不能是 undefined');
     }
     return serialized;
-  }
-
-  /**
-   * Redis Cluster 的单条多键命令要求所有键属于同一 hash slot。
-   * 为避免依赖偶然的 CRC16 碰撞，多键原子操作必须显式使用相同的 `{hash-tag}`。
-   */
-  private _assertClusterKeysShareHashTag(
-    operation: string,
-    fullKeys: string[],
-  ): void {
-    if (this._connection.mode !== 'cluster' || fullKeys.length < 2) {
-      return;
-    }
-    if (new Set(fullKeys).size === 1) {
-      return;
-    }
-    const tags = fullKeys.map((key) => {
-      const match = key.match(/\{([^{}]+)\}/);
-      return match?.[1] ?? null;
-    });
-    const firstTag = tags[0];
-    if (!firstTag || tags.some((tag) => tag !== firstTag)) {
-      throw new Error(
-        `Redis Cluster 下 ${operation} 的所有键必须包含相同的 {hash-tag}`,
-      );
-    }
   }
 
   /**
@@ -281,30 +246,10 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return [];
     }
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    if (this._connection.mode !== 'cluster') {
-      const rawValues = await this._redis.mget(...fullKeys);
-      return keys.map((key, index) => {
-        const rawValue = rawValues[index];
-        try {
-          const value = rawValue ? this._deserialize<T>(rawValue) : null;
-          return { key, value, success: true };
-        } catch {
-          return { key, value: null, success: false };
-        }
-      });
-    }
-
-    // 手动 pipeline 也只能发往一个主节点；交给 Cluster 逐键路由。
-    const results = await Promise.allSettled(
-      fullKeys.map((fullKey) => this._redis.get(fullKey)),
-    );
+    const rawValues = await this._redis.mget(...fullKeys);
     return keys.map((key, index) => {
-      const result = results[index];
-      if (result.status === 'rejected') {
-        return { key, value: null, success: false };
-      }
+      const rawValue = rawValues[index];
       try {
-        const rawValue = result.value;
         const value = rawValue ? this._deserialize<T>(rawValue) : null;
         return { key, value, success: true };
       } catch {
@@ -314,7 +259,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 批量设置缓存值（单机用 pipeline，Cluster 逐键路由）
+   * 批量设置缓存值（使用 pipeline 批量发送命令）
    * @param items 要设置的键值对数组
    * @param ttlSeconds TTL 时间（秒），-1 表示永不过期
    * @returns 设置成功的键数量
@@ -334,18 +279,6 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       fullKey: this._buildFullKey(item.key),
       serializedValue: this._serialize(item.value),
     }));
-    if (this._connection.mode === 'cluster') {
-      const results = await Promise.allSettled(
-        preparedItems.map(({ fullKey, serializedValue }) =>
-          ttlSeconds < 0
-            ? this._redis.set(fullKey, serializedValue)
-            : this._redis.setex(fullKey, ttlSeconds, serializedValue),
-        ),
-      );
-      return results.filter(
-        (result) => result.status === 'fulfilled' && result.value === 'OK',
-      ).length;
-    }
     const pipeline = this._redis.pipeline();
     for (const { fullKey, serializedValue } of preparedItems) {
       if (ttlSeconds < 0) {
@@ -382,18 +315,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return 0;
     }
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    if (this._connection.mode !== 'cluster') {
-      return await this._redis.del(...fullKeys);
-    }
-    const results = await Promise.allSettled(
-      fullKeys.map((fullKey) => this._redis.del(fullKey)),
-    );
-    let deletedCount = 0;
-    for (const result of results) {
-      if (result.status === 'rejected') throw result.reason;
-      deletedCount += result.value;
-    }
-    return deletedCount;
+    return await this._redis.del(...fullKeys);
   }
 
   /**
@@ -417,18 +339,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return 0;
     }
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    if (this._connection.mode !== 'cluster') {
-      return await this._redis.exists(...fullKeys);
-    }
-    const results = await Promise.allSettled(
-      fullKeys.map((fullKey) => this._redis.exists(fullKey)),
-    );
-    let existsCount = 0;
-    for (const result of results) {
-      if (result.status === 'rejected') throw result.reason;
-      existsCount += result.value;
-    }
-    return existsCount;
+    return await this._redis.exists(...fullKeys);
   }
 
   /**
@@ -476,7 +387,6 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   public async rename(oldKey: string, newKey: string): Promise<boolean> {
     const oldFullKey = this._buildFullKey(oldKey);
     const newFullKey = this._buildFullKey(newKey);
-    this._assertClusterKeysShareHashTag('rename()', [oldFullKey, newFullKey]);
     try {
       await this._redis.rename(oldFullKey, newFullKey);
       return true;
@@ -490,16 +400,8 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * 清空缓存专用 DB 中的所有数据（FLUSHDB，不影响其他 DB）
-   *
-   * cluster 模式下直接拒绝：Cluster 无 DB 隔离，且 FLUSHDB 只会发到
-   * 单个节点，语义既危险又不完整。
    */
   public async flush(): Promise<void> {
-    if (this._connection.mode === 'cluster') {
-      throw new Error(
-        'cluster 模式不支持 flush()：无 DB 隔离且 FLUSHDB 仅作用于单个节点',
-      );
-    }
     const result = await this._redis.flushdb();
     if (result !== 'OK') {
       throw new Error('缓存清空失败');
@@ -545,7 +447,6 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     args: (string | number)[] = [],
   ): Promise<unknown> {
     const fullKeys = keys.map((key) => this._buildFullKey(key));
-    this._assertClusterKeysShareHashTag('executeScript()', fullKeys);
     const numKeys = fullKeys.length;
     return await this._redis.eval(script, numKeys, ...fullKeys, ...args);
   }

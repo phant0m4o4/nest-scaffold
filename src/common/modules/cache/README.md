@@ -2,7 +2,7 @@
 
 提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**：连接配置完全自带（`CACHE_REDIS_*` 命名空间，`HOST`/`PORT`/`DB` 必填，缺失直接启动报错并指明变量名，见 `.env.example`）。
 
-> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（缓存的内存淘汰策略 / `FLUSHDB` 会静默清掉同 DB 的其他键）。`.env.example` 的推荐分配为缓存 `CACHE_REDIS_DB=0`、锁 `DISTRIBUTED_LOCK_REDIS_DB=1`、队列 `QUEUE_REDIS_DB=2`；cluster 模式无 DB 概念，需为缓存部署独立集群（启动时会输出告警），详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
+> ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（`FLUSHDB` 会清掉同 DB 的其他键，内存淘汰策略则作用于整个实例）。`.env.example` 的推荐分配为缓存 `CACHE_REDIS_DB=0`、锁 `DISTRIBUTED_LOCK_REDIS_DB=1`、队列 `QUEUE_REDIS_DB=2`。若使用不同的淘汰策略，再分开部署实例，详见 [`DistributedLockModule` README](../distributed-lock/README.md)「锁与缓存的 Redis 隔离」。
 
 ## 功能特性
 
@@ -25,13 +25,12 @@
 | -------------------- | ------ | -------- | -------------------- |
 | `CACHE_TTL_SECONDS`  | number | `604800` | 默认 TTL（秒），7 天 |
 | `CACHE_KEY_PREFIX`   | string | `cache`  | 键前缀               |
-| `CACHE_REDIS_MODE`   | string | `single` | `single` / `sentinel` / `cluster` |
+| `CACHE_REDIS_MODE`   | string | `single` | `single` / `sentinel` |
 | `CACHE_REDIS_HOST`   | string | —（必填） | Redis 主机（single 模式） |
 | `CACHE_REDIS_PORT`   | number | —（必填） | Redis 端口（single 模式） |
 | `CACHE_REDIS_PASSWORD` | string | —      | 鉴权密码（可选）     |
-| `CACHE_REDIS_DB`     | number | —（必填） | 缓存专用 Redis DB，禁止与锁/队列共用（cluster 模式禁止设置，会启动报错；隔离需独立集群） |
+| `CACHE_REDIS_DB`     | number | —（必填） | 缓存专用 Redis DB，禁止与锁/队列共用 |
 | `CACHE_REDIS_SENTINEL_MASTER_NAME` / `CACHE_REDIS_SENTINELS` | string | — | sentinel 模式必填 |
-| `CACHE_REDIS_CLUSTER_NODES` | string | — | cluster 模式必填，`host:port,host:port` |
 
 ## 快速开始
 
@@ -123,8 +122,8 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 | `set<T>(key, value, ttl?)`            | 设置缓存值（JSON 序列化）   |
 | `getRaw(key)`                         | 获取原始字符串              |
 | `setRaw(key, value, ttl?)`            | 设置原始字符串              |
-| `getBatch<T>(keys)`                   | 批量获取（单机 mget，Cluster 逐键路由） |
-| `setBatch<T>(items, ttl?)`            | 批量设置（单机 pipeline，Cluster 逐键路由） |
+| `getBatch<T>(keys)`                   | 批量获取（MGET） |
+| `setBatch<T>(items, ttl?)`            | 批量设置（pipeline，命令批量发送） |
 | `delete(key)`                         | 删除单个键                  |
 | `deleteBatch(keys)`                   | 批量删除                    |
 | `exists(key)`                         | 检查键是否存在              |
@@ -133,20 +132,18 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 | `expire(key, ttl)`                    | 设置过期时间                |
 | `persist(key)`                        | 移除过期时间                |
 | `rename(oldKey, newKey)`              | 重命名键                    |
-| `flush()`                             | 清空缓存专用 DB（cluster 模式直接拒绝） |
+| `flush()`                             | 清空缓存专用 DB |
 | `increment(key, step?)`               | 原子递增                    |
 | `decrement(key, step?)`               | 原子递减                    |
 | `executeScript(script, keys?, args?)` | 执行 Lua 脚本               |
 | `getConnectionStatus()`               | 获取连接状态                |
 | `isHealthy()`                         | 健康检查                    |
 
-Redis Cluster 下，`getBatch` / `setBatch` / `deleteBatch` / `existsBatch` 并发发送单键命令，
-由客户端分别路由到对应主节点，不使用只能访问同一主节点的手动 pipeline（命令批量发送）。
-这些批次允许键分布在不同 slot（分片槽），但不保证跨键原子性。读取保留输入顺序，
-单项命令错误或 JSON 解析失败标记 `success: false`；写入返回成功项数；删除和存在性检查
-遇到命令错误会抛出，部分操作可能已经成功。批量写入先校验、序列化全部输入再发送命令。
-`rename` 与多键 `executeScript` 是原子多键命令，调用方必须为所有键使用相同的
-`{hash-tag}`（将多个键固定到同一分片槽），否则服务会在发送命令前直接抛错。
+单机与哨兵模式使用相同的命令路径：读取用 `MGET`，写入用 pipeline（命令批量发送），
+删除与存在性检查分别用多键 `DEL` / `EXISTS`。读取保留输入顺序；未命中或非字符串键
+返回 `value: null, success: true`，JSON 解析失败则为 `success: false`。
+批量写入先校验、序列化全部输入再发送命令，返回成功项数；pipeline 不保证整批原子性，
+个别命令失败时其他项可能已写入。连接或整批命令失败会抛出错误。
 
 ## 架构设计
 
@@ -169,6 +166,6 @@ configs/
 ## 注意事项
 
 - `setBatch` 使用 Redis Pipeline 一次性提交所有写入，相比逐条写入性能更优
-- `flush()` 会执行 `FLUSHDB`，清空**缓存专用 DB** 内的所有数据（不影响其他 DB）；cluster 模式下会**直接抛错拒绝**（Cluster 无 DB 隔离，且 FLUSHDB 只会发送到单个节点，语义既危险又不完整）
+- `flush()` 会执行 `FLUSHDB`，清空**缓存专用 DB** 内的所有数据（不影响其他 DB）；禁止在业务逻辑中调用
 - TTL 为 `0` 时会抛出异常（Redis 不支持 0 秒过期），使用 `-1` 表示永不过期
 - 模块启动时会自动执行 `PING` 健康检查，失败则阻止应用启动

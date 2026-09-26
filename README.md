@@ -2,6 +2,8 @@
 
 基于 NestJS 的后端脚手架，集成 Drizzle ORM、BullMQ、Redis、Pino 日志等常用能力。
 
+面向中小型业务项目，默认保持简单，按实际需求扩展；Redis 仅支持 `single`（单节点）和 `sentinel`（哨兵）。
+
 - **框架**：NestJS 11 + TypeScript 5（SWC 构建，带 tsc 类型检查）
 - **ORM**：Drizzle ORM（MySQL / PostgreSQL 双实现，默认装配 MySQL，表结构一律 migration 维护）
 - **缓存/队列**：Redis（ioredis）+ BullMQ

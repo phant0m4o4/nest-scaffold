@@ -12,7 +12,7 @@ import {
 } from 'vitest';
 
 /**
- * 用 EventEmitter 充当 ioredis 的 Redis / Cluster 实例
+ * 用 EventEmitter 充当 ioredis 的 Redis 实例
  *
  * 暴露：
  * - status：模拟客户端连接状态
@@ -28,9 +28,8 @@ class MockRedisClient extends EventEmitter {
   }
 }
 
-const { redisInstances, clusterInstances } = vi.hoisted(() => ({
+const { redisInstances } = vi.hoisted(() => ({
   redisInstances: [] as unknown[],
-  clusterInstances: [] as unknown[],
 }));
 
 vi.mock('ioredis', () => {
@@ -44,15 +43,10 @@ vi.mock('ioredis', () => {
       redisInstances.push(instance);
       return instance;
     }),
-    Cluster: vi.fn(function (...args: unknown[]) {
-      const instance = new MockRedisClient(args);
-      clusterInstances.push(instance);
-      return instance;
-    }),
   };
 });
 
-import { Cluster, Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 
 import { closeRedisClient, createRedisClient } from '../redis.factory';
 
@@ -74,7 +68,6 @@ describe('redis.factory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     redisInstances.length = 0;
-    clusterInstances.length = 0;
   });
 
   describe('createRedisClient', () => {
@@ -137,36 +130,6 @@ describe('redis.factory', () => {
         db: 1,
       });
       expect(actualClient).toBe(redisInstances[0]);
-    });
-
-    it('在 cluster 模式下应使用 Cluster 构造函数透传 nodes 与 redisOptions.password', () => {
-      const inputConfig: RedisConnectionConfig = {
-        mode: 'cluster',
-        cluster: {
-          nodes: [
-            { host: 'c1', port: 7000 },
-            { host: 'c2', port: 7001 },
-          ],
-          password: 'pwd-cluster',
-        },
-      };
-      const mockLogger = buildMockLogger();
-
-      const actualClient = createRedisClient({
-        config: inputConfig,
-        logger: mockLogger,
-      });
-
-      const expectedClusterCtor = Cluster as unknown as Mock;
-      expect(expectedClusterCtor).toHaveBeenCalledTimes(1);
-      expect(expectedClusterCtor).toHaveBeenCalledWith(
-        [
-          { host: 'c1', port: 7000 },
-          { host: 'c2', port: 7001 },
-        ],
-        { redisOptions: { password: 'pwd-cluster' } },
-      );
-      expect(actualClient).toBe(clusterInstances[0]);
     });
 
     it('在客户端 emit error 事件时应通过 logger.error 输出结构化日志', () => {

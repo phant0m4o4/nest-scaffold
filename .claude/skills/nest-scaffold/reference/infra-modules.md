@@ -18,13 +18,12 @@ import { createRedisClient, closeRedisClient } from '@/common/utils/redis/redis.
 // onModuleInit：createRedisClient({ config: connection, logger })；onModuleDestroy：closeRedisClient
 ```
 
-支持三种模式（`<PREFIX>_MODE`）：`single` / `sentinel` / `cluster`。
+仅支持两种模式（`<PREFIX>_MODE`）：`single`（单节点）/ `sentinel`（哨兵）；其他值在启动时拒绝。
 
 **避坑**：
 
-- 不要与其他模块共用 DB；新业务连接用自己的 `*_REDIS_DB` 环境变量（cluster 模式无 DB 概念，需独立实例）。
+- 不要与其他模块共用 DB；新业务连接用自己的 `*_REDIS_DB` 环境变量。
 - 不要把自建 client 共享给 BullMQ。BullMQ Worker 需要 blocking subscribe 连接，框架已经在 `QueueModule` 里独立维护连接（`QUEUE_REDIS_*` 环境变量）。
-- `Cluster` 与 `Redis` 部分命令行为不同，必要时 `instanceof Cluster` 收窄。
 
 ## CacheModule
 
@@ -43,7 +42,7 @@ API 速查（更全见 `src/common/modules/cache/README.md`）：
 - `getBatch` / `setBatch` / `deleteBatch` / `existsBatch`
 - `exists` / `getTtl` / `expire` / `persist` / `rename`
 - `increment` / `decrement` / `executeScript`
-- `flush()` —— 对缓存专用 DB 执行 **FLUSHDB**（cluster 模式直接抛错拒绝），禁止业务里调用。
+- `flush()` —— 对缓存专用 DB 执行 **FLUSHDB**，禁止业务里调用。
 - `isHealthy()` —— 启动时已自动 PING 校验。
 
 **键规则**：自动添加 `${CACHE_KEY_PREFIX}:` 前缀；不能含换行；带前缀总长 ≤ 250。
@@ -108,7 +107,7 @@ export class EmailProcessor extends WorkerHost {
 
 **Bull Board**：`NODE_ENV=development` 自动挂载到 `${QUEUE_DASHBOARD_ROUTE}`（默认 `/queues`）。
 
-**避坑**：BullMQ 必须独立 Redis 连接；`QUEUE_REDIS_*` 默认引用 `${REDIS_*}`，需要走独立实例时改这里即可。Cluster 模式需自行扩展 `buildBullMqConnection`。
+**避坑**：BullMQ 必须独立 Redis 连接；`QUEUE_REDIS_*` 默认引用 `${REDIS_*}`，需要走独立实例时改这里即可。
 
 ## LoggerModule（nestjs-pino）
 

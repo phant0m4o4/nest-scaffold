@@ -82,12 +82,11 @@ export default myConfig;
 
 | 变量 | 模式 | 说明 |
 |------|------|------|
-| `<P>_MODE` | — | `single`（默认）/ `sentinel` / `cluster` |
+| `<P>_MODE` | — | 仅支持 `single`（单节点，默认）/ `sentinel`（哨兵）；其他值在启动时拒绝 |
 | `<P>_HOST` / `<P>_PORT` | single | 必填 |
 | `<P>_PASSWORD` | 全部 | 可选 |
-| `<P>_DB` | single/sentinel | 必填，模块专用 DB（互相禁止共用；cluster 模式禁止设置，会启动报错） |
+| `<P>_DB` | single/sentinel | 必填，模块专用 DB（互相禁止共用） |
 | `<P>_SENTINEL_MASTER_NAME` / `<P>_SENTINELS` | sentinel | 必填，`host:port,host:port` |
-| `<P>_CLUSTER_NODES` | cluster | 必填，`host:port,host:port` |
 
 ## CacheModule
 
@@ -95,14 +94,14 @@ export default myConfig;
 |------|------|------|
 | `CACHE_TTL_SECONDS` | `604800`（7 天） | 默认 TTL |
 | `CACHE_KEY_PREFIX` | `cache` | 键前缀 |
-| `CACHE_REDIS_*` | 见上文通用形态 | 自带连接配置（HOST/PORT/DB 必填）。缓存可随时清空，禁止与锁/队列等共用一个 DB（cluster 模式无 DB 概念，需独立集群） |
+| `CACHE_REDIS_*` | 见上文通用形态 | 自带连接配置（single 模式 HOST/PORT 必填；两种模式 DB 均必填）。缓存可随时清空，禁止与锁/队列等共用一个 DB |
 
 ## DistributedLockModule（独立 Redis 连接）
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `DISTRIBUTED_LOCK_KEY_PREFIX` | `distributed-lock` | 锁键前缀 |
-| `DISTRIBUTED_LOCK_REDIS_*` | 见上文通用形态 | 自带连接配置（HOST/PORT/DB 必填）。锁数据不可丢，禁止与缓存等可清空数据共用 DB（cluster 模式无 DB 概念，需独立实例） |
+| `DISTRIBUTED_LOCK_REDIS_*` | 见上文通用形态 | 自带连接配置（single 模式 HOST/PORT 必填；两种模式 DB 均必填）。锁数据不可丢，禁止与缓存等可清空数据共用 DB |
 
 ## QueueModule（独享 Redis 连接，自带配置）
 
@@ -112,7 +111,7 @@ export default myConfig;
 | `QUEUE_REDIS_PORT` | —（必填） | |
 | `QUEUE_REDIS_PASSWORD` | — | 可选 |
 | `QUEUE_REDIS_DB` | —（必填） | 队列专用 DB，禁止与缓存/锁共用（推荐 `2`） |
-| `QUEUE_KEY_PREFIX` | single/sentinel 为 `queue`，cluster 为 `{queue}` | 队列 key 前缀；cluster 模式必须包含非空 `{hash-tag}`（让相关键位于同一分片），否则拒绝启动 |
+| `QUEUE_KEY_PREFIX` | `queue` | 队列 key 前缀 |
 | `QUEUE_DASHBOARD_ROUTE` | `/queues` | Bull Board 路由（仅开发环境） |
 
 ## LoggerModule
@@ -135,7 +134,7 @@ export default myConfig;
 |------|------|------|
 | `BOTTLENECK_MODE` | `memory` | `memory` / `redis` |
 | `BOTTLENECK_REDIS_KEY_PREFIX` | `bottleneck` | 仅 redis 模式 |
-| `BOTTLENECK_REDIS_*` | 见上文通用形态 | 仅 redis 模式；自带连接配置（HOST/PORT/DB 必填，推荐 DB `3`），支持 single/sentinel/cluster |
+| `BOTTLENECK_REDIS_*` | 见上文通用形态 | 仅 redis 模式；自带连接配置（single 模式 HOST/PORT 必填；两种模式 DB 均必填，推荐 DB `3`），支持 single/sentinel |
 
 ## .env 完整示例
 

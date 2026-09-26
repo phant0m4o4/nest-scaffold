@@ -54,8 +54,7 @@ export type DistributedLockUsingOptions = Partial<RedlockSettings>;
  * （只读取 `DISTRIBUTED_LOCK_*` 自己的配置，连接项缺失直接启动报错），
  * 与缓存等可随时清空的数据隔离，避免共享客户端被其他使用方影响。
  *
- * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化；
- * cluster 模式无 DB 概念，隔离需部署独立实例/集群（见 README）。
+ * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化（见 README）。
  *
  * 支持：
  * - 自动重试和超时处理
@@ -83,12 +82,6 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
-    if (this._connection.mode === 'cluster') {
-      this._logger.warn(
-        { event: 'lock_cluster_no_db_isolation' },
-        'cluster 模式无 DB 概念，锁无法通过 DB 与其他服务隔离，生产环境请为锁部署独立实例/集群',
-      );
-    }
     this._client = createRedisClient({
       config: this._connection,
       logger: this._logger,
@@ -146,17 +139,14 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 取当前连接的 DB 编号用于日志（cluster 模式无 DB 概念，返回 undefined）
+   * 取当前连接的 DB 编号用于日志
    * @private
    */
-  private _resolveDbLabel(): number | undefined {
+  private _resolveDbLabel(): number {
     if (this._connection.mode === 'single') {
       return this._connection.single.db;
     }
-    if (this._connection.mode === 'sentinel') {
-      return this._connection.sentinel.db;
-    }
-    return undefined;
+    return this._connection.sentinel.db;
   }
 
   /**
@@ -179,19 +169,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     if (list.length === 0) {
       throw new Error('资源标识符数组不能为空');
     }
-    const keys = [
-      ...new Set(list.map((resource) => this._buildLockKey(resource))),
-    ];
-    if (this._connection.mode === 'cluster' && keys.length > 1) {
-      const tags = keys.map((key) => key.match(/\{([^{}]+)\}/)?.[1] ?? null);
-      const firstTag = tags[0];
-      if (!firstTag || tags.some((tag) => tag !== firstTag)) {
-        throw new Error(
-          'Redis Cluster 下多资源锁必须为所有资源使用相同的 {hash-tag}',
-        );
-      }
-    }
-    return keys;
+    return [...new Set(list.map((resource) => this._buildLockKey(resource)))];
   }
 
   /**
