@@ -5,6 +5,7 @@ import { GlobalExceptionFilter } from '@/app/filters/global-exception.filter';
 import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.interceptor';
 import { DemoRepository } from '@/app/repositories/demo.repository';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
+import { ForeignKeyConstraintViolationException } from '@/common/modules/database/common/repositories/exceptions/foreign-key-constraint-violation-exception';
 import appConfig from '@/configs/app.config';
 import * as schema from '@/database/mysql/schemas';
 import {
@@ -54,7 +55,8 @@ CREATE TABLE \`demos\` (
   CONSTRAINT \`demos_id\` PRIMARY KEY(\`id\`),
   CONSTRAINT \`demos_publicId_unique\` UNIQUE(\`publicId\`),
   CONSTRAINT \`demos_shortPublicId_unique\` UNIQUE(\`shortPublicId\`),
-  CONSTRAINT \`demos_name_unique\` UNIQUE(\`name\`)
+  CONSTRAINT \`demos_name_unique\` UNIQUE(\`name\`),
+  CONSTRAINT \`parent_id_fk\` FOREIGN KEY (\`parentId\`) REFERENCES \`demos\`(\`id\`)
 );
 `;
 
@@ -117,6 +119,7 @@ describe('Demo cursor pagination (integration)', () => {
   let mysqlContainer: StartedTestContainer;
   let pool: mysql.Pool;
   let app: INestApplication;
+  let repository: DemoRepository;
 
   beforeAll(async () => {
     mysqlContainer = await new GenericContainer(MYSQL_IMAGE)
@@ -183,6 +186,7 @@ describe('Demo cursor pagination (integration)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    repository = moduleRef.get(DemoRepository);
     app.useGlobalPipes(new TestZodValidationPipe());
     app.useGlobalInterceptors(new GlobalResponseInterceptor());
     app.useGlobalFilters(new GlobalExceptionFilter(buildLoggerStub()));
@@ -362,5 +366,56 @@ describe('Demo cursor pagination (integration)', () => {
     const secondIds = second.data.map((row) => row.publicId);
     expect(secondIds.length).toBeGreaterThan(0);
     expect(firstIds.some((id) => secondIds.includes(id))).toBe(false);
+  });
+
+  it.each(['/demo', '/admin/demo'])(
+    '%s 可空游标排序应始终返回 400',
+    async (route) => {
+      const server = app.getHttpServer() as Server;
+      for (const limit of [1, 100]) {
+        await request(server)
+          .get(route)
+          .query({ limit, order: 'parentId:asc,id:asc' })
+          .expect(400);
+      }
+    },
+  );
+
+  it('页码分页仍应支持可空列排序', async () => {
+    const server = app.getHttpServer() as Server;
+    const body = asPageBody(
+      await request(server)
+        .get('/demo/by-page')
+        .query({ pageSize: 2, orderColumn: 'parentId' })
+        .expect(200),
+    );
+
+    expect(body.data).toHaveLength(2);
+  });
+
+  it('删除被引用的父记录应返回 409，批量删除也应映射外键异常并保留数据', async () => {
+    const server = app.getHttpServer() as Server;
+    const parent = await repository.create({
+      data: { name: 'fk-parent', type: 'TYPE_1' },
+    });
+    const child = await repository.create({
+      data: { name: 'fk-child', type: 'TYPE_1', parentId: parent.id },
+    });
+
+    const response = await request(server)
+      .delete(`/admin/demo/${parent.id}`)
+      .expect(409);
+    expect(response.body).toMatchObject({
+      statusCode: 409,
+      code: 'FOREIGN_KEY_CONSTRAINT_VIOLATION',
+    });
+    await expect(
+      repository.batchDelete({ ids: [parent.id] }),
+    ).rejects.toBeInstanceOf(ForeignKeyConstraintViolationException);
+    expect(await repository.findOne({ id: parent.id })).not.toBeNull();
+    expect(await repository.findOne({ id: child.id })).not.toBeNull();
+
+    await request(server).delete(`/admin/demo/${child.id}`).expect(200);
+    await request(server).delete(`/admin/demo/${parent.id}`).expect(200);
   });
 });

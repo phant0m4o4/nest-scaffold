@@ -16,7 +16,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq, gte, like, lte, SQL } from 'drizzle-orm';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';
 import {
-  DEMO_ORDERABLE_COLUMNS,
+  DEMO_CURSOR_ORDERABLE_COLUMNS,
   FindManyDemoByCursoredPaginationRequestDto,
   FindManyDemoByPaginationRequestDto,
 } from './dtos/find-many-demo-request.dto';
@@ -72,7 +72,7 @@ export class DemoService {
     resourceKey: string,
   ) {
     const { cursor, limit, order: orderRaw, ...filterOptions } = query;
-    const order = parseOrderQuery(orderRaw, DEMO_ORDERABLE_COLUMNS);
+    const order = parseOrderQuery(orderRaw, DEMO_CURSOR_ORDERABLE_COLUMNS);
     const scope = buildCursorScope(resourceKey, filterOptions);
 
     let keyset: ICursorKeysetItem[] | undefined;

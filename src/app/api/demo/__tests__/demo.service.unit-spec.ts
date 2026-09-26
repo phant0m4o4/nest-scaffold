@@ -168,4 +168,33 @@ describe('DemoService.findManyByCursorPagination', () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it.each([1, 100])('limit=%s 时可空列应在查询仓储前拒绝', async (limit) => {
+    await expect(
+      demoService.findManyByCursorPagination(
+        { limit, order: 'parentId:asc,id:asc' },
+        DEMO_LIST_RESOURCE_KEY,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(
+      mockDemoRepository.findManyWithCursorPagination,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('普通页码分页仍应允许按可空列排序', async () => {
+    const expected = { data: [], meta: { total: 0 } };
+    (mockDemoRepository.findManyWithPagination as Mock).mockResolvedValue(
+      expected,
+    );
+
+    await expect(
+      demoService.findManyByPagination({ orderColumn: 'parentId' }),
+    ).resolves.toEqual(expected);
+    expect(mockDemoRepository.findManyWithPagination).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order: { column: 'parentId', direction: 'desc' },
+      }),
+    );
+  });
 });

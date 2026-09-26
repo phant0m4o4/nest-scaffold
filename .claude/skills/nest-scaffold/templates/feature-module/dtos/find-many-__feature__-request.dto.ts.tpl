@@ -9,6 +9,15 @@ export const __FEATURE___ORDERABLE_COLUMNS = getTableConfig(
   __featuresCamel__Schema,
 ).columns.map((col) => col.name) as [string, ...string[]];
 
+/** 游标只支持非空标量列；页码分页仍可按可空列排序。 */
+export const __FEATURE___CURSOR_ORDERABLE_COLUMNS = getTableConfig(
+  __featuresCamel__Schema,
+)
+  .columns.filter(
+    (col) => col.notNull && ['string', 'number', 'date'].includes(col.dataType),
+  )
+  .map((col) => col.name);
+
 const __feature__FilterFieldsSchema = z.object({
   /** 名称（模糊匹配），例如 'test' */
   name: z.string().optional(),

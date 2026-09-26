@@ -324,21 +324,25 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     id: TSchema['$inferSelect']['id'];
   }): Promise<void> {
     const { db = this._db, id } = options;
-    let result: MySqlRawQueryResult;
-    if (this._isSoftDelete) {
-      result = await db
-        .update(this._schema)
-        .set({
-          [this._softDeleteColumn]: UTC().toDate(),
-        } as Partial<TSchema['$inferSelect']>)
-        .where(this._buildWhereFilter(eq(this._idColumn(), id)));
-    } else {
-      result = await db.delete(this._schema).where(eq(this._idColumn(), id));
-    }
-    if (result[0].affectedRows === 0) {
-      throw new RecordNotFoundException(
-        `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
-      );
+    try {
+      let result: MySqlRawQueryResult;
+      if (this._isSoftDelete) {
+        result = await db
+          .update(this._schema)
+          .set({
+            [this._softDeleteColumn]: UTC().toDate(),
+          } as Partial<TSchema['$inferSelect']>)
+          .where(this._buildWhereFilter(eq(this._idColumn(), id)));
+      } else {
+        result = await db.delete(this._schema).where(eq(this._idColumn(), id));
+      }
+      if (result[0].affectedRows === 0) {
+        throw new RecordNotFoundException(
+          `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
+        );
+      }
+    } catch (error) {
+      mapMysqlErrorAndThrow(error);
     }
   }
 
@@ -357,30 +361,36 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     if (uniqueIds.length === 0) {
       return;
     }
-    const existingRecords = await this.findMany({
-      db,
-      filter: [inArray(this._idColumn(), uniqueIds)],
-    });
-    if (existingRecords.length !== uniqueIds.length) {
-      const existingIds = existingRecords.map(
-        (record) => record['id'] as TSchema['$inferSelect']['id'],
-      );
-      const missingIds = uniqueIds.filter(
-        (id) => !(existingIds as unknown[]).includes(id),
-      );
-      throw new RecordNotFoundException(
-        `${this._tableConfig.name} 不存在: {ids: [${missingIds.join(', ')}]}`,
-      );
-    }
-    if (this._isSoftDelete) {
-      await db
-        .update(this._schema)
-        .set({
-          [this._softDeleteColumn]: UTC().toDate(),
-        } as Partial<TSchema['$inferSelect']>)
-        .where(inArray(this._idColumn(), uniqueIds));
-    } else {
-      await db.delete(this._schema).where(inArray(this._idColumn(), uniqueIds));
+    try {
+      const existingRecords = await this.findMany({
+        db,
+        filter: [inArray(this._idColumn(), uniqueIds)],
+      });
+      if (existingRecords.length !== uniqueIds.length) {
+        const existingIds = existingRecords.map(
+          (record) => record['id'] as TSchema['$inferSelect']['id'],
+        );
+        const missingIds = uniqueIds.filter(
+          (id) => !(existingIds as unknown[]).includes(id),
+        );
+        throw new RecordNotFoundException(
+          `${this._tableConfig.name} 不存在: {ids: [${missingIds.join(', ')}]}`,
+        );
+      }
+      if (this._isSoftDelete) {
+        await db
+          .update(this._schema)
+          .set({
+            [this._softDeleteColumn]: UTC().toDate(),
+          } as Partial<TSchema['$inferSelect']>)
+          .where(inArray(this._idColumn(), uniqueIds));
+      } else {
+        await db
+          .delete(this._schema)
+          .where(inArray(this._idColumn(), uniqueIds));
+      }
+    } catch (error) {
+      mapMysqlErrorAndThrow(error);
     }
   }
 

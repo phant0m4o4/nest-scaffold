@@ -15,7 +15,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { SQL } from 'drizzle-orm';
 import { Create__Feature__RequestDto } from './dtos/create-__feature__-request.dto';
 import {
-  __FEATURE___ORDERABLE_COLUMNS,
+  __FEATURE___CURSOR_ORDERABLE_COLUMNS,
   FindMany__Feature__ByCursoredPaginationRequestDto,
   FindMany__Feature__ByPaginationRequestDto,
 } from './dtos/find-many-__feature__-request.dto';
@@ -56,7 +56,7 @@ export class __Feature__Service {
     resourceKey: string = __FEATURE___LIST_RESOURCE_KEY,
   ) {
     const { cursor, limit, order: orderRaw, ...filterOptions } = query;
-    const order = parseOrderQuery(orderRaw, __FEATURE___ORDERABLE_COLUMNS);
+    const order = parseOrderQuery(orderRaw, __FEATURE___CURSOR_ORDERABLE_COLUMNS);
     const scope = buildCursorScope(
       resourceKey,
       filterOptions as Record<string, unknown>,
