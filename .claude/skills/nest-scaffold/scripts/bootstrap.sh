@@ -10,7 +10,7 @@
 #   bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-api
 #
 # 流程：
-#   1. 把本仓库（除 node_modules / dist / coverage / .tmp / logs / .git）拷贝到 <target-dir>
+#   1. 复制源码与配置，排除依赖、产物、本地凭据和系统缓存；仅保留环境模板
 #   2. 替换 package.json name 为 <APP_NAME>
 #   3. 拷贝 .env.example 为 .env 并替换 APP_NAME
 #   4. 重新 git init（不带原 commit）
@@ -50,22 +50,26 @@ echo "==> APP_NAME: $APP_NAME"
 
 mkdir -p "$TARGET_DIR"
 
-# 拷贝（rsync 优先，没有就用 cp + 后续清理）
+# 两种复制方式共用排除规则，避免把本地配置、凭据和缓存带入新项目。
+COPY_EXCLUDES=(
+  'node_modules' '.pnpm-store' 'dist' 'build' 'coverage' '.nyc_output'
+  '.tmp' '.temp' 'logs' '.git' '.env' '.env.*' '.ssh'
+  '.claude/settings.local.json' '.claude/scheduled_tasks.lock' '.claude/worktrees'
+  '.DS_Store' '.DS_STORE' '._*' '.AppleDouble' '.LSOverride'
+  'Thumbs.db' 'Desktop.ini' '*.tsbuildinfo' '*.swp' '*.swo' '*~'
+)
+COPY_OPTIONS=()
+for excluded in "${COPY_EXCLUDES[@]}"; do
+  COPY_OPTIONS+=("--exclude=$excluded")
+done
+
+# rsync 优先；无 rsync 时用 tar 直接排除，无需先复制敏感文件再删除。
 if command -v rsync >/dev/null 2>&1; then
-  rsync -a \
-    --exclude='node_modules' \
-    --exclude='dist' \
-    --exclude='coverage' \
-    --exclude='.tmp' \
-    --exclude='logs' \
-    --exclude='.git' \
-    --exclude='.env' \
-    "$SCAFFOLD_ROOT/" "$TARGET_DIR/"
+  rsync -a "${COPY_OPTIONS[@]}" "$SCAFFOLD_ROOT/" "$TARGET_DIR/"
 else
-  echo "警告: 未检测到 rsync，回退到 cp（速度较慢）" >&2
-  cp -R "$SCAFFOLD_ROOT/." "$TARGET_DIR/"
-  rm -rf "$TARGET_DIR/node_modules" "$TARGET_DIR/dist" "$TARGET_DIR/coverage" \
-         "$TARGET_DIR/.tmp" "$TARGET_DIR/logs" "$TARGET_DIR/.git" "$TARGET_DIR/.env"
+  echo "提示: 未检测到 rsync，使用 tar 复制" >&2
+  tar "${COPY_OPTIONS[@]}" -cf - -C "$SCAFFOLD_ROOT" . |
+    tar -xf - -C "$TARGET_DIR"
 fi
 
 # 替换 package.json name
@@ -86,7 +90,8 @@ PY
 fi
 
 # 处理 .env：从 .env.example 复制并替换 APP_NAME
-if [[ -f "$TARGET_DIR/.env.example" ]]; then
+if [[ -f "$SCAFFOLD_ROOT/.env.example" ]]; then
+  cp "$SCAFFOLD_ROOT/.env.example" "$TARGET_DIR/.env.example"
   cp "$TARGET_DIR/.env.example" "$TARGET_DIR/.env"
   # macOS / GNU sed 兼容
   if [[ "$OSTYPE" == "darwin"* ]]; then

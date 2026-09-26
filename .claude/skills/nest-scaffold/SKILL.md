@@ -150,7 +150,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh ~/code/my-new-api my-new-
 
 脚本逻辑：
 
-1. 把当前仓库（除 `node_modules` / `dist` / `coverage` / `.tmp` / `logs` / `.git`）拷贝到 `<target-dir>`。
+1. 把源码和共享配置复制到 `<target-dir>`；排除依赖/缓存、构建/覆盖率产物、日志/临时目录、`.git`、本地 `.env*`、`.ssh`、AI 工具本地设置及系统元数据。仅单独复制 `.env.example` 模板；`rsync` 和备用 `tar` 使用同一排除规则。
 2. 在目标目录里替换 `package.json` 的 `name`、`.env.example` 的 `APP_NAME` 等占位。
 3. 重新 `git init`（不带原有提交历史）。
 4. 输出后续手动步骤：`pnpm install` → `cp .env.example .env` → `docker compose up -d` → `pnpm db:migrate:mysql` → `NODE_ENV=development pnpm db:seed:mysql` → `pnpm start:dev`。

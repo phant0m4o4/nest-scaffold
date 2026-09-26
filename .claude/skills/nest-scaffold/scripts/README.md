@@ -17,7 +17,7 @@ bash .claude/skills/nest-scaffold/scripts/bootstrap.sh <target-dir> <APP_NAME>
 
 行为：
 
-1. 用 `rsync`（或 `cp`）把本仓库拷贝到目标目录，**排除** `node_modules` / `dist` / `coverage` / `.tmp` / `logs` / `.git` / `.env`。
+1. 用 `rsync`（无 rsync 时用 `tar`）复制源码与共享配置，两种方式使用同一排除清单：依赖/缓存、构建/覆盖率产物、日志/临时目录、`.git`、`.env*`、`.ssh`、AI 工具本地设置、系统元数据和编辑器临时文件。`.env.example` 单独从模板复制，不复用本地环境配置。
 2. 改写目标目录的 `package.json` 字段：`name=$APP_NAME`、`version=0.0.1`。
 3. 用目标目录的 `.env.example` 生成 `.env` 并替换 `APP_NAME`。
 4. `git init -b main` + 一条 `chore: bootstrap from nest-scaffold` 提交。
