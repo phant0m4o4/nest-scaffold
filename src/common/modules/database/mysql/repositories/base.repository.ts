@@ -18,6 +18,7 @@ import {
   SQL,
 } from 'drizzle-orm';
 import { getTableConfig, MySqlTable } from 'drizzle-orm/mysql-core';
+import type { MySqlRawQueryResult } from 'drizzle-orm/mysql2';
 import { RecordNotFoundException } from '@/common/modules/database/common/repositories/exceptions/record-not-found-exception';
 import { ICursorKeysetItem } from '@/common/modules/database/common/repositories/interfaces/cursor-keyset.interface';
 import { ICursorPaginationResult } from '@/common/modules/database/common/repositories/interfaces/cursor-pagination-result.interface';
@@ -63,6 +64,11 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     }
   }
 
+  /** 经构造器验证后的主键列；集中断言以保持仓储泛型在严格模式下类型安全。 */
+  private _idColumn(): SQL {
+    return (this._schema as unknown as Record<string, SQL>)['id'];
+  }
+
   /**
    * 通过主键查找单条记录
    * @param options.db 数据库事务实例（可选）
@@ -76,7 +82,7 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     const { db = this._db, id } = options;
     const result = await this.findMany({
       db,
-      filter: [eq(this._schema['id'], id)],
+      filter: [eq(this._idColumn(), id)],
       limit: 1,
     });
     return result[0] ?? null;
@@ -293,13 +299,15 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
   }): Promise<void> {
     const { db = this._db, id, data } = options;
     try {
-      const existingRecord = await this.findOne({ db, id });
-      if (!existingRecord) {
+      const result = await db
+        .update(this._schema)
+        .set(data)
+        .where(this._buildWhereFilter(eq(this._idColumn(), id)));
+      if (result[0].affectedRows === 0) {
         throw new RecordNotFoundException(
           `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
         );
       }
-      await db.update(this._schema).set(data).where(eq(this._schema['id'], id));
     } catch (error) {
       mapMysqlErrorAndThrow(error);
     }
@@ -316,21 +324,21 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     id: TSchema['$inferSelect']['id'];
   }): Promise<void> {
     const { db = this._db, id } = options;
-    const existingRecord = await this.findOne({ db, id });
-    if (!existingRecord) {
-      throw new RecordNotFoundException(
-        `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
-      );
-    }
+    let result: MySqlRawQueryResult;
     if (this._isSoftDelete) {
-      await db
+      result = await db
         .update(this._schema)
         .set({
           [this._softDeleteColumn]: UTC().toDate(),
         } as Partial<TSchema['$inferSelect']>)
-        .where(eq(this._schema['id'], id));
+        .where(this._buildWhereFilter(eq(this._idColumn(), id)));
     } else {
-      await db.delete(this._schema).where(eq(this._schema['id'], id));
+      result = await db.delete(this._schema).where(eq(this._idColumn(), id));
+    }
+    if (result[0].affectedRows === 0) {
+      throw new RecordNotFoundException(
+        `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
+      );
     }
   }
 
@@ -345,18 +353,19 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     ids: TSchema['$inferSelect']['id'][];
   }): Promise<void> {
     const { db = this._db, ids } = options;
-    if (ids.length === 0) {
+    const uniqueIds = [...new Set(ids)] as TSchema['$inferSelect']['id'][];
+    if (uniqueIds.length === 0) {
       return;
     }
     const existingRecords = await this.findMany({
       db,
-      filter: [inArray(this._schema['id'], ids)],
+      filter: [inArray(this._idColumn(), uniqueIds)],
     });
-    if (existingRecords.length !== ids.length) {
+    if (existingRecords.length !== uniqueIds.length) {
       const existingIds = existingRecords.map(
         (record) => record['id'] as TSchema['$inferSelect']['id'],
       );
-      const missingIds = ids.filter(
+      const missingIds = uniqueIds.filter(
         (id) => !(existingIds as unknown[]).includes(id),
       );
       throw new RecordNotFoundException(
@@ -369,9 +378,9 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
         .set({
           [this._softDeleteColumn]: UTC().toDate(),
         } as Partial<TSchema['$inferSelect']>)
-        .where(inArray(this._schema['id'], ids));
+        .where(inArray(this._idColumn(), uniqueIds));
     } else {
-      await db.delete(this._schema).where(inArray(this._schema['id'], ids));
+      await db.delete(this._schema).where(inArray(this._idColumn(), uniqueIds));
     }
   }
 

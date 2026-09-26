@@ -128,8 +128,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     try {
       const client = await this._pool.connect();
-      await client.query('SELECT 1');
-      client.release();
+      try {
+        await client.query('SELECT 1');
+      } finally {
+        client.release();
+      }
       this._logger.info('数据库 PostgreSQL 连接成功');
     } catch (error) {
       this._logger.error(
@@ -139,6 +142,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         '数据库 PostgreSQL 连接失败',
       );
+      // 初始化失败后 Nest 不保证触发销毁钩子，必须立即关闭连接池。
+      try {
+        await this._pool.end();
+      } catch (closeError: unknown) {
+        this._logger.warn(
+          {
+            error: normalizeError(closeError),
+            event: 'db_close_after_init_failure_warn',
+          },
+          '数据库初始化失败后关闭 PostgreSQL 连接池时发生错误',
+        );
+      }
       throw error;
     }
   }
