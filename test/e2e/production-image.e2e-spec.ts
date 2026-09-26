@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const execFileAsync = promisify(execFile);
 const allowedOrigin = 'https://frontend.example.test';
 
-describe.sequential('生产镜像端到端验证', () => {
+describe('生产镜像端到端验证', { concurrent: false }, () => {
   const suppliedImage = process.env.E2E_APP_IMAGE;
   const image = suppliedImage ?? `nest-scaffold-e2e:${randomUUID()}`;
   let builtImage = false;
