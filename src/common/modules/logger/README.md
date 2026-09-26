@@ -23,12 +23,12 @@
 | 变量 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `LOG_FILE_ENABLE` | `'true'` / `'false'` | `'false'` | 是否启用文件落盘 |
-| `LOG_FILE_PATH` | string | `${process.cwd()}/logs` | 日志文件目录 |
+| `LOG_FILE_DIR` | string | `${process.cwd()}/logs` | 日志文件目录 |
 
 ```env
 # .env 示例
 LOG_FILE_ENABLE=false
-LOG_FILE_PATH=/var/log/my-app
+LOG_FILE_DIR=/var/log/my-app
 ```
 
 ## 使用方式
@@ -48,7 +48,7 @@ import { LoggerModule } from '@/common/modules/logger/logger.module';
 export class AppModule {}
 ```
 
-`name` 参数用于日志文件基名，最终文件路径为 `${LOG_FILE_PATH}/${name}.log`，默认为 `app`。
+`name` 参数用于日志文件基名，最终文件路径为 `${LOG_FILE_DIR}/${name}.log`，默认为 `app`。
 
 > **只需在 `AppModule` 导入一次**：nestjs-pino 的 `LoggerModule` 内部已标记 `@Global()`，因此只要在根模块导入一次 `LoggerModule.forRoot()`，所有子模块即可直接 `@InjectPinoLogger()` 使用，**不需要**在其他业务模块中再次导入 `LoggerModule`。
 
@@ -128,7 +128,7 @@ authLogger.info({ event: 'auth_success' }, '认证成功');
 
 - **轮转频率**：每天一个新文件
 - **大小上限**：单文件 20MB，超过自动切分
-- **保留策略**：最多保留 365 个文件
+- **保留策略**：最多保留 30 个文件；不会删除同目录内的其他日志
 - **文件命名**：`{name}.{yyyy-MM-dd}.log`
 - **目录创建**：自动创建不存在的目录
 
@@ -154,7 +154,7 @@ authLogger.info({ event: 'auth_success' }, '认证成功');
 ```
 LoggerModule.forRoot({ name })
   └── PinoLoggerModule.forRootAsync()
-        ├── ConfigModule.forFeature(logConfig)  ← 读取 LOG_FILE_ENABLE / LOG_FILE_PATH
+        ├── ConfigModule.forFeature(logConfig)  ← 读取 LOG_FILE_ENABLE / LOG_FILE_DIR
         └── useFactory()
               ├── development / test → _buildDevConfig()
               │     ├── pino-pretty（控制台）

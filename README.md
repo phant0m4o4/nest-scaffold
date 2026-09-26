@@ -87,8 +87,8 @@ REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 
 # Log
-LOG_FILE_ENABLE=true
-LOG_FILE_PATH=./logs/app.log
+LOG_FILE_ENABLE=false
+LOG_FILE_DIR=./logs
 
 # Cache（自带连接配置，独立 DB：缓存可随时清空，禁止与锁/队列共用）
 CACHE_TTL_SECONDS=604800 # 7 days

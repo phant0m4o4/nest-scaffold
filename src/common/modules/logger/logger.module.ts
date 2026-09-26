@@ -25,10 +25,10 @@ function _buildFileTransportOptions(filePath: string): object {
       // 目录不存在时自动创建
       mkdir: true,
       limit: {
-        // 最多保留的文件数量（超过后自动清理最旧的）
-        count: 365,
-        // 同时移除目录中不匹配命名规则的其他日志文件
-        removeOtherLogFiles: true,
+        // 最多保留约一个月的文件，避免本地磁盘无界增长
+        count: 30,
+        // 绝不删除同目录中不属于当前 transport 的其他文件
+        removeOtherLogFiles: false,
       },
       // 文件名中的日期格式（date-fns 格式串），如 app.2024-01-15.log
       dateFormat: 'yyyy-MM-dd',
@@ -152,7 +152,7 @@ export class LoggerModule {
       module: LoggerModule,
       imports: [
         PinoLoggerModule.forRootAsync({
-          // 注册日志配置（LOG_FILE_ENABLE、LOG_FILE_PATH）
+          // 注册日志配置（LOG_FILE_ENABLE、LOG_FILE_DIR）
           imports: [ConfigModule.forFeature(logConfig)],
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => {
@@ -164,8 +164,8 @@ export class LoggerModule {
             // 读取日志配置
             const logCfg = configService.getOrThrow<LogConfigType>('log');
             const logFileEnable = logCfg.logFileEnable;
-            // 日志文件完整路径：logFilePath（目录） + name（文件基名）
-            const logDir = logCfg.logFilePath;
+            // 日志文件完整路径：logFileDir（目录） + name（文件基名）
+            const logDir = logCfg.logFileDir;
             const logFilePath = `${logDir}/${name ?? 'app'}.log`;
             return {
               pinoHttp: {

@@ -120,7 +120,8 @@ export default myConfig;
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `LOG_FILE_ENABLE` | `false` | 是否落盘 |
-| `LOG_FILE_PATH` | `${process.cwd()}/logs` | 日志目录 |
+| `LOG_FILE_DIR` | `${process.cwd()}/logs`（未启用文件日志时） | 日志目录；启用文件日志时必须显式配置本项或旧字段 |
+| `LOG_FILE_PATH` | — | 仅兼容旧配置，优先使用 `LOG_FILE_DIR`；旧值以 `.log` 结尾时取其父目录，否则按目录处理 |
 
 ## I18nModule
 
@@ -164,8 +165,8 @@ REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 
 #Log
-LOG_FILE_ENABLE=true
-LOG_FILE_PATH=./logs/app.log
+LOG_FILE_ENABLE=false
+LOG_FILE_DIR=./logs
 
 #Cache（自带连接配置，独立 DB）
 CACHE_TTL_SECONDS=604800
