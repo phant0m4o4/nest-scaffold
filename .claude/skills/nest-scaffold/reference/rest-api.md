@@ -52,6 +52,8 @@
 
 控制器只负责返回 `{ data?, meta? }`，**不要**手动拼 `statusCode`。
 
+自定义 `HttpException` 的实际状态以 `getStatus()` 为准，响应对象中的 `statusCode` 不会覆盖它。过滤器只保留统一信封约定的字段；自定义 `code`、`message` 与 `errors` 经类型检查后输出，不直接返回整个异常响应对象。
+
 仓储异常由 `GlobalExceptionFilter` 映射为语义化状态码（业务代码只需抛出，不要 try-catch 转 HTTP）：
 
 | 仓储异常 | HTTP | code |
@@ -66,6 +68,8 @@
 | 未知异常 | 500 | `INTERNAL_SERVER_ERROR`（隐藏细节并记日志） |
 
 ## 分页
+
+日期时间筛选参数统一使用 `YYYY-MM-DD HH:mm:ss`（如 `2025-01-01 00:00:00`），按 UTC（协调世界时）转换成 `Date`。`zUtcDateTime` 严格校验格式和日历有效性，拒绝不存在的日期与越界时分秒，不会将其自动进位成另一日期。
 
 ### 游标分页（默认推荐，加密 nextCursor）
 

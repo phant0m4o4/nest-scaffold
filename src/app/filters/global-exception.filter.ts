@@ -20,6 +20,7 @@ interface IErrorItem {
   field: string;
   code: string;
   message: string;
+  params?: Record<string, unknown>;
 }
 
 /** 统一错误信封：所有非 2xx 响应都是这个形状 */
@@ -73,7 +74,8 @@ const CODE_BY_STATUS: Record<number, string> = {
  *
  * `{ statusCode, code, message, errors?: [{ field, code, message }] }`
  *
- * - 已携带统一信封的 HttpException（如 ZodValidationException）原样透出；
+ * - HttpException 状态以 getStatus() 为准，只保留统一信封声明的字段；
+ * - 自定义错误码与字段错误（如 ZodValidationException）校验后保留；
  * - 其余 HttpException（Nest 内置 404/403 等）按状态码补充机器可读 code；
  * - 仓储异常（RepositoryException 体系）按映射表转为语义化状态码
  *   （记录不存在 404、唯一/外键/死锁冲突 409、数据完整性 400、锁等待超时 503）；
@@ -102,19 +104,27 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const raw = exception.getResponse();
-      // 已是统一信封（含 code 字段）的直接透出
-      if (typeof raw === 'object' && raw !== null && 'code' in raw) {
-        return raw as IErrorEnvelope;
-      }
+      const payload =
+        typeof raw === 'object' && raw !== null
+          ? (raw as Record<string, unknown>)
+          : undefined;
+      const rawMessage = typeof raw === 'string' ? raw : payload?.message;
       const message =
-        typeof raw === 'string'
-          ? raw
-          : ((raw as { message?: string | string[] }).message ??
-            exception.message);
+        typeof rawMessage === 'string'
+          ? rawMessage
+          : Array.isArray(rawMessage) &&
+              rawMessage.every((item) => typeof item === 'string')
+            ? rawMessage.join('; ')
+            : exception.message;
+      const errors = this._normalizeErrors(payload?.errors);
       return {
         statusCode: status,
-        code: CODE_BY_STATUS[status] ?? `HTTP_${status}`,
-        message: Array.isArray(message) ? message.join('; ') : message,
+        code:
+          typeof payload?.code === 'string' && payload.code.length > 0
+            ? payload.code
+            : (CODE_BY_STATUS[status] ?? `HTTP_${status}`),
+        message,
+        ...(errors ? { errors } : {}),
       };
     }
 
@@ -136,5 +146,32 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Internal server error',
     };
+  }
+
+  private _normalizeErrors(raw: unknown): IErrorItem[] | undefined {
+    if (!Array.isArray(raw)) return undefined;
+    const errors: IErrorItem[] = [];
+    for (const item of raw as unknown[]) {
+      if (typeof item !== 'object' || item === null) continue;
+      const { field, code, message, params } = item as Record<string, unknown>;
+      if (
+        typeof field !== 'string' ||
+        typeof code !== 'string' ||
+        typeof message !== 'string'
+      ) {
+        continue;
+      }
+      errors.push({
+        field,
+        code,
+        message,
+        ...(typeof params === 'object' &&
+        params !== null &&
+        !Array.isArray(params)
+          ? { params: params as Record<string, unknown> }
+          : {}),
+      });
+    }
+    return errors;
   }
 }
