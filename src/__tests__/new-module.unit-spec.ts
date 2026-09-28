@@ -33,9 +33,7 @@ describe('业务模块生成器', () => {
     });
     await writeFile(join(projectDir, 'package.json'), '{}');
 
-    const script = resolve(
-      '.claude/skills/nest-scaffold/scripts/new-module.sh',
-    );
+    const script = resolve('scripts/new-module.sh');
     for (const args of [['user-profile'], ['category', 'categories']]) {
       execFileSync('bash', [script, ...args], {
         cwd: projectDir,
@@ -172,5 +170,41 @@ describe('业务模块生成器', () => {
     expect(service).toMatch(
       /parseOrderQuery\(orderRaw,\s*USER_PROFILE_CURSOR_ORDERABLE_COLUMNS\)/,
     );
+  });
+
+  it('未完成隔离的集成测试应明确失败，且不加载应用或真实依赖', async () => {
+    const source = await readFile(
+      join(
+        projectDir,
+        'src/app/api/user-profile/__tests__/user-profile.integration-spec.ts',
+      ),
+      'utf8',
+    );
+    const testCases: Array<() => unknown> = [];
+    const imported: string[] = [];
+    const compiled = ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    });
+
+    // 执行实际生成的文件；只提供测试注册 API，其他导入一律拒绝。
+    runInNewContext(compiled.outputText, {
+      exports: {},
+      require: (specifier: string) => {
+        imported.push(specifier);
+        if (specifier !== 'vitest') {
+          throw new Error(`未隔离的集成测试依赖: ${specifier}`);
+        }
+        return {
+          describe: (_name: string, register: () => void) => register(),
+          it: (_name: string, testCase: () => unknown) => {
+            testCases.push(testCase);
+          },
+        };
+      },
+    });
+
+    expect(imported).toEqual(['vitest']);
+    expect(testCases).toHaveLength(1);
+    expect(testCases[0]).toThrow('UserProfile 集成测试尚未完成隔离配置');
   });
 });

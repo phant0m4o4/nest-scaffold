@@ -16,6 +16,7 @@ logs
 .temp
 docs
 reports
+scripts
 *.md
 .env
 .env.*
