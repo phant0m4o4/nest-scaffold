@@ -38,6 +38,8 @@
     "db:migrate:pgsql": "drizzle-kit migrate --config drizzle-pgsql.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@bull-board/api": "^8.5.0",
     "@bull-board/express": "^8.5.0",
     "@bull-board/nestjs": "^8.5.0",
