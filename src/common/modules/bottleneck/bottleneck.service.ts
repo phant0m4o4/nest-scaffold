@@ -1,3 +1,4 @@
+import { normalizeError } from '@/common/utils/normalize-error';
 import {
   closeRedisClient,
   createRedisClient,
@@ -14,6 +15,9 @@ import {
   IBottleneckOptions,
 } from './interfaces/bottleneck-client.interface';
 
+/** Redis 启动等待上限；运行中的重连仍交由 ioredis 管理。 */
+const CONNECTION_READY_TIMEOUT_MS = 10_000;
+
 /**
  * Bottleneck 限流服务
  *
@@ -27,7 +31,7 @@ import {
  * - 令牌桶算法：支持突发流量处理
  * - 优先级队列：支持任务优先级调度
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/bottleneck.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class BottleneckService implements OnModuleInit, OnModuleDestroy {
@@ -37,13 +41,16 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
   /** Bottleneck IORedisConnection 实例（仅 Redis 模式），所有限流器共享 */
   private _bottleneckConnection: IBottleneckConnection | null = null;
 
-  /** 自建的 ioredis 客户端（仅 Redis 模式），交由 IORedisConnection 使用 */
+  /** 尚未移交给 IORedisConnection 的自建客户端（仅 Redis 模式）。 */
   private _client: RedisClient | null = null;
+
+  /** 仅初始化等待期间存在；复用连接错误监听，不依赖 Bottleneck 未提供的 off。 */
+  private _rejectConnectionReady: ((error: unknown) => void) | null = null;
 
   /** 当前运行模式 */
   private readonly _mode: 'redis' | 'memory';
 
-  /** Redis 连接配置（仅 Redis 模式，支持 single / sentinel / cluster） */
+  /** Redis 连接配置（仅 Redis 模式，支持 single / sentinel） */
   private readonly _connection: BottleneckConfigType['connection'];
 
   /** Redis key 前缀 */
@@ -78,29 +85,34 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     });
     try {
       this._bottleneckConnection = this._createConnection(this._client);
+      // IORedisConnection.disconnect(false) 会同时关闭原客户端和订阅客户端。
+      this._client = null;
       this._bottleneckConnection.on('error', (error) => {
         this._logger.error(
           {
-            error: this._normalizeError(error),
+            error: normalizeError(error),
             event: 'bottleneck_connection_error',
           },
           'Bottleneck Connection 连接错误',
         );
+        this._rejectConnectionReady?.(error);
       });
-      await this._resolveReady(this._bottleneckConnection);
+      await this._waitForConnectionReady(this._bottleneckConnection);
       this._logger.info('Bottleneck Redis 连接已创建');
     } catch (error: unknown) {
       this._logger.error(
         {
-          error: this._normalizeError(error),
+          error: normalizeError(error),
           event: 'bottleneck_redis_connect_failed',
         },
         'Bottleneck Redis 连接失败',
       );
-      // init 抛错后 Nest 不会执行 onModuleDestroy,必须就地关闭自建客户端,
-      // 否则 ioredis 的无限重连定时器会泄漏并挂住进程/测试
-      await closeRedisClient({ client: this._client, logger: this._logger });
-      this._client = null;
+      // 初始化失败也要释放订阅连接；构造失败时，客户端尚未移交给连接对象。
+      await this._closeConnection();
+      if (this._client) {
+        await closeRedisClient({ client: this._client, logger: this._logger });
+        this._client = null;
+      }
       throw error;
     }
   }
@@ -109,14 +121,11 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
    * 模块销毁 — 清理所有限流器实例和 Redis 连接
    */
   async onModuleDestroy(): Promise<void> {
+    // 先标记共享连接 terminated，避免库的 forEach(async ...) 发出无人等待的
+    // UNSUBSCRIBE 后又立即被 disconnect 拒绝。disconnect 本身不等待任务完成。
+    await this._closeConnection();
     await this._disconnectAllLimiters();
     this._limiters.clear();
-    await this._closeConnection();
-    if (this._client) {
-      // Bottleneck 只负责它自己 duplicate 出的订阅连接,自建客户端由本服务关闭
-      await closeRedisClient({ client: this._client, logger: this._logger });
-      this._client = null;
-    }
     this._logger.info('Bottleneck 服务已销毁');
   }
 
@@ -220,7 +229,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       return 0;
     }
     const counts = limiter.counts();
-    return counts.RUNNING + counts.QUEUED;
+    return counts.QUEUED + counts.RUNNING + counts.EXECUTING;
   }
 
   /**
@@ -240,14 +249,6 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
 
   // ---------- 私有方法 ----------
 
-  /** 将未知错误归一化为 Error 实例 */
-  private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-    return new Error(String(error));
-  }
-
   /**
    * 创建 Bottleneck IORedisConnection 实例
    *
@@ -259,7 +260,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     const ConnectionCtor = BottleneckRef['IORedisConnection'] as new (
       opts: Record<string, unknown>,
     ) => IBottleneckConnection;
-    // 传入自建的 ioredis 客户端（支持 single / sentinel / cluster），
+    // 传入自建的 ioredis 客户端（支持 single / sentinel），
     // 而非平铺的 clientOptions（后者只能表达 single 模式）
     return new ConnectionCtor({ client });
   }
@@ -278,6 +279,31 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     await (readyValue as Promise<unknown>);
   }
 
+  /** Bottleneck 的 ready 不会因连接 error 拒绝，启动时必须单独收口。 */
+  private async _waitForConnectionReady(
+    connection: IBottleneckConnection,
+  ): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        this._resolveReady(connection),
+        new Promise<never>((_resolve, reject) => {
+          this._rejectConnectionReady = reject;
+          timer = setTimeout(() => {
+            reject(
+              new Error(
+                `Bottleneck Redis 连接超过 ${CONNECTION_READY_TIMEOUT_MS}ms 未就绪`,
+              ),
+            );
+          }, CONNECTION_READY_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+      this._rejectConnectionReady = null;
+    }
+  }
+
   /**
    * Redis 模式下等待限流器就绪（内存模式直接返回）
    */
@@ -289,11 +315,11 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     try {
-      await limiter.ready;
+      await limiter.ready();
     } catch (error: unknown) {
       this._logger.error(
         {
-          error: this._normalizeError(error),
+          error: normalizeError(error),
           event: 'limiter_ready_failed',
           key,
         },
@@ -315,7 +341,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       } catch (error: unknown) {
         this._logger.warn(
           {
-            error: this._normalizeError(error),
+            error: normalizeError(error),
             event: 'limiter_disconnect_error',
             key,
           },
@@ -327,12 +353,14 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
 
   /** 关闭 Bottleneck IORedisConnection */
   private async _closeConnection(): Promise<void> {
-    if (!this._bottleneckConnection) {
+    const connection = this._bottleneckConnection;
+    if (!connection) {
       return;
     }
+    this._bottleneckConnection = null;
+    this._rejectConnectionReady?.(new Error('Bottleneck Redis 连接已关闭'));
     try {
-      await this._bottleneckConnection.disconnect(false);
-      this._bottleneckConnection = null;
+      await connection.disconnect(false);
       this._logger.info(
         { event: 'bottleneck_connection_closed' },
         'Bottleneck Connection 已关闭',
@@ -340,12 +368,11 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     } catch (error: unknown) {
       this._logger.warn(
         {
-          error: this._normalizeError(error),
+          error: normalizeError(error),
           event: 'bottleneck_connection_close_warn',
         },
         '关闭 Bottleneck Connection 时发生错误，可能已关闭',
       );
-      this._bottleneckConnection = null;
     }
   }
 
@@ -361,7 +388,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
   /** 为限流器绑定事件监听 */
   private _setupLimiterEvents(limiter: IBottleneckLimiter, key: string): void {
     limiter.on('error', (error) => {
-      const normalizedError = this._normalizeError(error);
+      const normalizedError = normalizeError(error);
       if (this._isInfoCommandError(error)) {
         this._logger.debug(
           { error: normalizedError, event: 'limiter_info_error', key },

@@ -3,10 +3,11 @@
  * @description 提供通用的重试编排能力：支持最大重试次数、固定或指数退避的等待时间、抖动、最大等待上限、自定义重试判定回调、重试前回调，以及可选的 AbortSignal 中断。
  * - 算法：在每次失败后，根据当前重试序号 `attemptIndex` 计算下一次等待时间，若仍可重试则等待后继续；全部尝试失败后抛出最后一次错误。
  * - 幂等性：建议传入的 `asyncFunction` 满足幂等或具备可重入保障，避免产生副作用放大。
- * - 中断：若提供 `signal`，在发起或等待期间被中断将抛出 `name = 'AbortError'` 的错误。
+ * - 中断：若提供 `signal`，执行任务、重试回调或延时等待期间均可中断，并抛出 `name = 'AbortError'` 的错误。
+ * - 中断只停止本工具的等待与后续重试，不会强制终止已经开始的操作；调用方需把同一个 `signal` 传给支持取消的底层操作。
  * @param asyncFunction 要执行的异步函数（需返回 Promise）
- * @param maxRetryCount 最大重试次数，默认 3，必须 ≥ 1
- * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，必须 ≥ 0
+ * @param maxRetryCount 最大尝试次数，默认 3，必须为正安全整数
+ * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，须为 0~2147483647 的有限数值
  * @param options 可选项，详见 {@link ExecuteWithRetryOptions}
  * @returns 执行结果（成功时 resolve 第一次成功的返回值）
  * @throws 如果所有重试都失败，抛出最后一次捕获的错误；若被中断，抛出 `AbortError`
@@ -36,11 +37,14 @@
  * @example
  * // 支持 AbortSignal 主动中断
  * const ac = new AbortController();
- * const p = executeWithRetry(() => fetchData(), 5, 500, { signal: ac.signal });
+ * const p = executeWithRetry(() => fetchData({ signal: ac.signal }), 5, 500, { signal: ac.signal });
  * ac.abort();
  * await p; // 将抛出 name 为 'AbortError' 的错误
  */
 import { normalizeError } from './normalize-error';
+
+/** Node.js 超过此延迟会改为 1ms，不能直接传入 setTimeout。 */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 
 export interface ExecuteWithRetryOptions {
   /**
@@ -65,10 +69,37 @@ export interface ExecuteWithRetryOptions {
   exponentialBackoff?: boolean;
   /** 是否引入抖动（随机 0.5x~1.0x），默认 false */
   jitter?: boolean;
-  /** 最大退避间隔（毫秒），用于对指数退避进行封顶；默认不封顶 */
+  /** 最大退避间隔（毫秒），默认以 Node.js 定时器上限封顶；须为 0~2147483647 的有限数值 */
   maxDelayMs?: number;
   /** 允许外部中断（被中断时抛出 name = 'AbortError' 的错误） */
   signal?: AbortSignal;
+}
+
+function createAbortError(): Error {
+  const error = new Error('Aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
+/** 等待任务或回调，取消后仍接收底层 Promise 的迟到结果，避免未处理拒绝。 */
+async function awaitWithAbort<T>(
+  operation: () => T | Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (!signal) return await operation();
+  if (signal.aborted) throw createAbortError();
+
+  let onAbort: (() => void) | undefined;
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      onAbort = () => reject(createAbortError());
+      signal.addEventListener('abort', onAbort, { once: true });
+      // 同步抛错由 Promise 构造器接收；异步失败始终有拒绝处理器。
+      void Promise.resolve(operation()).then(resolve, reject);
+    });
+  } finally {
+    if (onAbort) signal.removeEventListener('abort', onAbort);
+  }
 }
 
 /**
@@ -86,10 +117,12 @@ function computeDelayMs(
   options?: ExecuteWithRetryOptions,
 ): number {
   const { exponentialBackoff, jitter, maxDelayMs } = options ?? {};
+  // 避免大量零间隔重试时 0 * Infinity 得到 NaN。
+  if (baseDelayMs === 0) return 0;
   const raw = exponentialBackoff
     ? baseDelayMs * Math.pow(2, attemptIndex)
     : baseDelayMs;
-  const capped = Math.min(raw, maxDelayMs ?? raw);
+  const capped = Math.min(raw, maxDelayMs ?? MAX_TIMER_DELAY_MS);
   if (jitter) {
     const factor = 0.5 + Math.random() * 0.5; // 0.5x ~ 1.0x
     return Math.max(0, Math.floor(capped * factor));
@@ -112,16 +145,12 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     const onAbort = () => {
       clearTimeout(timer);
-      const error = new Error('Aborted');
-      error.name = 'AbortError';
-      reject(error);
+      reject(createAbortError());
     };
     if (signal) {
       if (signal.aborted) {
         clearTimeout(timer);
-        const error = new Error('Aborted');
-        error.name = 'AbortError';
-        reject(error);
+        reject(createAbortError());
         return;
       }
       signal.addEventListener('abort', onAbort, { once: true });
@@ -132,8 +161,8 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 /**
  * 执行异步函数并在失败时按策略重试
  * @param asyncFunction 要执行的异步函数（需返回 Promise）
- * @param maxRetryCount 最大重试次数，默认 3，必须 ≥ 1
- * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，必须 ≥ 0
+ * @param maxRetryCount 最大尝试次数，默认 3，必须为正安全整数
+ * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，须为 0~2147483647 的有限数值
  * @param options 可选项（指数退避、抖动、最大间隔、自定义判定、重试回调、AbortSignal）
  * @returns 第一次成功的返回值
  * @throws 若所有尝试均失败，抛出最后一次错误；若被中断，抛出 `AbortError`
@@ -145,22 +174,21 @@ export async function executeWithRetry<T>(
   retryDelayMs: number = 1000,
   options?: ExecuteWithRetryOptions,
 ): Promise<T> {
-  if (maxRetryCount < 1) {
-    throw new Error('最大重试次数必须至少为 1');
+  if (!Number.isSafeInteger(maxRetryCount) || maxRetryCount < 1) {
+    throw new RangeError('最大尝试次数必须为正安全整数');
   }
-  if (retryDelayMs < 0) {
-    throw new Error('重试延迟时间必须为非负数');
+  for (const delay of [retryDelayMs, options?.maxDelayMs]) {
+    if (
+      delay !== undefined &&
+      (!Number.isFinite(delay) || delay < 0 || delay > MAX_TIMER_DELAY_MS)
+    ) {
+      throw new RangeError('重试延迟必须为 0~2147483647 毫秒的有限数值');
+    }
   }
 
   const shouldRetry = options?.shouldRetry ?? (() => true);
   const onRetry = options?.onRetry;
   const signal = options?.signal;
-
-  const createAbortError = () => {
-    const error = new Error('Aborted');
-    error.name = 'AbortError';
-    return error;
-  };
 
   if (signal?.aborted) {
     throw createAbortError();
@@ -174,8 +202,9 @@ export async function executeWithRetry<T>(
     currentAttempt++
   ) {
     try {
-      return await asyncFunction();
+      return await awaitWithAbort(asyncFunction, signal);
     } catch (error: unknown) {
+      if (signal?.aborted) throw createAbortError();
       const normalized = normalizeError(error);
       lastEncounteredError = normalized;
 
@@ -186,7 +215,12 @@ export async function executeWithRetry<T>(
       // 如果还有重试次数，按策略等待后继续
       if (currentAttempt < maxRetryCount - 1) {
         const delay = computeDelayMs(currentAttempt, retryDelayMs, options);
-        if (onRetry) await onRetry(normalized, currentAttempt, delay);
+        if (onRetry) {
+          await awaitWithAbort(
+            () => onRetry(normalized, currentAttempt, delay),
+            signal,
+          );
+        }
         if (signal?.aborted) throw createAbortError();
         await sleep(delay, signal);
         if (signal?.aborted) throw createAbortError();

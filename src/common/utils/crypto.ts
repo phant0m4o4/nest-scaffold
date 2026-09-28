@@ -7,7 +7,7 @@ import {
 
 /**
  * 加密结果接口
- * @description AES-256-GCM 输出，包含初始化向量、密文与认证标签（均为 hex 编码）
+ * @description AES-256-GCM 输出，包含初始化向量、密文与认证标签（均为 base64url 编码）
  */
 export interface EncryptedResultInterface {
   /** 初始化向量，用于加密算法 */
@@ -20,7 +20,7 @@ export interface EncryptedResultInterface {
 
 /**
  * 使用 AES-256-GCM 算法加密数据
- * @description scrypt(password, salt) → 32 字节密钥；IV 为 12 字节随机；返回 iv、密文与 authTag（hex）
+ * @description scrypt(password, salt) → 32 字节密钥；IV 为 12 字节随机；返回 iv、密文与 authTag（base64url）
  * @param data 要加密的原始数据（utf8）
  * @param password 加密口令
  * @param salt 加密盐值
@@ -36,7 +36,7 @@ export function encrypt(
   // 使用 GCM 推荐的 12 字节随机 IV
   const iv = randomBytes(12);
   // 创建 AES-256-GCM 加密器（带认证）
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
   const encrypted = Buffer.concat([
     cipher.update(data, 'utf8'),
     cipher.final(),
@@ -73,6 +73,7 @@ export function decrypt(
     'aes-256-gcm',
     key,
     Buffer.from(iv, 'base64url'),
+    { authTagLength: 16 },
   );
   decipher.setAuthTag(Buffer.from(authTag, 'base64url'));
   const decrypted = Buffer.concat([

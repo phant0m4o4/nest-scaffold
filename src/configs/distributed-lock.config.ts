@@ -12,8 +12,8 @@ import { z } from 'zod';
  * Redlock 算法参数（重试、漂移、续期、TTL 等）由调用方在 `using()` 时按需设置。
  *
  * ⚠️ 生产部署：锁不得与缓存等可随时清空的数据共用同一个 Redis DB（缓存的
- * 内存淘汰策略 / FLUSHDB 会静默清掉锁键，互斥性失效）；cluster 模式无 DB
- * 概念，需独立实例。详见 `src/common/modules/distributed-lock/README.md`。
+ * 内存淘汰策略 / FLUSHDB 会静默清掉锁键，互斥性失效）。
+ * 详见 `docs/modules/distributed-lock.md`。
  *
  * .env 示例（`${REDIS_HOST}` 等为 .env 内的公共锚点变量，见 .env.example）：
  * DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock
@@ -24,16 +24,13 @@ import { z } from 'zod';
  */
 const environmentSchema = z.object({
   DISTRIBUTED_LOCK_KEY_PREFIX: z.string().optional(),
-  DISTRIBUTED_LOCK_REDIS_MODE: z
-    .enum(['single', 'sentinel', 'cluster'])
-    .optional(),
+  DISTRIBUTED_LOCK_REDIS_MODE: z.enum(['single', 'sentinel']).optional(),
   DISTRIBUTED_LOCK_REDIS_HOST: z.string().min(1).optional(),
   DISTRIBUTED_LOCK_REDIS_PORT: optionalEnvInt(1),
   DISTRIBUTED_LOCK_REDIS_PASSWORD: z.string().optional(),
   DISTRIBUTED_LOCK_REDIS_DB: optionalEnvInt(0),
   DISTRIBUTED_LOCK_REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
   DISTRIBUTED_LOCK_REDIS_SENTINELS: z.string().min(1).optional(),
-  DISTRIBUTED_LOCK_REDIS_CLUSTER_NODES: z.string().min(1).optional(),
 });
 
 const distributedLockConfig = registerEnvAsConfig(
@@ -50,7 +47,6 @@ const distributedLockConfig = registerEnvAsConfig(
       db: env.DISTRIBUTED_LOCK_REDIS_DB,
       sentinelMasterName: env.DISTRIBUTED_LOCK_REDIS_SENTINEL_MASTER_NAME,
       sentinels: env.DISTRIBUTED_LOCK_REDIS_SENTINELS,
-      clusterNodes: env.DISTRIBUTED_LOCK_REDIS_CLUSTER_NODES,
     }),
   }),
 );

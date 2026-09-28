@@ -7,9 +7,11 @@ import { UTC } from '@/common/utils/date-time';
 import {
   and,
   asc,
+  type Column,
   count,
   desc,
   eq,
+  getTableColumns,
   gt,
   inArray,
   isNull,
@@ -59,9 +61,10 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     this._schema = schema;
     this._db = db;
     this._tableConfig = getTableConfig(schema);
-    const columns = this._tableConfig.columns;
-    this._isSoftDelete = !!columns.find(
-      (column) => column.name === this._softDeleteColumn,
+    // 按 Schema 属性识别；deletedAt 可以映射到 deleted_at 等 SQL 列名。
+    this._isSoftDelete = Object.hasOwn(
+      getTableColumns(schema),
+      this._softDeleteColumn,
     );
     const hasValidIdColumn = this._tableConfig.columns.some(
       (c) => c.name === 'id' && c.primary && c.dataType === 'number',
@@ -71,6 +74,11 @@ export abstract class BaseRepository<TSchema extends PgTable> {
         `${this._tableConfig.name}: 必须存在 id 列且为主键且类型为 integer`,
       );
     }
+  }
+
+  /** 经构造器验证后的主键列；集中断言以保持仓储泛型在严格模式下类型安全。 */
+  private _idColumn(): SQL {
+    return (this._schema as unknown as Record<string, SQL>)['id'];
   }
 
   /**
@@ -86,7 +94,7 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     const { db = this._db, id } = options;
     const result = await this.findMany({
       db,
-      filter: [eq(this._schema['id'], id)],
+      filter: [eq(this._idColumn(), id)],
       limit: 1,
     });
     return result[0] ?? null;
@@ -302,13 +310,16 @@ export abstract class BaseRepository<TSchema extends PgTable> {
   }): Promise<void> {
     const { db = this._db, id, data } = options;
     try {
-      const existingRecord = await this.findOne({ db, id });
-      if (!existingRecord) {
+      const updatedRows = await db
+        .update(this._schema)
+        .set(data)
+        .where(this._buildWhereFilter(eq(this._idColumn(), id)))
+        .returning({ id: this._idColumn() });
+      if (updatedRows.length === 0) {
         throw new RecordNotFoundException(
           `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
         );
       }
-      await db.update(this._schema).set(data).where(eq(this._schema['id'], id));
     } catch (error) {
       mapPgsqlErrorAndThrow(error);
     }
@@ -325,21 +336,29 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     id: TSchema['$inferSelect']['id'];
   }): Promise<void> {
     const { db = this._db, id } = options;
-    const existingRecord = await this.findOne({ db, id });
-    if (!existingRecord) {
-      throw new RecordNotFoundException(
-        `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
-      );
-    }
-    if (this._isSoftDelete) {
-      await db
-        .update(this._schema)
-        .set({
-          [this._softDeleteColumn]: UTC().toDate(),
-        } as Partial<TSchema['$inferSelect']>)
-        .where(eq(this._schema['id'], id));
-    } else {
-      await db.delete(this._schema).where(eq(this._schema['id'], id));
+    try {
+      let affectedRows: unknown[];
+      if (this._isSoftDelete) {
+        affectedRows = await db
+          .update(this._schema)
+          .set({
+            [this._softDeleteColumn]: UTC().toDate(),
+          } as Partial<TSchema['$inferSelect']>)
+          .where(this._buildWhereFilter(eq(this._idColumn(), id)))
+          .returning({ id: this._idColumn() });
+      } else {
+        affectedRows = await db
+          .delete(this._schema)
+          .where(eq(this._idColumn(), id))
+          .returning({ id: this._idColumn() });
+      }
+      if (affectedRows.length === 0) {
+        throw new RecordNotFoundException(
+          `${this._tableConfig.name} 不存在: {id: ${String(id)}}`,
+        );
+      }
+    } catch (error) {
+      mapPgsqlErrorAndThrow(error);
     }
   }
 
@@ -354,33 +373,40 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     ids: TSchema['$inferSelect']['id'][];
   }): Promise<void> {
     const { db = this._db, ids } = options;
-    if (ids.length === 0) {
+    const uniqueIds = [...new Set(ids)] as TSchema['$inferSelect']['id'][];
+    if (uniqueIds.length === 0) {
       return;
     }
-    const existingRecords = await this.findMany({
-      db,
-      filter: [inArray(this._schema['id'], ids)],
-    });
-    if (existingRecords.length !== ids.length) {
-      const existingIds = existingRecords.map(
-        (record) => record['id'] as TSchema['$inferSelect']['id'],
-      );
-      const missingIds = ids.filter(
-        (id) => !(existingIds as unknown[]).includes(id),
-      );
-      throw new RecordNotFoundException(
-        `${this._tableConfig.name} 不存在: {ids: [${missingIds.join(', ')}]}`,
-      );
-    }
-    if (this._isSoftDelete) {
-      await db
-        .update(this._schema)
-        .set({
-          [this._softDeleteColumn]: UTC().toDate(),
-        } as Partial<TSchema['$inferSelect']>)
-        .where(inArray(this._schema['id'], ids));
-    } else {
-      await db.delete(this._schema).where(inArray(this._schema['id'], ids));
+    try {
+      const existingRecords = await this.findMany({
+        db,
+        filter: [inArray(this._idColumn(), uniqueIds)],
+      });
+      if (existingRecords.length !== uniqueIds.length) {
+        const existingIds = existingRecords.map(
+          (record) => record['id'] as TSchema['$inferSelect']['id'],
+        );
+        const missingIds = uniqueIds.filter(
+          (id) => !(existingIds as unknown[]).includes(id),
+        );
+        throw new RecordNotFoundException(
+          `${this._tableConfig.name} 不存在: {ids: [${missingIds.join(', ')}]}`,
+        );
+      }
+      if (this._isSoftDelete) {
+        await db
+          .update(this._schema)
+          .set({
+            [this._softDeleteColumn]: UTC().toDate(),
+          } as Partial<TSchema['$inferSelect']>)
+          .where(inArray(this._idColumn(), uniqueIds));
+      } else {
+        await db
+          .delete(this._schema)
+          .where(inArray(this._idColumn(), uniqueIds));
+      }
+    } catch (error) {
+      mapPgsqlErrorAndThrow(error);
     }
   }
 
@@ -526,16 +552,17 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     for (let index = 0; index < cursor.length; index++) {
       const equalities: SQL[] = [];
       for (let prefix = 0; prefix < index; prefix++) {
+        const column = this._schemaColumn(cursor[prefix].column);
         equalities.push(
           eq(
-            this._schemaColumn(cursor[prefix].column),
-            coerceCursorValueForQuery(cursor[prefix].value),
+            column,
+            coerceCursorValueForQuery(cursor[prefix].value, column.dataType),
           ),
         );
       }
       const current = cursor[index];
       const column = this._schemaColumn(current.column);
-      const value = coerceCursorValueForQuery(current.value);
+      const value = coerceCursorValueForQuery(current.value, column.dataType);
       const comparison =
         current.direction === 'desc' ? lt(column, value) : gt(column, value);
       branches.push(
@@ -558,13 +585,13 @@ export abstract class BaseRepository<TSchema extends PgTable> {
     }));
   }
 
-  private _schemaColumn(columnName: string): SQL {
+  private _schemaColumn(columnName: string): Column {
     const column = (this._schema as unknown as Record<string, unknown>)[
       columnName
     ];
     if (!column) {
       throw new Error(`${this._tableConfig.name}: 无效的游标列: ${columnName}`);
     }
-    return column as unknown as SQL;
+    return column as Column;
   }
 }

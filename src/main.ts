@@ -2,7 +2,6 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import { join } from 'path';
 import { AppModule } from './app/app.module';
 import { EnvironmentEnum } from './common/enums/environment.enum';
 import { normalizeError } from './common/utils/normalize-error';
@@ -16,7 +15,6 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    rawBody: true, // 解析 body 为 rawBody 配合 Access Key 鉴权使用
     bufferLogs: true, // 缓存日志
   });
   // 获取 pino 日志实例并接管 Nest 内置 logger
@@ -26,8 +24,15 @@ async function bootstrap() {
   // 获取配置服务
   const configService = app.get(ConfigService);
   const appConfig = configService.getOrThrow<AppConfigType>('app');
-  const { port, address, name, corsDomains, corsCredentials, trustProxy } =
-    appConfig;
+  const {
+    port,
+    address,
+    name,
+    corsDomains,
+    corsCredentials,
+    corsManagedByProxy,
+    trustProxy,
+  } = appConfig;
 
   // trust proxy：默认 false，即不信任 X-Forwarded-For，req.ip 取 TCP 对端地址、客户端伪造不了。
   // 仅当应用确实部署在 CDN / Nginx / 负载均衡之后，才通过 APP_TRUST_PROXY 开启，
@@ -37,7 +42,7 @@ async function bootstrap() {
   app.set('trust proxy', trustProxy);
 
   // CORS：APP_CORS_DOMAINS 未配置或含 `*` 时反射任意来源，否则按白名单精确匹配。
-  // 生产环境宽松配置只打 warning、不阻断启动——很多部署把 CORS 放在 CDN / 网关上管。
+  // 生产环境默认 fail-closed。若 CORS 由可信网关统一管理，必须通过显式配置放行。
   const allowAllOrigins = corsDomains.length === 0 || corsDomains.includes('*');
   app.enableCors({
     origin: allowAllOrigins ? true : corsDomains,
@@ -46,22 +51,22 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Content-Type'],
   });
-  for (const warning of getProductionCorsSecurityWarnings({
+  const corsSecurityWarnings = getProductionCorsSecurityWarnings({
     isProduction: process.env.NODE_ENV === EnvironmentEnum.PRODUCTION,
     corsDomains,
     corsCredentials,
-  })) {
-    // 与业务模块 InjectPinoLogger 一致：第一个参数为绑定字段，第二个为消息正文
-    logger.warn({ context: 'Main', event: 'cors_security_warn' }, warning);
-  }
-
-  // 设置全局前缀 会触发warn 所以暂时注释
-  // app.setGlobalPrefix('api');
-
-  // 设置静态资源目录
-  app.useStaticAssets(join(__dirname, '..', 'public'), {
-    prefix: '/public',
   });
+  for (const warning of corsSecurityWarnings) {
+    // 与业务模块 InjectPinoLogger 一致：第一个参数为绑定字段，第二个为消息正文
+    logger.warn(
+      {
+        context: 'Main',
+        event: 'cors_security_warn',
+        managedByProxy: corsManagedByProxy,
+      },
+      warning,
+    );
+  }
 
   // 平滑停机：显式监听 SIGTERM/SIGINT，触发 app.close() 以运行各模块的 onModuleDestroy
   // （释放分布式锁、关闭 Redis/DB 连接、drain BullMQ worker 等），

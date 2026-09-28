@@ -9,7 +9,7 @@ import { z } from 'zod';
  *
  * 基于 bottleneck 库的限流模块配置，支持内存模式和 Redis 分布式模式。
  * redis 模式下只读取 `BOTTLENECK_*` 自己的环境变量（HOST/PORT/DB 必填，
- * 缺失直接启动报错），连接拓扑支持 single / sentinel / cluster
+ * 缺失直接启动报错），连接拓扑支持 single / sentinel
  * （`BOTTLENECK_REDIS_MODE`，默认 single）。
  *
  * .env 示例（`${REDIS_HOST}` 等为 .env 内的公共锚点变量）：
@@ -23,15 +23,14 @@ import { z } from 'zod';
 const environmentSchema = z.object({
   /** 限流模式：'redis' 表示分布式限流（基于 Redis），'memory' 表示内存限流（单机），默认 'memory' */
   BOTTLENECK_MODE: z.enum(['redis', 'memory']).optional(),
-  /** Redis 连接拓扑（仅 redis 模式）：single / sentinel / cluster，默认 single */
-  BOTTLENECK_REDIS_MODE: z.enum(['single', 'sentinel', 'cluster']).optional(),
+  /** Redis 连接拓扑（仅 redis 模式）：single / sentinel，默认 single */
+  BOTTLENECK_REDIS_MODE: z.enum(['single', 'sentinel']).optional(),
   BOTTLENECK_REDIS_HOST: z.string().min(1).optional(),
   BOTTLENECK_REDIS_PORT: optionalEnvInt(1),
   BOTTLENECK_REDIS_PASSWORD: z.string().optional(),
   BOTTLENECK_REDIS_DB: optionalEnvInt(0),
   BOTTLENECK_REDIS_SENTINEL_MASTER_NAME: z.string().min(1).optional(),
   BOTTLENECK_REDIS_SENTINELS: z.string().min(1).optional(),
-  BOTTLENECK_REDIS_CLUSTER_NODES: z.string().min(1).optional(),
   /** Redis Key 前缀（仅 redis 模式），用于区分不同模块的 Redis key，避免冲突 */
   BOTTLENECK_REDIS_KEY_PREFIX: z.string().optional(),
 });
@@ -56,7 +55,6 @@ const bottleneckConfig = registerEnvAsConfig(
               db: env.BOTTLENECK_REDIS_DB,
               sentinelMasterName: env.BOTTLENECK_REDIS_SENTINEL_MASTER_NAME,
               sentinels: env.BOTTLENECK_REDIS_SENTINELS,
-              clusterNodes: env.BOTTLENECK_REDIS_CLUSTER_NODES,
             })
           : null,
     };

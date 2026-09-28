@@ -12,7 +12,7 @@ import { CacheService } from './cache.service';
  * - 在 `AppModule` 中导入 `CacheModule` 即可（已标记 @Global）
  * - 其他模块直接注入 `CacheService` 即可使用，无需重复 import
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/cache.md 查看完整使用示例与配置说明
  */
 @Global()
 @Module({

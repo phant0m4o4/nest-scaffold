@@ -1,3 +1,5 @@
+import type { Column } from 'drizzle-orm';
+
 /**
  * 将行字段值序列化为游标可承载的 string | number（禁止 null）
  *
@@ -11,27 +13,34 @@ export function serializeCursorValue(value: unknown): string | number {
     return value.toISOString();
   }
   if (typeof value === 'number' && Number.isFinite(value)) {
+    if (Number.isInteger(value) && !Number.isSafeInteger(value)) {
+      throw new Error('游标整数超出 JavaScript 安全范围');
+    }
     return value;
   }
   if (typeof value === 'string') {
     return value;
   }
   if (typeof value === 'bigint') {
-    return Number(value);
+    const number = Number(value);
+    if (!Number.isSafeInteger(number)) {
+      throw new Error('游标整数超出 JavaScript 安全范围');
+    }
+    return number;
   }
   throw new Error('不支持的游标排序列类型');
 }
 
 /**
- * 将 cursor 中的值转为查询可用值（ISO 日期字符串 → Date）
+ * 仅为日期类型列恢复 Date；字符串列即使看起来像 ISO 日期也保留原值。
  */
 export function coerceCursorValueForQuery(
   value: string | number,
+  dataType: Column['dataType'],
 ): string | number | Date {
-  if (typeof value === 'number') {
+  if (dataType !== 'date' || typeof value === 'number') {
     return value;
   }
-  // 仅识别 ISO-8601，避免误伤普通字符串列
   if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
     const date = new Date(value);
     if (!Number.isNaN(date.getTime())) {

@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import Redlock, {
   type RedlockAbortSignal,
+  ResourceLockedError,
   type Settings as RedlockSettings,
 } from 'redlock';
 
@@ -37,17 +38,14 @@ const DEFAULT_REDLOCK_SETTINGS: Partial<RedlockSettings> = {
 };
 
 /**
- * 单次 using 调用时可自定义的参数（Redlock 行为 + 可选中止信号）
+ * 单次 using 调用时可自定义的 Redlock 参数
  * - driftFactor: 时钟漂移系数
  * - retryCount: 重试次数
  * - retryDelay: 重试间隔（毫秒）
  * - retryJitter: 重试抖动（毫秒）
  * - automaticExtensionThreshold: 自动续期阈值（毫秒）
- * - signal: 可选 AbortSignal，用于外部中断
  */
-export type DistributedLockUsingOptions = Partial<RedlockSettings> & {
-  signal?: AbortSignal;
-};
+export type DistributedLockUsingOptions = Partial<RedlockSettings>;
 
 /**
  * 分布式锁服务
@@ -56,13 +54,13 @@ export type DistributedLockUsingOptions = Partial<RedlockSettings> & {
  * （只读取 `DISTRIBUTED_LOCK_*` 自己的配置，连接项缺失直接启动报错），
  * 与缓存等可随时清空的数据隔离，避免共享客户端被其他使用方影响。
  *
- * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化；
- * cluster 模式无 DB 概念，隔离需部署独立实例/集群（见 README）。
+ * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化。
  *
  * 支持：
  * - 自动重试和超时处理
  * - 锁的自动续期
- * - 死锁检测和预防
+ * - 回调结束后释放锁；失效时依靠 TTL，不提供业务死锁检测
+ * @see docs/modules/distributed-lock.md
  */
 @Injectable()
 export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
@@ -85,12 +83,6 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
-    if (this._connection.mode === 'cluster') {
-      this._logger.warn(
-        { event: 'lock_cluster_no_db_isolation' },
-        'cluster 模式无 DB 概念，锁无法通过 DB 与其他服务隔离，生产环境请为锁部署独立实例/集群',
-      );
-    }
     this._client = createRedisClient({
       config: this._connection,
       logger: this._logger,
@@ -112,6 +104,14 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     }
     this._redlock = new Redlock([this._client], DEFAULT_REDLOCK_SETTINGS);
     this._redlock.on('error', (error: unknown) => {
+      // 竞争失败是锁的正常控制流；真正的 Redis/法定人数错误才进入 error 日志。
+      if (error instanceof ResourceLockedError) {
+        this._logger.debug(
+          { event: 'redlock_contention' },
+          'Redlock 资源正在被其他持有者占用',
+        );
+        return;
+      }
       this._logger.error(
         { error: normalizeError(error), event: 'redlock_error' },
         'Redlock 错误',
@@ -140,17 +140,14 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 取当前连接的 DB 编号用于日志（cluster 模式无 DB 概念，返回 undefined）
+   * 取当前连接的 DB 编号用于日志
    * @private
    */
-  private _resolveDbLabel(): number | undefined {
+  private _resolveDbLabel(): number {
     if (this._connection.mode === 'single') {
       return this._connection.single.db;
     }
-    if (this._connection.mode === 'sentinel') {
-      return this._connection.sentinel.db;
-    }
-    return undefined;
+    return this._connection.sentinel.db;
   }
 
   /**
@@ -173,7 +170,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     if (list.length === 0) {
       throw new Error('资源标识符数组不能为空');
     }
-    return list.map((r) => this._buildLockKey(String(r)));
+    return [...new Set(list.map((resource) => this._buildLockKey(resource)))];
   }
 
   /**
@@ -182,13 +179,13 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
    * 调用时可自定义：
    * - resources：资源键（不带前缀）
    * - ttlMs：锁 TTL（毫秒），默认 30_000
-   * - options：Redlock 行为与中止信号，见 {@link DistributedLockUsingOptions}
+   * - options：Redlock 重试、续期与漂移设置，见 {@link DistributedLockUsingOptions}
    *
    * @typeParam T 回调返回类型
    * @param params.resources 资源键（不带前缀），单个字符串或字符串数组
    * @param params.execute 受锁保护的执行函数，可接收 RedlockAbortSignal
    * @param params.ttlMs 可选，锁 TTL（毫秒），默认 30000
-   * @param params.options 可选，重试/续期/漂移/AbortSignal 等，见 DistributedLockUsingOptions
+   * @param params.options 可选，重试/续期/漂移设置，见 DistributedLockUsingOptions
    * @returns 回调的返回结果
    */
   async using<T>(params: {
@@ -200,6 +197,9 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
     const { resources, execute, ttlMs, options } = params;
     const keys = this._buildLockKeys(resources);
     const ttl = ttlMs ?? DEFAULT_TTL_MS;
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+      throw new Error('锁 TTL 必须是大于 0 的有限毫秒数');
+    }
     return this._redlock.using(keys, ttl, options ?? {}, (signal) =>
       Promise.resolve(execute(signal)),
     );

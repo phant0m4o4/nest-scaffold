@@ -18,18 +18,9 @@ interface IRedisSentinelModeConfig {
     readonly db: number;
   };
 }
-/** cluster 模式连接配置 */
-interface IRedisClusterModeConfig {
-  readonly mode: 'cluster';
-  readonly cluster: {
-    readonly nodes: Array<{ host: string; port: number }>;
-    readonly password?: string;
-  };
-}
-
-/** 解析后的 Redis 连接配置（三种模式联合） */
+/** 解析后的 Redis 连接配置：单机或哨兵 */
 export type RedisConnectionConfig =
-  IRedisSingleModeConfig | IRedisSentinelModeConfig | IRedisClusterModeConfig;
+  IRedisSingleModeConfig | IRedisSentinelModeConfig;
 
 /**
  * 各模块环境变量映射后的连接入参
@@ -39,19 +30,19 @@ export type RedisConnectionConfig =
  */
 interface IRedisConnectionEnvInput {
   readonly envPrefix: string;
-  readonly mode?: 'single' | 'sentinel' | 'cluster';
+  readonly mode?: 'single' | 'sentinel';
   readonly host?: string;
   readonly port?: number;
   readonly password?: string;
   readonly db?: number;
   readonly sentinelMasterName?: string;
   readonly sentinels?: string;
-  readonly clusterNodes?: string;
 }
 
 /** 解析 `host:port,host:port` 形式的节点列表 */
 function parseHostPortPairs(
   input: string | undefined,
+  envName: string,
 ): Array<{ host: string; port: number }> {
   if (!input) {
     return [];
@@ -60,14 +51,20 @@ function parseHostPortPairs(
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
-    .map((item) => {
-      const [host, port] = item.split(':');
-      const parsedPort = Number(port);
-      if (!host || Number.isNaN(parsedPort)) {
-        throw new Error(`Redis 节点格式错误: ${item}`);
+    .map((item, index) => {
+      const match = /^([^:\s]+):([0-9]+)$/.exec(item);
+      const parsedPort = Number(match?.[2]);
+      if (!match || !isValidPort(parsedPort)) {
+        throw new Error(
+          `Redis 节点格式错误: 环境变量 ${envName} 第 ${index + 1} 个节点需为 host:port，端口范围 1–65535`,
+        );
       }
-      return { host, port: parsedPort };
+      return { host: match[1], port: parsedPort };
     });
+}
+
+function isValidPort(port: number): boolean {
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
 
 /** 断言必填字段存在，缺失时用完整环境变量名报错（启动即失败） */
@@ -90,7 +87,10 @@ function requireNodes(
   envPrefix: string,
   suffix: string,
 ): Array<{ host: string; port: number }> {
-  const nodes = parseHostPortPairs(requireField(value, envPrefix, suffix));
+  const nodes = parseHostPortPairs(
+    requireField(value, envPrefix, suffix),
+    `${envPrefix}_${suffix}`,
+  );
   if (nodes.length === 0) {
     throw new Error(
       `Redis 连接配置无效: 环境变量 ${envPrefix}_${suffix} 未包含任何有效的 host:port 节点`,
@@ -117,11 +117,17 @@ export function resolveRedisConnection(
       ? undefined
       : input.password;
   if (mode === 'single') {
+    const port = requireField(input.port, envPrefix, 'PORT');
+    if (!isValidPort(port)) {
+      throw new Error(
+        `Redis 连接配置无效: 环境变量 ${envPrefix}_PORT 必须是 1–65535 的整数`,
+      );
+    }
     return {
       mode,
       single: {
         host: requireField(input.host, envPrefix, 'HOST'),
-        port: requireField(input.port, envPrefix, 'PORT'),
+        port,
         password,
         db: requireField(input.db, envPrefix, 'DB'),
       },
@@ -142,18 +148,7 @@ export function resolveRedisConnection(
       },
     };
   }
-  // cluster 无 DB 概念:显式设置 DB 却被静默丢弃会制造「已隔离」的假象
-  // (实际同处一个 keyspace,只剩键前缀),必须启动即报错
-  if (input.db !== undefined) {
-    throw new Error(
-      `Redis 连接配置冲突: 环境变量 ${envPrefix}_DB 在 cluster 模式下无效——Redis Cluster 无 DB 概念,无法用 DB 隔离。请移除该变量,并为本模块部署独立集群来实现隔离`,
-    );
-  }
-  return {
-    mode,
-    cluster: {
-      nodes: requireNodes(input.clusterNodes, envPrefix, 'CLUSTER_NODES'),
-      password,
-    },
-  };
+  throw new Error(
+    `Redis 连接配置无效: ${envPrefix}_MODE 仅支持 single 或 sentinel`,
+  );
 }

@@ -1,6 +1,6 @@
 import { normalizeError } from '@/common/utils/normalize-error';
 import type { RedisConnectionConfig } from '@/common/utils/redis/redis-connection';
-import { Cluster, Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 import type { PinoLogger } from 'nestjs-pino';
 
 import type { RedisClient } from './redis.types';
@@ -19,7 +19,7 @@ interface ICreateRedisClientParams {
  * 关闭 Redis 客户端的入参
  */
 interface ICloseRedisClientParams {
-  /** 待关闭的 Redis / Cluster 客户端 */
+  /** 待关闭的 Redis 客户端 */
   readonly client: RedisClient;
   /** PinoLogger 实例，用于关闭过程中的结构化日志 */
   readonly logger: PinoLogger;
@@ -40,20 +40,25 @@ const QUIT_TIMEOUT_MS = 5_000;
  * 永不 resolve，超时后转为强制断开，避免平滑关闭流程永久挂起。
  * @private
  */
-function quitWithTimeout(client: RedisClient): Promise<unknown> {
-  return Promise.race([
-    client.quit(),
-    new Promise((_resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`quit 超过 ${QUIT_TIMEOUT_MS}ms 未完成`));
-      }, QUIT_TIMEOUT_MS);
-      timer.unref();
-    }),
-  ]);
+async function quitWithTimeout(client: RedisClient): Promise<unknown> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      client.quit(),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`quit 超过 ${QUIT_TIMEOUT_MS}ms 未完成`));
+        }, QUIT_TIMEOUT_MS);
+        timer.unref();
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
- * 为 Redis / Cluster 客户端挂载统一的事件日志监听
+ * 为 Redis 客户端挂载统一的事件日志监听
  *
  * 所有 logger 调用均为同步操作，避免在事件回调中产生未处理的 Promise。
  * @private
@@ -112,29 +117,11 @@ function createSentinelClient(
 }
 
 /**
- * 根据配置创建 cluster 模式的 Redis 客户端
- * @private
- */
-function createClusterClient(
-  config: Extract<RedisConnectionConfig, { mode: 'cluster' }>,
-): Cluster {
-  const { nodes, password } = config.cluster;
-  return new Cluster(
-    nodes.map((node) => ({ host: node.host, port: node.port })),
-    {
-      redisOptions: {
-        password,
-      },
-    },
-  );
-}
-
-/**
  * 根据配置构造对应的 Redis 客户端，并统一挂载事件日志
  *
  * @param params.config 已校验的 Redis 配置
  * @param params.logger PinoLogger 实例
- * @returns Redis | Cluster 实例
+ * @returns Redis 实例
  */
 export function createRedisClient(
   params: ICreateRedisClientParams,
@@ -143,17 +130,15 @@ export function createRedisClient(
   let client: RedisClient;
   if (config.mode === 'single') {
     client = createSingleClient(config);
-  } else if (config.mode === 'sentinel') {
-    client = createSentinelClient(config);
   } else {
-    client = createClusterClient(config);
+    client = createSentinelClient(config);
   }
   attachClientEventListeners(client, logger);
   return client;
 }
 
 /**
- * 平滑关闭 Redis / Cluster 客户端
+ * 平滑关闭 Redis 客户端
  *
  * - 当客户端处于活跃状态时使用 `quit()`（发送 QUIT 后等待响应再断开）
  * - 否则直接 `disconnect()`

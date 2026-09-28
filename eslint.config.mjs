@@ -35,7 +35,11 @@ export default defineConfig(
   {
     // vitest 的 mock 断言（expect(mockFn).toHaveBeenCalled() 等）对
     // unbound-method 是已知误报，测试文件统一关闭，不在文件内零散 disable
-    files: ['src/**/*.spec.ts', 'src/**/*.e2e-spec.ts'],
+    files: [
+      'src/**/*.unit-spec.ts',
+      'src/**/*.integration-spec.ts',
+      'test/e2e/**/*.e2e-spec.ts',
+    ],
     rules: {
       '@typescript-eslint/unbound-method': 'off',
     },

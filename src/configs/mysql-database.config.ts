@@ -8,13 +8,16 @@ import { z } from 'zod';
  * .env 示例：
  * MYSQL_HOST=127.0.0.1
  * MYSQL_PORT=3306
- * MYSQL_DATABASE=sjhy
+ * MYSQL_DATABASE=nest_scaffold
  * MYSQL_USER=root
  * MYSQL_PASSWORD=123456
  */
 const environmentSchema = z.object({
   MYSQL_HOST: z.string().optional(),
-  MYSQL_PORT: optionalEnvInt(1),
+  MYSQL_PORT: optionalEnvInt(1).refine(
+    (port) => port === undefined || port <= 65535,
+    '端口不能超过 65535',
+  ),
   MYSQL_DATABASE: z.string().min(1),
   MYSQL_USER: z.string().min(1),
   MYSQL_PASSWORD: z.string().min(1),

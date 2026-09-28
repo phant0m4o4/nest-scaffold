@@ -1,22 +1,27 @@
-# mysql，postgres，redis，phpmyadmin，pgadmin 服务 用于 nestjs 项目（仅限本地开发）
+# NestJS 本地开发依赖与管理界面，不用于生产部署
 services:
   mysql:
     container_name: ${APP_NAME}-mysql
     image: mysql:9
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
-    #    image: mysql:5.7
-    #    platform: linux/amd64
-    #    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root_password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-nest-scaffold}
     ports:
-      - ${MYSQL_PORT:-3306}:3306
+      - '127.0.0.1:${MYSQL_PORT:-3306}:3306'
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-p${MYSQL_PASSWORD:-root_password}']
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          '127.0.0.1',
+          '-p${MYSQL_PASSWORD:-root_password}',
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,10 +33,11 @@ services:
     image: phpmyadmin:5
     restart: always
     ports:
-      - '8081:80'
+      - '127.0.0.1:8081:80'
     environment:
       PMA_HOST: mysql # 指向上方 mysql 服务名
-      PMA_PORT: ${MYSQL_PORT:-3306}
+      # 容器网络内始终连接 MySQL 的容器端口，不能使用宿主机映射端口
+      PMA_PORT: 3306
       PMA_USER: 'root'
       PMA_PASSWORD: ${MYSQL_PASSWORD:-root_password}
       UPLOAD_LIMIT: 100000000
@@ -50,7 +56,7 @@ services:
       POSTGRES_USER: ${PGSQL_USER:-postgres}
       POSTGRES_PASSWORD: ${PGSQL_PASSWORD:-root_password}
     ports:
-      - ${PGSQL_PORT:-5432}:5432
+      - '127.0.0.1:${PGSQL_PORT:-5432}:5432'
     volumes:
       # PG 18+ 官方镜像 VOLUME 改为 /var/lib/postgresql（不再是 .../data）
       - postgres-data:/var/lib/postgresql
@@ -67,7 +73,7 @@ services:
     image: dpage/pgadmin4:9
     restart: always
     ports:
-      - '8082:80'
+      - '127.0.0.1:8082:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-root_password}
@@ -83,11 +89,15 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password} --appendonly yes
     restart: always
     ports:
-      - ${REDIS_PORT:-6379}:6379
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD:-redis_password} ping | grep PONG']
+      test:
+        [
+          'CMD-SHELL',
+          'redis-cli -a ${REDIS_PASSWORD:-redis_password} ping | grep PONG',
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -99,14 +109,38 @@ services:
     image: erikdubbelboer/phpredisadmin:1.26
     restart: always
     ports:
-      - '8080:80'
+      - '127.0.0.1:8080:80'
     environment:
       REDIS_1_HOST: redis
-      REDIS_1_PORT: ${REDIS_PORT:-6379}
+      # 容器网络内始终连接 Redis 的容器端口，不能使用宿主机映射端口
+      REDIS_1_PORT: 6379
       REDIS_1_AUTH: ${REDIS_PASSWORD:-redis_password}
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - nestjs
+
+  seaweedfs:
+    container_name: ${APP_NAME}-seaweedfs
+    image: chrislusf/seaweedfs:4.47
+    command:
+      - mini
+      - -dir=/data
+      - -webdav=false
+      - -admin.ui=false
+      - -s3.port.iceberg=0
+      - -s3.port.lance=0
+    restart: always
+    environment:
+      # 仅供本地开发；设置凭据以启用 S3 认证，启动时创建 bucket
+      AWS_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:-local-storage}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:-local-storage-secret}
+      S3_BUCKET: ${STORAGE_S3_BUCKET:-nest-scaffold}
+    ports:
+      - '127.0.0.1:8333:8333'
+    volumes:
+      - seaweedfs-data:/data
     networks:
       - nestjs
 
@@ -118,3 +152,4 @@ volumes:
   mysql-data:
   postgres-data:
   redis-data:
+  seaweedfs-data:

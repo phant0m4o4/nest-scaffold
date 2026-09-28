@@ -1,20 +1,17 @@
-# 任务验收报告归档
+# 专项验证记录
 
-本目录存放里程碑 / 任务的验收报告与取证材料。验收流程见 [task-acceptance.md](../.claude/skills/nest-scaffold/reference/task-acceptance.md)；审查对照的工程不变量见 [engineering-conventions.md](../.claude/skills/nest-scaffold/reference/engineering-conventions.md)。
+本目录保留需要长期追溯的迁移、兼容性、安全或发布验证记录。普通改动在提交或合并请求里写清原因与测试结果即可，不要求每个任务新增报告。
 
-## 目录结构
+## 建议内容
 
-```
-reports/
-├── README.md
-└── <里程碑>/                 # 如 m0、m1
-    └── <任务>/               # 如 T1、T2
-        ├── 验收报告.md       # 总结性验收报告（四档全文 + 交付物/偏差/自查）
-        └── evidence/         # 可选：命令输出、截图等
-```
+- 变更目的与范围。
+- 实际运行的检查、结果和必要证据。
+- 兼容性影响、已知限制；有部署或数据风险时说明上线及恢复办法。
+
+需要归档时使用 `reports/<主题>/<任务>/`，报告旁可放 `evidence/`。不要为了目录格式创建空报告或重复抄写测试输出。
 
 ## 注意
 
-- 报告与 evidence **不得**含密钥、真实供应商 key、本机绝对路径、个人信息或 AI 署名信息（见仓库根 `CLAUDE.md` 规则 A）。
-- PR 描述应摘要并链接到对应 `验收报告.md`，避免产物只留在会话里。
-- 纯机械改动若走轻量验收，可不建目录；有风险的改动必须按 `task-acceptance.md` 四档留档。
+- 不得包含真实凭据、私钥、个人信息、本机路径或 AI 署名/会话链接，见[工程底线](../docs/development/engineering-conventions.md)。
+- 当前开发与验证要求见[开发流程](../docs/development/workflows.md)。
+- 已有报告保留当时的事实与结构，其中旧的“四档验收”或已移除功能仅代表历史状态，不构成现行要求。

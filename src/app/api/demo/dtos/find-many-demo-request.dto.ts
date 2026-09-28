@@ -14,6 +14,13 @@ export const DEMO_ORDERABLE_COLUMNS = getTableConfig(demosSchema).columns.map(
   (col) => col.name,
 ) as [string, ...string[]];
 
+/** 游标排序仅支持非空的字符串、数字和日期列，避免空值比较或序列化失败。 */
+export const DEMO_CURSOR_ORDERABLE_COLUMNS = getTableConfig(demosSchema)
+  .columns.filter(
+    (col) => col.notNull && ['string', 'number', 'date'].includes(col.dataType),
+  )
+  .map((col) => col.name);
+
 /**
  * Demo 查询共用的筛选字段（不含排序；游标用 order，页码用 orderColumn）
  */

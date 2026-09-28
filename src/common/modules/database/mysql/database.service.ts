@@ -94,7 +94,7 @@ class DrizzleQueryLogger implements DrizzleLogger {
  * - 连接池生命周期管理（启动验证、平滑关闭）
  * - 开发环境 SQL 查询日志
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/database-mysql.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -123,8 +123,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     try {
       const connection = await this._pool.getConnection();
-      await connection.ping();
-      connection.release();
+      try {
+        await connection.ping();
+      } finally {
+        connection.release();
+      }
       this._logger.info('数据库 MySQL 连接成功');
     } catch (error) {
       this._logger.error(
@@ -134,6 +137,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         '数据库 MySQL 连接失败',
       );
+      // 初始化失败后 Nest 不保证触发销毁钩子，必须立即关闭连接池，
+      // 否则重连/空闲连接会让进程与测试无法退出。
+      try {
+        await this._pool.end();
+      } catch (closeError: unknown) {
+        this._logger.warn(
+          {
+            error: normalizeError(closeError),
+            event: 'db_close_after_init_failure_warn',
+          },
+          '数据库初始化失败后关闭 MySQL 连接池时发生错误',
+        );
+      }
       throw error;
     }
   }

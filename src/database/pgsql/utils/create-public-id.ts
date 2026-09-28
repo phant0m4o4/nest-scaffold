@@ -14,7 +14,7 @@ import { varchar } from 'drizzle-orm/pg-core';
  * inviteCode: createPublicIdColumn('inviteCode', 8),
  *
  * 值由业务仓储在 `create` 中写入；**必须**表级 `unique()`。
- * 长短策略见 `reference/database.md`。Demo 表用泛化名 `publicId`/`shortPublicId` 仅作示例。
+ * 长短策略见 `docs/development/database.md`。Demo 表用泛化名 `publicId`/`shortPublicId` 仅作示例。
  */
 export const createPublicIdColumn = (
   name?: string,

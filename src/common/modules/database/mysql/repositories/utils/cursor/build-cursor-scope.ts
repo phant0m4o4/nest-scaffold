@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 /**
  * 将筛选对象规范化为稳定 JSON（键排序；Date → ISO）
  *
- * 忽略 undefined / null / 空串，与 Service 里「空筛选不进 WHERE」对齐，
+ * 忽略 undefined / null / 空串，与 Service 里「空筛选不进 WHERE」对齐；
+ * 非空的空白字符串仍会生成 LIKE 条件，必须保留，不能 trim 后混同于未筛选。
  * 避免 `?name=` 与未传 name 算出不同 scope。
  */
 export function canonicalizeFilterForScope(
@@ -15,7 +16,7 @@ export function canonicalizeFilterForScope(
     if (value === undefined || value === null) {
       continue;
     }
-    if (typeof value === 'string' && value.trim() === '') {
+    if (value === '') {
       continue;
     }
     normalized[key] = value instanceof Date ? value.toISOString() : value;

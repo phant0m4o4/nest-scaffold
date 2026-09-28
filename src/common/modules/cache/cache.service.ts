@@ -36,9 +36,9 @@ interface IBatchResult<T> {
  *
  * 缓存持有自己的连接与独立 DB（只读取 `CACHE_*` 自己的配置，连接项缺失
  * 直接启动报错）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
- * 服务共用一个 DB。cluster 模式无 DB 概念，隔离需部署独立集群。
+ * 服务共用一个 DB。
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/cache.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class CacheService implements OnModuleInit, OnModuleDestroy {
@@ -62,12 +62,6 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
-    if (this._connection.mode === 'cluster') {
-      this._logger.warn(
-        { event: 'cache_cluster_no_db_isolation' },
-        'cluster 模式无 DB 概念，缓存无法通过 DB 与其他服务隔离，生产环境请为缓存部署独立集群',
-      );
-    }
     this._redis = createRedisClient({
       config: this._connection,
       logger: this._logger,
@@ -101,17 +95,14 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 取当前连接的 DB 编号用于日志（cluster 模式无 DB 概念，返回 undefined）
+   * 取当前连接的 DB 编号用于日志
    * @private
    */
-  private _resolveDbLabel(): number | undefined {
+  private _resolveDbLabel(): number {
     if (this._connection.mode === 'single') {
       return this._connection.single.db;
     }
-    if (this._connection.mode === 'sentinel') {
-      return this._connection.sentinel.db;
-    }
-    return undefined;
+    return this._connection.sentinel.db;
   }
 
   /**
@@ -147,7 +138,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
    * @private
    */
   private _serialize<T>(value: T): string {
-    return JSON.stringify(value);
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) {
+      throw new Error('缓存值必须是可 JSON 序列化的数据，不能是 undefined');
+    }
+    return serialized;
   }
 
   /**
@@ -166,6 +161,19 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return await this._redis.get(this._buildFullKey(key));
   }
 
+  /** 只有显式 -1 才允许永久缓存，非法负数不能意外取消过期时间。 */
+  private _validateTtl(ttlSeconds: number): void {
+    if (ttlSeconds === 0) {
+      throw new Error('缓存 TTL 时间不能为 0');
+    }
+    if (
+      !Number.isSafeInteger(ttlSeconds) ||
+      (ttlSeconds < 0 && ttlSeconds !== -1)
+    ) {
+      throw new Error('缓存 TTL 必须为正安全整数（秒）或 -1');
+    }
+  }
+
   /**
    * 设置原始字符串值到 Redis
    * @private
@@ -175,9 +183,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     value: string,
     ttlSeconds: number = this._defaultTtlSeconds,
   ): Promise<void> {
-    if (ttlSeconds === 0) {
-      throw new Error('缓存 TTL 时间不能为 0');
-    }
+    this._validateTtl(ttlSeconds);
     const fullKey = this._buildFullKey(key);
     const result =
       ttlSeconds < 0
@@ -264,7 +270,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 批量设置缓存值（使用 Redis Pipeline 提升性能）
+   * 批量设置缓存值（使用 pipeline 批量发送命令）
    * @param items 要设置的键值对数组
    * @param ttlSeconds TTL 时间（秒），-1 表示永不过期
    * @returns 设置成功的键数量
@@ -276,13 +282,14 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     if (items.length === 0) {
       return 0;
     }
-    if (ttlSeconds === 0) {
-      throw new Error('缓存 TTL 时间不能为 0');
-    }
+    this._validateTtl(ttlSeconds);
+    // 先校验并序列化全部输入，避免后续项非法时前面的键已经写入。
+    const preparedItems = items.map((item) => ({
+      fullKey: this._buildFullKey(item.key),
+      serializedValue: this._serialize(item.value),
+    }));
     const pipeline = this._redis.pipeline();
-    for (const item of items) {
-      const fullKey = this._buildFullKey(item.key);
-      const serializedValue = this._serialize(item.value);
+    for (const { fullKey, serializedValue } of preparedItems) {
       if (ttlSeconds < 0) {
         pipeline.set(fullKey, serializedValue);
       } else {
@@ -364,6 +371,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     if (ttlSeconds <= 0) {
       throw new Error('TTL 时间必须大于 0');
     }
+    this._validateTtl(ttlSeconds);
     const fullKey = this._buildFullKey(key);
     const result = await this._redis.expire(fullKey, ttlSeconds);
     return result === 1;
@@ -392,23 +400,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     try {
       await this._redis.rename(oldFullKey, newFullKey);
       return true;
-    } catch {
-      return false;
+    } catch (error: unknown) {
+      if (/\bno such key\b/i.test(normalizeError(error).message)) {
+        return false;
+      }
+      throw error;
     }
   }
 
   /**
    * 清空缓存专用 DB 中的所有数据（FLUSHDB，不影响其他 DB）
-   *
-   * cluster 模式下直接拒绝：Cluster 无 DB 隔离，且 FLUSHDB 只会发到
-   * 单个节点，语义既危险又不完整。
    */
   public async flush(): Promise<void> {
-    if (this._connection.mode === 'cluster') {
-      throw new Error(
-        'cluster 模式不支持 flush()：无 DB 隔离且 FLUSHDB 仅作用于单个节点',
-      );
-    }
     const result = await this._redis.flushdb();
     if (result !== 'OK') {
       throw new Error('缓存清空失败');
