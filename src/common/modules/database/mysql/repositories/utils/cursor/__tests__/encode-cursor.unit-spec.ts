@@ -28,7 +28,11 @@ describe('encodeCursor / decodeCursor', () => {
       },
       MASTER_KEY,
     );
-    const tampered = `${token.slice(0, -2)}xx`;
+    const parts = token.split('.');
+    const ciphertext = Buffer.from(parts[2], 'base64url');
+    ciphertext[0] ^= 1;
+    parts[2] = ciphertext.toString('base64url');
+    const tampered = parts.join('.');
 
     expect(() => decodeCursor(tampered, MASTER_KEY)).toThrow(
       BadRequestException,
@@ -47,4 +51,24 @@ describe('encodeCursor / decodeCursor', () => {
 
     expect(() => decodeCursor(token, otherKey)).toThrow(BadRequestException);
   });
+
+  it.each([4, 8, 12, 13, 14, 15])(
+    '应拒绝认证标签被截断为 %i 字节的有效游标',
+    (length) => {
+      const parts = encodeCursor(
+        {
+          scope: 'demo.list:abc',
+          order: [{ column: 'id', direction: 'desc', value: 1 }],
+        },
+        MASTER_KEY,
+      ).split('.');
+      parts[1] = Buffer.from(parts[1], 'base64url')
+        .subarray(0, length)
+        .toString('base64url');
+
+      expect(() => decodeCursor(parts.join('.'), MASTER_KEY)).toThrow(
+        BadRequestException,
+      );
+    },
+  );
 });

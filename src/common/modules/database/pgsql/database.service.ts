@@ -100,7 +100,7 @@ class DrizzleQueryLogger implements DrizzleLogger {
  *
  * 与 `../mysql/database.service.ts` 是平行的两套实现。
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/database-pgsql.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -117,6 +117,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this._pool = new Pool(
       this._configService.getOrThrow<PgsqlDatabaseConfigType>('pgsqlDatabase'),
     );
+    this._pool.on('error', (error: unknown) => {
+      const normalized = normalizeError(error);
+      // pg 已移除故障空闲连接；不记录错误上附带的 client，避免暴露连接信息。
+      this._logger.error(
+        {
+          event: 'db_pool_error',
+          error: {
+            name: normalized.name,
+            message: normalized.message,
+            stack: normalized.stack,
+          },
+        },
+        '数据库 PostgreSQL 空闲连接发生错误',
+      );
+    });
     const isDev = process.env.NODE_ENV === EnvironmentEnum.DEVELOPMENT;
     this.db = drizzle({
       client: this._pool,

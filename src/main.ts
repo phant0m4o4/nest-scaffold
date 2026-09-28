@@ -2,7 +2,6 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import { join } from 'path';
 import { AppModule } from './app/app.module';
 import { EnvironmentEnum } from './common/enums/environment.enum';
 import { normalizeError } from './common/utils/normalize-error';
@@ -16,7 +15,6 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    rawBody: true, // 解析 body 为 rawBody 配合 Access Key 鉴权使用
     bufferLogs: true, // 缓存日志
   });
   // 获取 pino 日志实例并接管 Nest 内置 logger
@@ -69,14 +67,6 @@ async function bootstrap() {
       warning,
     );
   }
-
-  // 设置全局前缀 会触发warn 所以暂时注释
-  // app.setGlobalPrefix('api');
-
-  // 设置静态资源目录
-  app.useStaticAssets(join(__dirname, '..', 'public'), {
-    prefix: '/public',
-  });
 
   // 平滑停机：显式监听 SIGTERM/SIGINT，触发 app.close() 以运行各模块的 onModuleDestroy
   // （释放分布式锁、关闭 Redis/DB 连接、drain BullMQ worker 等），

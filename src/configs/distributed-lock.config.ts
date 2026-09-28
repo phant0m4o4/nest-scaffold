@@ -13,7 +13,7 @@ import { z } from 'zod';
  *
  * ⚠️ 生产部署：锁不得与缓存等可随时清空的数据共用同一个 Redis DB（缓存的
  * 内存淘汰策略 / FLUSHDB 会静默清掉锁键，互斥性失效）。
- * 详见 `src/common/modules/distributed-lock/README.md`。
+ * 详见 `docs/modules/distributed-lock.md`。
  *
  * .env 示例（`${REDIS_HOST}` 等为 .env 内的公共锚点变量，见 .env.example）：
  * DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock

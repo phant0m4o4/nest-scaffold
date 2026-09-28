@@ -29,7 +29,7 @@ const TRANSLATIONS_PATH = path.join(__dirname, '..', '..', '..', 'i18n');
  *   因此 `I18nService` 在整个应用中全局可用，业务模块无需重复导入。
  * - 只需在 `AppModule` 中导入一次 `I18nModule` 即可。
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/i18n.md 查看完整使用示例与配置说明
  */
 @Module({
   imports: [

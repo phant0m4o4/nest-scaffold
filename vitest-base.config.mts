@@ -3,6 +3,8 @@ import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // 禁止 Vite 自动读取本地 .env*；测试只能显式提供隔离配置。
+  envDir: false,
   test: {
     root: './',
     env: {

@@ -48,6 +48,9 @@ describe('CacheService（生命周期与隔离语义）', () => {
     eval: ReturnType<typeof vi.fn>;
     del: ReturnType<typeof vi.fn>;
     exists: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
+    setex: ReturnType<typeof vi.fn>;
+    expire: ReturnType<typeof vi.fn>;
   };
   let mockPipeline: {
     set: ReturnType<typeof vi.fn>;
@@ -70,6 +73,9 @@ describe('CacheService（生命周期与隔离语义）', () => {
       eval: vi.fn().mockResolvedValue(1),
       del: vi.fn().mockResolvedValue(1),
       exists: vi.fn().mockResolvedValue(1),
+      set: vi.fn().mockResolvedValue('OK'),
+      setex: vi.fn().mockResolvedValue('OK'),
+      expire: vi.fn().mockResolvedValue(1),
     };
     vi.mocked(createRedisClient).mockReturnValue(
       mockClient as unknown as ReturnType<typeof createRedisClient>,
@@ -270,5 +276,52 @@ describe('CacheService（生命周期与隔离语义）', () => {
       'cache:user:1',
       'cache:user:2',
     );
+  });
+
+  it.each([
+    -2,
+    -1.5,
+    -Infinity,
+    NaN,
+    Infinity,
+    1.5,
+    Number.MAX_SAFE_INTEGER + 1,
+  ])('非法 TTL %s 应在单次或批量写入前拒绝，不能变成永久缓存', async (ttl) => {
+    const service = await buildService();
+
+    await expect(service.set('a', 1, ttl)).rejects.toThrow('TTL');
+    await expect(service.setRaw('b', 'value', ttl)).rejects.toThrow('TTL');
+    await expect(
+      service.setBatch([{ key: 'c', value: 2 }], ttl),
+    ).rejects.toThrow('TTL');
+    expect(mockClient.set).not.toHaveBeenCalled();
+    expect(mockClient.setex).not.toHaveBeenCalled();
+    expect(mockClient.pipeline).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1, -Infinity, NaN, Infinity, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    'expire 应在发送命令前拒绝非法 TTL %s',
+    async (ttl) => {
+      const service = await buildService();
+
+      await expect(service.expire('a', ttl)).rejects.toThrow('TTL');
+      expect(mockClient.expire).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([1, 60, -1])('set / setRaw 应保留合法 TTL %s 语义', async (ttl) => {
+    const service = await buildService();
+
+    await service.set('a', 1, ttl);
+    await service.setRaw('b', 'value', ttl);
+    if (ttl === -1) {
+      expect(mockClient.set).toHaveBeenCalledWith('cache:a', '1');
+      expect(mockClient.set).toHaveBeenCalledWith('cache:b', 'value');
+      expect(mockClient.setex).not.toHaveBeenCalled();
+    } else {
+      expect(mockClient.setex).toHaveBeenCalledWith('cache:a', ttl, '1');
+      expect(mockClient.setex).toHaveBeenCalledWith('cache:b', ttl, 'value');
+      expect(mockClient.set).not.toHaveBeenCalled();
+    }
   });
 });

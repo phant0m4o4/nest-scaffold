@@ -142,6 +142,60 @@ describe('DemoService.findManyByCursorPagination', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it.each([' ', '   ', '\t'])(
+    '新增非空的空白筛选 %j 后应拒绝未筛选游标',
+    async (name) => {
+      const cursor = encodeCursor(
+        {
+          scope: buildCursorScope(DEMO_LIST_RESOURCE_KEY, {}),
+          order: [{ column: 'id', direction: 'desc', value: 1 }],
+        },
+        TEST_MASTER_KEY,
+      );
+      (
+        mockDemoRepository.findManyWithCursorPagination as Mock
+      ).mockResolvedValue({
+        data: [],
+        meta: { nextCursor: null },
+      });
+
+      await expect(
+        demoService.findManyByCursorPagination(
+          { cursor, name },
+          DEMO_LIST_RESOURCE_KEY,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(
+        mockDemoRepository.findManyWithCursorPagination,
+      ).not.toHaveBeenCalled();
+    },
+  );
+
+  it('真正空串筛选与未传筛选等价，仍可使用原游标且不生成 LIKE 条件', async () => {
+    const cursor = encodeCursor(
+      {
+        scope: buildCursorScope(DEMO_LIST_RESOURCE_KEY, {}),
+        order: [{ column: 'id', direction: 'desc', value: 1 }],
+      },
+      TEST_MASTER_KEY,
+    );
+    (mockDemoRepository.findManyWithCursorPagination as Mock).mockResolvedValue(
+      {
+        data: [],
+        meta: { nextCursor: null },
+      },
+    );
+
+    await demoService.findManyByCursorPagination(
+      { cursor, name: '' },
+      DEMO_LIST_RESOURCE_KEY,
+    );
+
+    expect(
+      mockDemoRepository.findManyWithCursorPagination,
+    ).toHaveBeenCalledWith(expect.objectContaining({ filter: [] }));
+  });
+
   it('order 声明与 cursor 不一致应 400', async () => {
     const scope = buildCursorScope(DEMO_LIST_RESOURCE_KEY, {});
     const inputCursor = encodeCursor(

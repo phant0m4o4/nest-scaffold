@@ -54,12 +54,13 @@ export type DistributedLockUsingOptions = Partial<RedlockSettings>;
  * （只读取 `DISTRIBUTED_LOCK_*` 自己的配置，连接项缺失直接启动报错），
  * 与缓存等可随时清空的数据隔离，避免共享客户端被其他使用方影响。
  *
- * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化（见 README）。
+ * 存放锁的 Redis 必须 `maxmemory-policy noeviction` 并开启持久化。
  *
  * 支持：
  * - 自动重试和超时处理
  * - 锁的自动续期
- * - 死锁检测和预防
+ * - 回调结束后释放锁；失效时依靠 TTL，不提供业务死锁检测
+ * @see docs/modules/distributed-lock.md
  */
 @Injectable()
 export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
@@ -178,13 +179,13 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
    * 调用时可自定义：
    * - resources：资源键（不带前缀）
    * - ttlMs：锁 TTL（毫秒），默认 30_000
-   * - options：Redlock 行为与中止信号，见 {@link DistributedLockUsingOptions}
+   * - options：Redlock 重试、续期与漂移设置，见 {@link DistributedLockUsingOptions}
    *
    * @typeParam T 回调返回类型
    * @param params.resources 资源键（不带前缀），单个字符串或字符串数组
    * @param params.execute 受锁保护的执行函数，可接收 RedlockAbortSignal
    * @param params.ttlMs 可选，锁 TTL（毫秒），默认 30000
-   * @param params.options 可选，重试/续期/漂移/AbortSignal 等，见 DistributedLockUsingOptions
+   * @param params.options 可选，重试/续期/漂移设置，见 DistributedLockUsingOptions
    * @returns 回调的返回结果
    */
   async using<T>(params: {

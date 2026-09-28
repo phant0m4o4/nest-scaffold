@@ -13,7 +13,7 @@ import { IBottleneckModuleOptions } from './interfaces/bottleneck-config.interfa
  * - 在 `AppModule` 中以 `BottleneckModule.forRoot({ isGlobal: true })` 注册为全局模块
  * - 其他模块直接注入 `BottleneckService` 即可使用，无需重复 import
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/bottleneck.md 查看完整使用示例与配置说明
  */
 @Module({
   imports: [ConfigModule.forFeature(bottleneckConfig)],

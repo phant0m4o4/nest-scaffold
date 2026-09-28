@@ -9,7 +9,8 @@ import appConfig, {
 /** 每个用例只声明自己关心的变量，其余由本函数补齐必填项 */
 /** 测试用 32 字节主密钥（64 hex），非生产密钥 */
 const TEST_MASTER_KEY =
-  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+const EXAMPLE_MASTER_KEY = '0123456789abcdef'.repeat(4);
 
 function stubEnvironment(overrides: Record<string, string | undefined>): void {
   vi.stubEnv('NODE_ENV', EnvironmentEnum.DEVELOPMENT);
@@ -40,6 +41,44 @@ describe('appConfig', () => {
 
       expect(() => appConfig()).toThrow(/APP_MASTER_KEY/);
     });
+
+    it.each([EXAMPLE_MASTER_KEY, EXAMPLE_MASTER_KEY.toUpperCase()])(
+      '生产环境应拒绝公开示例主密钥（忽略 hex 大小写）：%s',
+      (masterKey) => {
+        stubEnvironment({
+          NODE_ENV: EnvironmentEnum.PRODUCTION,
+          APP_CORS_DOMAINS: 'https://app.example.invalid',
+          APP_MASTER_KEY: masterKey,
+        });
+
+        expect(() => appConfig()).toThrow(/APP_MASTER_KEY/);
+      },
+    );
+
+    it('生产环境应接受非示例的有效主密钥', () => {
+      stubEnvironment({
+        NODE_ENV: EnvironmentEnum.PRODUCTION,
+        APP_CORS_DOMAINS: 'https://app.example.invalid',
+      });
+
+      expect(appConfig().masterKey).toEqual(
+        Buffer.from(TEST_MASTER_KEY, 'hex'),
+      );
+    });
+
+    it.each([EnvironmentEnum.DEVELOPMENT, EnvironmentEnum.TEST])(
+      '%s 环境仍可使用公开示例主密钥',
+      (environment) => {
+        stubEnvironment({
+          NODE_ENV: environment,
+          APP_MASTER_KEY: EXAMPLE_MASTER_KEY,
+        });
+
+        expect(appConfig().masterKey).toEqual(
+          Buffer.from(EXAMPLE_MASTER_KEY, 'hex'),
+        );
+      },
+    );
   });
 
   describe('trustProxy', () => {
@@ -104,7 +143,7 @@ describe('appConfig', () => {
   });
 
   describe('corsCredentials', () => {
-    it('未设置时应为 true（本项目使用 Cookie Session）', () => {
+    it('未设置时应默认允许跨域凭据', () => {
       stubEnvironment({ APP_CORS_CREDENTIALS: undefined });
 
       expect(appConfig().corsCredentials).toBe(true);
@@ -284,6 +323,18 @@ describe('appConfig', () => {
       expect(() => appConfig()).toThrow(/APP_PORT/);
 
       stubEnvironment({ APP_PORT: '-1' });
+      expect(() => appConfig()).toThrow(/APP_PORT/);
+    });
+
+    it('应接受 65535 端口上限', () => {
+      stubEnvironment({ APP_PORT: '65535' });
+
+      expect(appConfig().port).toBe(65535);
+    });
+
+    it.each(['65536', '100000'])('应拒绝超出端口范围的值：%s', (port) => {
+      stubEnvironment({ APP_PORT: port });
+
       expect(() => appConfig()).toThrow(/APP_PORT/);
     });
   });

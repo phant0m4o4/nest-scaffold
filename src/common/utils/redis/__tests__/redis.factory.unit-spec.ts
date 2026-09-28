@@ -2,6 +2,7 @@ import type { RedisConnectionConfig } from '@/common/utils/redis/redis-connectio
 import { EventEmitter } from 'events';
 import type { PinoLogger } from 'nestjs-pino';
 import {
+  afterEach,
   beforeEach,
   describe,
   expect,
@@ -69,6 +70,8 @@ describe('redis.factory', () => {
     vi.clearAllMocks();
     redisInstances.length = 0;
   });
+
+  afterEach(() => vi.useRealTimers());
 
   describe('createRedisClient', () => {
     it('在 single 模式下应使用 Redis 构造函数透传 host/port/password/db', () => {
@@ -175,6 +178,45 @@ describe('redis.factory', () => {
   });
 
   describe('closeRedisClient', () => {
+    it.each(['resolve', 'reject'] as const)(
+      'quit 提前 %s 时应立即清理关闭超时计时器',
+      async (settlement) => {
+        vi.useFakeTimers();
+        const client = new MockRedisClient();
+        if (settlement === 'reject') {
+          client.quit.mockRejectedValueOnce(new Error('quit-failed'));
+        }
+
+        await closeRedisClient({
+          client: client as unknown as Redis,
+          logger: buildMockLogger(),
+        });
+
+        expect(vi.getTimerCount()).toBe(0);
+      },
+    );
+
+    it('quit 永不结束时应在 5 秒后强制断开并清理计时器', async () => {
+      vi.useFakeTimers();
+      const client = new MockRedisClient();
+      client.quit.mockImplementationOnce(() => new Promise(() => {}));
+      const logger = buildMockLogger();
+      const close = closeRedisClient({
+        client: client as unknown as Redis,
+        logger,
+      });
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await close;
+
+      expect(client.disconnect).toHaveBeenCalledOnce();
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'redis_close_warn' }),
+        expect.any(String),
+      );
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('在客户端 status 为 ready 时应调用 quit 并打印平滑关闭日志', async () => {
       const mockClient = new MockRedisClient([]);
       mockClient.status = 'ready';

@@ -34,7 +34,7 @@ type QueueRegisterAsyncOptions = RegisterQueueAsyncOptions &
  * - 通过 registerQueue / registerQueueAsync 注册业务队列，
  *   开发环境自动将队列注册到 Bull Board
  * - 支持通过 globalConcurrency 选项设置跨进程全局并发限制
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/queue.md 查看完整使用示例与配置说明
  */
 @Module({
   imports: [

@@ -253,6 +253,19 @@ describe('生产镜像端到端验证', { concurrent: false }, () => {
     },
   );
 
+  it('给定公开示例主密钥，生产进程应拒绝启动且不输出密钥值', async () => {
+    const exampleKey = '0123456789abcdef'.repeat(4);
+    const result = await app.exec(['timeout', '20', 'node', 'dist/main'], {
+      env: { APP_MASTER_KEY: exampleKey, APP_PORT: '3001' },
+    });
+    expect(result.exitCode, result.output).toBe(1);
+    expect(result.output).toContain('生产环境禁止使用公开示例主密钥');
+    expect(result.output).not.toContain(exampleKey);
+    expect(result.output).not.toContain(
+      'Nest application successfully started',
+    );
+  });
+
   // 必须最后执行：真实信号发给镜像 PID 1，而不是直接调用内部生命周期方法。
   it('给定已启动的生产应用，收到 SIGTERM 后应释放连接并正常退出', async () => {
     await docker(['kill', '--signal=SIGTERM', app.getId()]);

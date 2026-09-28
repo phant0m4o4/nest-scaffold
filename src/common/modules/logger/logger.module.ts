@@ -5,6 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { Request, Response } from 'express';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
+import { stdSerializers } from 'pino';
+import { serializeLogError } from './serialize-log-error';
 
 /**
  * 构建 pino-roll 文件落盘 transport 配置
@@ -102,15 +104,6 @@ function _buildProdConfig(logFileEnable: boolean, logFilePath: string): object {
   return {
     // 生产环境使用 info 级别，减少日志量
     level: 'info',
-    // 敏感字段脱敏：在日志中自动替换为 [Redacted]
-    redact: {
-      paths: [
-        'req.headers.authorization', // Bearer Token
-        'req.headers.cookie', // Cookie
-        'res.headers["set-cookie"]', // Set-Cookie 响应头
-        'password', // 密码字段
-      ],
-    },
     transport: {
       targets: [
         // 控制台输出结构化 JSON（destination: 1 = stdout）
@@ -128,11 +121,12 @@ function _buildProdConfig(logFileEnable: boolean, logFilePath: string): object {
  * 日志模块
  * @description 封装 nestjs-pino，根据运行环境自动选择日志策略：
  *   - 开发/测试环境：debug 级别 + pino-pretty 彩色控制台
- *   - 生产环境：info 级别 + 结构化 JSON + 敏感字段脱敏
+ *   - 生产环境：info 级别 + 结构化 JSON
+ *   - 所有环境：指定凭据字段脱敏、错误诊断字段白名单
  *   - 所有环境：可选通过 LOG_FILE_ENABLE 启用 pino-roll 文件落盘
  *
  * 各业务模块通过 @InjectPinoLogger() 注入即可使用。
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/logger.md 查看完整使用示例与配置说明
  */
 @Module({
   exports: [PinoLoggerModule],
@@ -169,6 +163,23 @@ export class LoggerModule {
             const logFilePath = `${logDir}/${name ?? 'app'}.log`;
             return {
               pinoHttp: {
+                // 直接交给错误白名单，避免标准 err serializer 先读 getter 或改写冻结对象。
+                wrapSerializers: false,
+                serializers: {
+                  req: stdSerializers.req,
+                  res: stdSerializers.res,
+                  error: serializeLogError,
+                  err: serializeLogError,
+                },
+                // 各 transport 之前统一脱敏，开发文件日志也不能记录凭据。
+                redact: {
+                  paths: [
+                    'req.headers.authorization',
+                    'req.headers.cookie',
+                    'res.headers["set-cookie"]',
+                    'password',
+                  ],
+                },
                 // 始终由服务端生成请求 ID，并通过 X-Request-Id 响应头回显给客户端
                 // 便于前后端联调和跨系统日志关联
                 genReqId: (_req: Request, res: Response): string => {

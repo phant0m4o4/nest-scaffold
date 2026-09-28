@@ -42,6 +42,7 @@ interface IRedisConnectionEnvInput {
 /** 解析 `host:port,host:port` 形式的节点列表 */
 function parseHostPortPairs(
   input: string | undefined,
+  envName: string,
 ): Array<{ host: string; port: number }> {
   if (!input) {
     return [];
@@ -50,14 +51,20 @@ function parseHostPortPairs(
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
-    .map((item) => {
-      const [host, port] = item.split(':');
-      const parsedPort = Number(port);
-      if (!host || Number.isNaN(parsedPort)) {
-        throw new Error(`Redis 节点格式错误: ${item}`);
+    .map((item, index) => {
+      const match = /^([^:\s]+):([0-9]+)$/.exec(item);
+      const parsedPort = Number(match?.[2]);
+      if (!match || !isValidPort(parsedPort)) {
+        throw new Error(
+          `Redis 节点格式错误: 环境变量 ${envName} 第 ${index + 1} 个节点需为 host:port，端口范围 1–65535`,
+        );
       }
-      return { host, port: parsedPort };
+      return { host: match[1], port: parsedPort };
     });
+}
+
+function isValidPort(port: number): boolean {
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
 
 /** 断言必填字段存在，缺失时用完整环境变量名报错（启动即失败） */
@@ -80,7 +87,10 @@ function requireNodes(
   envPrefix: string,
   suffix: string,
 ): Array<{ host: string; port: number }> {
-  const nodes = parseHostPortPairs(requireField(value, envPrefix, suffix));
+  const nodes = parseHostPortPairs(
+    requireField(value, envPrefix, suffix),
+    `${envPrefix}_${suffix}`,
+  );
   if (nodes.length === 0) {
     throw new Error(
       `Redis 连接配置无效: 环境变量 ${envPrefix}_${suffix} 未包含任何有效的 host:port 节点`,
@@ -107,11 +117,17 @@ export function resolveRedisConnection(
       ? undefined
       : input.password;
   if (mode === 'single') {
+    const port = requireField(input.port, envPrefix, 'PORT');
+    if (!isValidPort(port)) {
+      throw new Error(
+        `Redis 连接配置无效: 环境变量 ${envPrefix}_PORT 必须是 1–65535 的整数`,
+      );
+    }
     return {
       mode,
       single: {
         host: requireField(input.host, envPrefix, 'HOST'),
-        port: requireField(input.port, envPrefix, 'PORT'),
+        port,
         password,
         db: requireField(input.db, envPrefix, 'DB'),
       },

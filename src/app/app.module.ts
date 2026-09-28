@@ -15,29 +15,29 @@ import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.in
 
 @Module({
   imports: [
-    //配置模块(全局)
+    // 配置模块
     ConfigModule.forRoot({
       cache: true,
       expandVariables: true,
       load: [appConfig],
     }),
-    //日志模块(全局)
+    // 日志模块（全局）
     LoggerModule.forRoot({ name: 'app' }),
-    //国际化模块(全局)
+    // 国际化模块（全局）
     I18nModule,
-    //缓存模块(全局)
+    // 缓存模块（全局）
     CacheModule,
-    //数据库模块(全局,MySQL;PG 版见 @/common/modules/database/pgsql)
+    // 数据库模块（全局，默认 MySQL；可按需切换 PostgreSQL）
     DatabaseModule,
-    // 分布式锁模块(全局)
+    // 分布式锁模块（全局）
     DistributedLockModule,
-    // 队列模块(全局)
+    // 队列基础配置；业务队列仍需按模块注册
     QueueModule,
-    // API模块
+    // API 业务模块
     ApiModule,
   ],
   providers: [
-    // 全局响应拦截器 用于添加statusCode到响应头中
+    // 全局响应拦截器：在响应体中添加 statusCode，保留 data / meta
     {
       provide: APP_INTERCEPTOR,
       useClass: GlobalResponseInterceptor,

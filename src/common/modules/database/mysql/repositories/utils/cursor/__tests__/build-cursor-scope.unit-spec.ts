@@ -36,7 +36,18 @@ describe('buildCursorScope', () => {
   it('空串 / null 筛选应与未传筛选等价', () => {
     const empty = buildCursorScope('demo.list', {});
     expect(buildCursorScope('demo.list', { name: '' })).toBe(empty);
-    expect(buildCursorScope('demo.list', { name: '   ' })).toBe(empty);
+    expect(buildCursorScope('demo.list', { name: undefined })).toBe(empty);
     expect(buildCursorScope('demo.list', { name: null })).toBe(empty);
+  });
+
+  it('非空的空白筛选仍会生成 LIKE 条件，必须保留并区分具体内容', () => {
+    const empty = buildCursorScope('demo.list', {});
+    const oneSpace = buildCursorScope('demo.list', { name: ' ' });
+    const threeSpaces = buildCursorScope('demo.list', { name: '   ' });
+
+    expect(oneSpace).not.toBe(empty);
+    expect(threeSpaces).not.toBe(empty);
+    expect(threeSpaces).not.toBe(oneSpace);
+    expect(canonicalizeFilterForScope({ name: '   ' })).toBe('{"name":"   "}');
   });
 });

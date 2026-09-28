@@ -51,6 +51,20 @@ describe.each([
     vi.stubEnv(`${prefix}_CLUSTER_NODES`, '127.0.0.1:7000');
     expect(() => config()).toThrow(`${prefix}_MODE`);
   });
+
+  it('单机端口越界时应在配置阶段拒绝', () => {
+    stubConnection('single');
+    vi.stubEnv(`${prefix}_PORT`, '65536');
+
+    expect(() => config()).toThrow(`${prefix}_PORT`);
+  });
+
+  it('哨兵节点端口越界时应在配置阶段拒绝', () => {
+    stubConnection('sentinel');
+    vi.stubEnv(`${prefix}_SENTINELS`, 'redis.example.invalid:65536');
+
+    expect(() => config()).toThrow(`${prefix}_SENTINELS`);
+  });
 });
 
 it('内存限流仍不要求 Redis 连接配置', () => {

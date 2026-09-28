@@ -32,7 +32,9 @@ export function encodeCursor(
 ): string {
   assertMasterKey(masterKey);
   const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', masterKey, iv);
+  const cipher = createCipheriv('aes-256-gcm', masterKey, iv, {
+    authTagLength: 16,
+  });
   const encrypted = Buffer.concat([
     cipher.update(JSON.stringify(payload), 'utf8'),
     cipher.final(),
@@ -60,6 +62,7 @@ export function decodeCursor(token: string, masterKey: Buffer): CursorPayload {
       'aes-256-gcm',
       masterKey,
       Buffer.from(ivPart, 'base64url'),
+      { authTagLength: 16 },
     );
     decipher.setAuthTag(Buffer.from(authTagPart, 'base64url'));
     const decrypted = Buffer.concat([

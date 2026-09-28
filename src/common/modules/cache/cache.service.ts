@@ -38,7 +38,7 @@ interface IBatchResult<T> {
  * 直接启动报错）：缓存可随时清空/被淘汰，禁止与锁、队列等不可丢数据的
  * 服务共用一个 DB。
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/cache.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class CacheService implements OnModuleInit, OnModuleDestroy {
@@ -161,6 +161,19 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return await this._redis.get(this._buildFullKey(key));
   }
 
+  /** 只有显式 -1 才允许永久缓存，非法负数不能意外取消过期时间。 */
+  private _validateTtl(ttlSeconds: number): void {
+    if (ttlSeconds === 0) {
+      throw new Error('缓存 TTL 时间不能为 0');
+    }
+    if (
+      !Number.isSafeInteger(ttlSeconds) ||
+      (ttlSeconds < 0 && ttlSeconds !== -1)
+    ) {
+      throw new Error('缓存 TTL 必须为正安全整数（秒）或 -1');
+    }
+  }
+
   /**
    * 设置原始字符串值到 Redis
    * @private
@@ -170,9 +183,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     value: string,
     ttlSeconds: number = this._defaultTtlSeconds,
   ): Promise<void> {
-    if (ttlSeconds === 0) {
-      throw new Error('缓存 TTL 时间不能为 0');
-    }
+    this._validateTtl(ttlSeconds);
     const fullKey = this._buildFullKey(key);
     const result =
       ttlSeconds < 0
@@ -271,9 +282,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     if (items.length === 0) {
       return 0;
     }
-    if (ttlSeconds === 0) {
-      throw new Error('缓存 TTL 时间不能为 0');
-    }
+    this._validateTtl(ttlSeconds);
     // 先校验并序列化全部输入，避免后续项非法时前面的键已经写入。
     const preparedItems = items.map((item) => ({
       fullKey: this._buildFullKey(item.key),
@@ -362,6 +371,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     if (ttlSeconds <= 0) {
       throw new Error('TTL 时间必须大于 0');
     }
+    this._validateTtl(ttlSeconds);
     const fullKey = this._buildFullKey(key);
     const result = await this._redis.expire(fullKey, ttlSeconds);
     return result === 1;

@@ -1,3 +1,4 @@
+import { normalizeError } from '@/common/utils/normalize-error';
 import {
   closeRedisClient,
   createRedisClient,
@@ -30,7 +31,7 @@ const CONNECTION_READY_TIMEOUT_MS = 10_000;
  * - 令牌桶算法：支持突发流量处理
  * - 优先级队列：支持任务优先级调度
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/bottleneck.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class BottleneckService implements OnModuleInit, OnModuleDestroy {
@@ -89,7 +90,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       this._bottleneckConnection.on('error', (error) => {
         this._logger.error(
           {
-            error: this._normalizeError(error),
+            error: normalizeError(error),
             event: 'bottleneck_connection_error',
           },
           'Bottleneck Connection 连接错误',
@@ -101,7 +102,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     } catch (error: unknown) {
       this._logger.error(
         {
-          error: this._normalizeError(error),
+          error: normalizeError(error),
           event: 'bottleneck_redis_connect_failed',
         },
         'Bottleneck Redis 连接失败',
@@ -248,14 +249,6 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
 
   // ---------- 私有方法 ----------
 
-  /** 将未知错误归一化为 Error 实例 */
-  private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-    return new Error(String(error));
-  }
-
   /**
    * 创建 Bottleneck IORedisConnection 实例
    *
@@ -326,7 +319,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     } catch (error: unknown) {
       this._logger.error(
         {
-          error: this._normalizeError(error),
+          error: normalizeError(error),
           event: 'limiter_ready_failed',
           key,
         },
@@ -348,7 +341,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
       } catch (error: unknown) {
         this._logger.warn(
           {
-            error: this._normalizeError(error),
+            error: normalizeError(error),
             event: 'limiter_disconnect_error',
             key,
           },
@@ -375,7 +368,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
     } catch (error: unknown) {
       this._logger.warn(
         {
-          error: this._normalizeError(error),
+          error: normalizeError(error),
           event: 'bottleneck_connection_close_warn',
         },
         '关闭 Bottleneck Connection 时发生错误，可能已关闭',
@@ -395,7 +388,7 @@ export class BottleneckService implements OnModuleInit, OnModuleDestroy {
   /** 为限流器绑定事件监听 */
   private _setupLimiterEvents(limiter: IBottleneckLimiter, key: string): void {
     limiter.on('error', (error) => {
-      const normalizedError = this._normalizeError(error);
+      const normalizedError = normalizeError(error);
       if (this._isInfoCommandError(error)) {
         this._logger.debug(
           { error: normalizedError, event: 'limiter_info_error', key },

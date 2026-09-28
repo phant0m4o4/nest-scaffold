@@ -94,7 +94,7 @@ class DrizzleQueryLogger implements DrizzleLogger {
  * - 连接池生命周期管理（启动验证、平滑关闭）
  * - 开发环境 SQL 查询日志
  *
- * @see README.md 查看完整使用示例与配置说明
+ * @see docs/modules/database-mysql.md 查看完整使用示例与配置说明
  */
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {

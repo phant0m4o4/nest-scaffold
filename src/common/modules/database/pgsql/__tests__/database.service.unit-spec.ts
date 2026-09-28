@@ -3,6 +3,7 @@ import type { PinoLogger } from 'nestjs-pino';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pgsqlMocks = vi.hoisted(() => ({
+  instances: [] as import('node:events').EventEmitter[],
   pool: {
     connect: vi.fn(),
     end: vi.fn(),
@@ -10,12 +11,20 @@ const pgsqlMocks = vi.hoisted(() => ({
   drizzle: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock('pg', () => ({
-  Pool: class MockPool {
-    connect = pgsqlMocks.pool.connect;
-    end = pgsqlMocks.pool.end;
-  },
-}));
+vi.mock('pg', async () => {
+  const { EventEmitter } = await import('node:events');
+  return {
+    Pool: class MockPool extends EventEmitter {
+      connect = pgsqlMocks.pool.connect;
+      end = pgsqlMocks.pool.end;
+
+      constructor() {
+        super();
+        pgsqlMocks.instances.push(this);
+      }
+    },
+  };
+});
 vi.mock('drizzle-orm/node-postgres', () => ({ drizzle: pgsqlMocks.drizzle }));
 
 import { DatabaseService } from '../database.service';
@@ -48,6 +57,7 @@ describe('PostgreSQL DatabaseService 生命周期', () => {
   };
   beforeEach(() => {
     vi.clearAllMocks();
+    pgsqlMocks.instances.length = 0;
     client.query.mockResolvedValue({ rows: [{ '?column?': 1 }] });
     pgsqlMocks.pool.connect.mockResolvedValue(client);
     pgsqlMocks.pool.end.mockResolvedValue(undefined);
@@ -70,5 +80,32 @@ describe('PostgreSQL DatabaseService 生命周期', () => {
 
     expect(client.release).toHaveBeenCalledOnce();
     expect(pgsqlMocks.pool.end).not.toHaveBeenCalled();
+  });
+
+  it('空闲连接错误应记录而不抛出未处理异常或记录连接对象', async () => {
+    const logger = buildLogger();
+    const service = new DatabaseService(buildConfigService(), logger);
+    await service.onModuleInit();
+    const idleClient = {
+      connectionParameters: { password: 'unit-test-only-password' },
+    };
+    const error = Object.assign(new Error('idle connection terminated'), {
+      client: idleClient,
+    });
+
+    expect(() =>
+      pgsqlMocks.instances[0].emit('error', error, idleClient),
+    ).not.toThrow();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        event: 'db_pool_error',
+        error: { name: error.name, message: error.message, stack: error.stack },
+      },
+      '数据库 PostgreSQL 空闲连接发生错误',
+    );
+    expect(pgsqlMocks.pool.end).not.toHaveBeenCalled();
+    await service.onModuleDestroy();
+    expect(pgsqlMocks.pool.end).toHaveBeenCalledOnce();
   });
 });

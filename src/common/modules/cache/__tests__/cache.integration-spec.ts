@@ -178,4 +178,38 @@ describe('缓存服务与真实 Redis', () => {
       Promise.all(keys.map((key) => cacheService.get(key))),
     ).resolves.toEqual([null, null, null]);
   });
+
+  it.each([-2, -Infinity, NaN, Infinity, 1.5])(
+    '非法 TTL %s 不应产生永久缓存或改写已有数据',
+    async (ttl) => {
+      const [singleKey, rawKey, batchKey] = keysFor(`invalid-ttl-${ttl}`);
+      await cacheService.set(singleKey, 'original', 120);
+
+      await expect(cacheService.set(singleKey, 'changed', ttl)).rejects.toThrow(
+        'TTL',
+      );
+      await expect(cacheService.setRaw(rawKey, 'value', ttl)).rejects.toThrow(
+        'TTL',
+      );
+      await expect(
+        cacheService.setBatch([{ key: batchKey, value: true }], ttl),
+      ).rejects.toThrow('TTL');
+      await expect(cacheService.expire(singleKey, ttl)).rejects.toThrow('TTL');
+      await expect(cacheService.get(singleKey)).resolves.toBe('original');
+      await expect(cacheService.getTTL(singleKey)).resolves.toBeGreaterThan(0);
+      await expect(cacheService.get(rawKey)).resolves.toBeNull();
+      await expect(cacheService.get(batchKey)).resolves.toBeNull();
+    },
+  );
+
+  it('单次写入应保留永久缓存与显式设置过期时间的语义', async () => {
+    const [jsonKey, rawKey] = keysFor('single-ttl');
+    await cacheService.set(jsonKey, { value: true }, -1);
+    await cacheService.setRaw(rawKey, 'raw', -1);
+    await expect(cacheService.getTTL(jsonKey)).resolves.toBe(-1);
+    await expect(cacheService.getTTL(rawKey)).resolves.toBe(-1);
+    await expect(cacheService.expire(rawKey, 120)).resolves.toBe(true);
+    await expect(cacheService.getTTL(rawKey)).resolves.toBeGreaterThan(0);
+    await expect(cacheService.getRaw(rawKey)).resolves.toBe('raw');
+  });
 });

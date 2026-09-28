@@ -103,7 +103,7 @@ export function assertProductionCorsSecurity(params: {
  *
  * .env 示例：
  * NODE_ENV=development
- * APP_NAME=sjhy_wallet_backend
+ * APP_NAME=nest-scaffold
  * APP_PORT=3000
  * APP_ADDRESS=127.0.0.1
  * APP_BASE_URL=http://127.0.0.1:3000
@@ -120,42 +120,56 @@ export function assertProductionCorsSecurity(params: {
  *
  * CORS 说明：
  * - `APP_CORS_DOMAINS`：英文逗号分隔的允许来源白名单，精确匹配（协议 + 域名 + 端口需完全一致）
- * - `APP_CORS_CREDENTIALS`：是否允许跨域请求携带 Cookie，默认 true（本项目使用 Cookie Session）
+ * - `APP_CORS_CREDENTIALS`：是否允许跨域请求携带 Cookie，默认 true；项目未内置 Session 认证
  * - 留空或含 `*`：允许任意来源（反射请求 Origin）
  * - 生产环境若留空 / `*`+凭证，默认阻断启动；仅当上游网关确实统一管理
  *   CORS 时，显式设置 `APP_CORS_MANAGED_BY_PROXY=true` 跳过阻断
  */
-const environmentSchema = z.object({
-  NODE_ENV: z.enum(EnvironmentEnum),
-  APP_NAME: z.string().min(1),
-  APP_PORT: optionalEnvInt(1),
-  APP_ADDRESS: z.string().min(1).optional(),
-  APP_BASE_URL: z.string().min(1).optional(),
-  APP_CORS_DOMAINS: z.string().optional(),
-  // 空串/空白视为未设置：`${MISSING}` 展开为空串时不应让 z.stringbool() 校验失败
-  APP_CORS_CREDENTIALS: z.preprocess(
-    (value) =>
-      typeof value === 'string' && value.trim() === '' ? undefined : value,
-    z.stringbool().optional(),
-  ),
-  APP_CORS_MANAGED_BY_PROXY: z.preprocess(
-    (value) =>
-      typeof value === 'string' && value.trim() === '' ? undefined : value,
-    z.stringbool().optional(),
-  ),
-  APP_TRUST_PROXY: z.string().optional(),
-  /**
-   * 应用主密钥：64 位 hex = 32 字节，用于游标等 AES-256-GCM。
-   * AES-256 固定要 32 字节 key；此处 hex 解码后直接使用，故必须正好 64 位高熵 hex。
-   * 生成：openssl rand -hex 32
-   */
-  APP_MASTER_KEY: z
-    .string()
-    .regex(
-      /^[0-9a-fA-F]{64}$/,
-      'APP_MASTER_KEY 必须是 64 位十六进制（32 字节；生成：openssl rand -hex 32）',
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(EnvironmentEnum),
+    APP_NAME: z.string().min(1),
+    APP_PORT: optionalEnvInt(1).refine(
+      (port) => port === undefined || port <= 65535,
+      '端口不能超过 65535',
     ),
-});
+    APP_ADDRESS: z.string().min(1).optional(),
+    APP_BASE_URL: z.string().min(1).optional(),
+    APP_CORS_DOMAINS: z.string().optional(),
+    // 空串/空白视为未设置：`${MISSING}` 展开为空串时不应让 z.stringbool() 校验失败
+    APP_CORS_CREDENTIALS: z.preprocess(
+      (value) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+      z.stringbool().optional(),
+    ),
+    APP_CORS_MANAGED_BY_PROXY: z.preprocess(
+      (value) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+      z.stringbool().optional(),
+    ),
+    APP_TRUST_PROXY: z.string().optional(),
+    /**
+     * 应用主密钥：64 位 hex = 32 字节，用于游标等 AES-256-GCM。
+     * AES-256 固定要 32 字节 key；此处 hex 解码后直接使用，故必须正好 64 位高熵 hex。
+     * 生成：openssl rand -hex 32
+     */
+    APP_MASTER_KEY: z
+      .string()
+      .regex(
+        /^[0-9a-fA-F]{64}$/,
+        'APP_MASTER_KEY 必须是 64 位十六进制（32 字节；生成：openssl rand -hex 32）',
+      ),
+  })
+  .refine(
+    (env) =>
+      env.NODE_ENV !== EnvironmentEnum.PRODUCTION ||
+      env.APP_MASTER_KEY.toLowerCase() !== '0123456789abcdef'.repeat(4),
+    {
+      path: ['APP_MASTER_KEY'],
+      message:
+        '生产环境禁止使用公开示例主密钥，请用 openssl rand -hex 32 生成独立密钥',
+    },
+  );
 
 const appConfig = registerEnvAsConfig('app', environmentSchema, (env) => {
   const port = env.APP_PORT ?? 3000;
@@ -176,7 +190,7 @@ const appConfig = registerEnvAsConfig('app', environmentSchema, (env) => {
     address,
     baseUrl,
     corsDomains,
-    // 默认 true：本项目使用 Cookie Session，跨域请求需要携带凭证
+    // 默认允许跨域凭据；这只是 CORS 设置，不代表已装配 Session 认证。
     corsCredentials,
     corsManagedByProxy,
     trustProxy: parseTrustProxy(env.APP_TRUST_PROXY),

@@ -5,6 +5,7 @@ import { GlobalExceptionFilter } from '@/app/filters/global-exception.filter';
 import { GlobalResponseInterceptor } from '@/app/interceptors/global-response.interceptor';
 import { DemoRepository } from '@/app/repositories/demo.repository';
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
+import { BaseRepository } from '@/common/modules/database/mysql/repositories/base.repository';
 import { ForeignKeyConstraintViolationException } from '@/common/modules/database/common/repositories/exceptions/foreign-key-constraint-violation-exception';
 import appConfig from '@/configs/app.config';
 import * as schema from '@/database/mysql/schemas';
@@ -19,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
+import { mysqlTable, serial, timestamp } from 'drizzle-orm/mysql-core';
 import type { Server } from 'node:http';
 import { getLoggerToken, type PinoLogger } from 'nestjs-pino';
 import * as mysql from 'mysql2/promise';
@@ -41,6 +43,19 @@ const TEST_MASTER_KEY = Buffer.from(
   '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   'hex',
 );
+
+const softDeleteSchema = mysqlTable('soft_delete_alias_probe', {
+  id: serial().primaryKey(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+class SoftDeleteProbeRepository extends BaseRepository<
+  typeof softDeleteSchema
+> {
+  constructor(db: MySql2Database<typeof schema>) {
+    super(softDeleteSchema, db);
+  }
+}
 
 const CREATE_DEMOS_SQL = `
 CREATE TABLE \`demos\` (
@@ -120,6 +135,7 @@ describe('Demo cursor pagination (integration)', () => {
   let pool: mysql.Pool;
   let app: INestApplication;
   let repository: DemoRepository;
+  let db: MySql2Database<typeof schema>;
 
   beforeAll(async () => {
     mysqlContainer = await new GenericContainer(MYSQL_IMAGE)
@@ -162,9 +178,7 @@ describe('Demo cursor pagination (integration)', () => {
     }
 
     await pool.query(CREATE_DEMOS_SQL);
-    const db = drizzle(pool, { schema, mode: 'default' }) as MySql2Database<
-      typeof schema
-    >;
+    db = drizzle(pool, { schema, mode: 'default' });
 
     @Module({
       controllers: [DemoController, AdminDemoController],
@@ -293,6 +307,35 @@ describe('Demo cursor pagination (integration)', () => {
       .expect(400);
   });
 
+  it('真正空串可沿用未筛选游标，空白字符串筛选必须使用独立游标', async () => {
+    const server = app.getHttpServer() as Server;
+    const first = asCursorBody(
+      await request(server)
+        .get('/demo')
+        .query({ limit: 2, order: 'id:asc' })
+        .expect(200),
+    );
+    expect(first.meta.nextCursor).not.toBeNull();
+    await request(server)
+      .get('/demo')
+      .query({
+        limit: 2,
+        order: 'id:asc',
+        name: '',
+        cursor: first.meta.nextCursor,
+      })
+      .expect(200);
+    await request(server)
+      .get('/demo')
+      .query({
+        limit: 2,
+        order: 'id:asc',
+        name: '   ',
+        cursor: first.meta.nextCursor,
+      })
+      .expect(400);
+  });
+
   it('改 order 后复用旧 cursor 应 400', async () => {
     const server = app.getHttpServer() as Server;
     const first = asCursorBody(
@@ -368,6 +411,47 @@ describe('Demo cursor pagination (integration)', () => {
     expect(firstIds.some((id) => secondIds.includes(id))).toBe(false);
   });
 
+  it('ISO 日期格式的名称按升降序翻页均不应重复或漏项', async () => {
+    const server = app.getHttpServer() as Server;
+    const names = [
+      '2026-09-01T00:00:00.000Z',
+      '2026-09-02T00:00:00.000Z',
+      '2026-09-03T00:00:00.000Z',
+    ];
+    for (const name of names) {
+      await repository.create({ data: { name, type: 'TYPE_2' } });
+    }
+
+    for (const direction of ['asc', 'desc']) {
+      const received: string[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < names.length; page++) {
+        const body = asCursorBody(
+          await request(server)
+            .get('/demo')
+            .query({
+              limit: 1,
+              type: 'TYPE_2',
+              order: `name:${direction},id:${direction}`,
+              cursor,
+            })
+            .expect(200),
+        );
+        expect(body.data).toHaveLength(1);
+        received.push(body.data[0].name);
+        if (page < names.length - 1) {
+          expect(typeof body.meta.nextCursor).toBe('string');
+        } else {
+          expect(body.meta.nextCursor).toBeNull();
+        }
+        cursor = body.meta.nextCursor ?? undefined;
+      }
+      expect(received).toEqual(
+        direction === 'asc' ? names : [...names].reverse(),
+      );
+    }
+  });
+
   it.each(['/demo', '/admin/demo'])(
     '%s 可空游标排序应始终返回 400',
     async (route) => {
@@ -417,5 +501,32 @@ describe('Demo cursor pagination (integration)', () => {
 
     await request(server).delete(`/admin/demo/${child.id}`).expect(200);
     await request(server).delete(`/admin/demo/${parent.id}`).expect(200);
+  });
+
+  it('deletedAt 映射为 deleted_at 时，单条和批量软删除都必须保留物理行', async () => {
+    await pool.query(`
+      CREATE TABLE soft_delete_alias_probe (
+        id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
+        deleted_at timestamp NULL
+      )
+    `);
+    const softRepository = new SoftDeleteProbeRepository(db);
+    const firstId = await softRepository.create({ data: {} });
+    const secondId = await softRepository.create({ data: {} });
+    expect(await softRepository.findAll()).toHaveLength(2);
+
+    await softRepository.delete({ id: firstId });
+    expect(await softRepository.findOne({ id: firstId })).toBeNull();
+    await softRepository.batchDelete({ ids: [secondId] });
+    expect(await softRepository.findAll()).toEqual([]);
+
+    const physicalRows = await db.select().from(softDeleteSchema);
+    expect(physicalRows.map((row) => row.id).sort((a, b) => a - b)).toEqual([
+      firstId,
+      secondId,
+    ]);
+    expect(physicalRows.every((row) => row.deletedAt instanceof Date)).toBe(
+      true,
+    );
   });
 });

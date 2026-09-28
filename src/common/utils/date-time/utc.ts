@@ -5,7 +5,7 @@ import Dayjs from './dayjs';
  * @see https://day.js.org/docs/en/timezone/utc
  * @example
  * ```ts
- * import Utc from '@/common/libs/date-time/utc';
+ * import Utc from '@/common/utils/date-time/utc';
  * const utc = Utc();
  * console.log(utc.format());
  * ```

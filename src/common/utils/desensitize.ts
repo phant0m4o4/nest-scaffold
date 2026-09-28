@@ -22,7 +22,8 @@ interface DesensitizeEmailOptions {
  * @example
  * desensitizeEmail('alice@example.com') // 'a****@example.com'
  * @example
- * desensitizeEmail('ab@example.com', { keepStart: 1, keepEnd: 1 }) // 'a*@example.com'
+ * desensitizeEmail('abc@example.com', { keepStart: 1, keepEnd: 1 }) // 'a*c@example.com'
+ * @notes 保留位数覆盖全部本地部分时不会掩码；不保证短输入一定被隐藏。
  * @notes 复杂脚本与宽字符时 `length` 基于 JavaScript UTF-16 码元计数。
  */
 export function desensitizeEmail(
@@ -66,9 +67,9 @@ interface DesensitizeMobileOptions {
  * @description 按配置对中间位进行掩码。
  * @param mobileNumber 手机号（不包含国家区号与分隔符）
  * @param options 配置项，详见 {@link DesensitizeMobileOptions}
- * @returns 脱敏后的手机号，如 `138****0021`
+ * @returns 脱敏后的手机号，如 `138*****021`
  * @example
- * desensitizeMobileNumber('13800000021') // '138****0021'
+ * desensitizeMobileNumber('13800000021') // '138*****021'
  * @example
  * desensitizeMobileNumber('123456', { keepStart: 1, keepEnd: 1, maskChar: '#' }) // '1####6'
  * @notes 不对输入做格式校验；如需校验请在外层完成。时间复杂度 O(n)。

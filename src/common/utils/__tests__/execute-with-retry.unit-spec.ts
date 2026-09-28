@@ -1,7 +1,10 @@
 import { getEventListeners } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { executeWithRetry } from '@/common/utils/execute-with-retry';
+import {
+  executeWithRetry,
+  type ExecuteWithRetryOptions,
+} from '@/common/utils/execute-with-retry';
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
@@ -18,6 +21,68 @@ afterEach(() => {
 });
 
 describe('异步重试与取消', () => {
+  it.each([NaN, Infinity, -Infinity, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    '无效尝试次数 %s 应在任务执行前拒绝',
+    async (count) => {
+      const task = vi.fn(async () => await Promise.resolve('完成'));
+      await expect(executeWithRetry(task, count, 0)).rejects.toThrow();
+      expect(task).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([NaN, Infinity, -Infinity, -1, 2_147_483_648])(
+    '无效基础延迟 %s 应在任务执行前拒绝',
+    async (delay) => {
+      const task = vi.fn(async () => await Promise.resolve('完成'));
+      await expect(executeWithRetry(task, 2, delay)).rejects.toThrow();
+      expect(task).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([NaN, Infinity, -Infinity, -1, 2_147_483_648])(
+    '无效最大延迟 %s 应在任务执行前拒绝',
+    async (maxDelayMs) => {
+      const task = vi.fn(async () => await Promise.resolve('完成'));
+      await expect(
+        executeWithRetry(task, 2, 0, { maxDelayMs }),
+      ).rejects.toThrow();
+      expect(task).not.toHaveBeenCalled();
+    },
+  );
+
+  it('指数退避应在 Node 定时器上限封顶而非溢出为 1ms', async () => {
+    vi.useFakeTimers();
+    const onRetry = vi.fn<NonNullable<ExecuteWithRetryOptions['onRetry']>>();
+    const task = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error('首次失败'))
+      .mockRejectedValueOnce(new Error('再次失败'))
+      .mockResolvedValue('完成');
+    const result = executeWithRetry(task, 3, 2_147_483_647, {
+      exponentialBackoff: true,
+      onRetry,
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(result).resolves.toBe('完成');
+    expect(onRetry.mock.calls.map((call) => call[2])).toEqual([
+      2_147_483_647, 2_147_483_647,
+    ]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('零延迟指数退避经过大量尝试后仍应保持零且不产生 NaN', async () => {
+    const task = vi.fn(async () => {
+      if (task.mock.calls.length < 1027) throw new Error('暂时失败');
+      return await Promise.resolve('完成');
+    });
+    const onRetry = vi.fn();
+    await expect(
+      executeWithRetry(task, 1027, 0, { exponentialBackoff: true, onRetry }),
+    ).resolves.toBe('完成');
+    expect(onRetry.mock.calls.every((call) => call[2] === 0)).toBe(true);
+  });
+
   it('信号已取消时不应调用任务或重试回调', async () => {
     const controller = new AbortController();
     const task = vi.fn(async () => await Promise.resolve('完成'));

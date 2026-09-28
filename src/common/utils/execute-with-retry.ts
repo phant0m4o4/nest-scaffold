@@ -6,8 +6,8 @@
  * - 中断：若提供 `signal`，执行任务、重试回调或延时等待期间均可中断，并抛出 `name = 'AbortError'` 的错误。
  * - 中断只停止本工具的等待与后续重试，不会强制终止已经开始的操作；调用方需把同一个 `signal` 传给支持取消的底层操作。
  * @param asyncFunction 要执行的异步函数（需返回 Promise）
- * @param maxRetryCount 最大重试次数，默认 3，必须 ≥ 1
- * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，必须 ≥ 0
+ * @param maxRetryCount 最大尝试次数，默认 3，必须为正安全整数
+ * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，须为 0~2147483647 的有限数值
  * @param options 可选项，详见 {@link ExecuteWithRetryOptions}
  * @returns 执行结果（成功时 resolve 第一次成功的返回值）
  * @throws 如果所有重试都失败，抛出最后一次捕获的错误；若被中断，抛出 `AbortError`
@@ -43,6 +43,9 @@
  */
 import { normalizeError } from './normalize-error';
 
+/** Node.js 超过此延迟会改为 1ms，不能直接传入 setTimeout。 */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 export interface ExecuteWithRetryOptions {
   /**
    * 自定义重试判定回调
@@ -66,7 +69,7 @@ export interface ExecuteWithRetryOptions {
   exponentialBackoff?: boolean;
   /** 是否引入抖动（随机 0.5x~1.0x），默认 false */
   jitter?: boolean;
-  /** 最大退避间隔（毫秒），用于对指数退避进行封顶；默认不封顶 */
+  /** 最大退避间隔（毫秒），默认以 Node.js 定时器上限封顶；须为 0~2147483647 的有限数值 */
   maxDelayMs?: number;
   /** 允许外部中断（被中断时抛出 name = 'AbortError' 的错误） */
   signal?: AbortSignal;
@@ -114,10 +117,12 @@ function computeDelayMs(
   options?: ExecuteWithRetryOptions,
 ): number {
   const { exponentialBackoff, jitter, maxDelayMs } = options ?? {};
+  // 避免大量零间隔重试时 0 * Infinity 得到 NaN。
+  if (baseDelayMs === 0) return 0;
   const raw = exponentialBackoff
     ? baseDelayMs * Math.pow(2, attemptIndex)
     : baseDelayMs;
-  const capped = Math.min(raw, maxDelayMs ?? raw);
+  const capped = Math.min(raw, maxDelayMs ?? MAX_TIMER_DELAY_MS);
   if (jitter) {
     const factor = 0.5 + Math.random() * 0.5; // 0.5x ~ 1.0x
     return Math.max(0, Math.floor(capped * factor));
@@ -156,8 +161,8 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 /**
  * 执行异步函数并在失败时按策略重试
  * @param asyncFunction 要执行的异步函数（需返回 Promise）
- * @param maxRetryCount 最大重试次数，默认 3，必须 ≥ 1
- * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，必须 ≥ 0
+ * @param maxRetryCount 最大尝试次数，默认 3，必须为正安全整数
+ * @param retryDelayMs 基础重试间隔（毫秒），默认 1000，须为 0~2147483647 的有限数值
  * @param options 可选项（指数退避、抖动、最大间隔、自定义判定、重试回调、AbortSignal）
  * @returns 第一次成功的返回值
  * @throws 若所有尝试均失败，抛出最后一次错误；若被中断，抛出 `AbortError`
@@ -169,11 +174,16 @@ export async function executeWithRetry<T>(
   retryDelayMs: number = 1000,
   options?: ExecuteWithRetryOptions,
 ): Promise<T> {
-  if (maxRetryCount < 1) {
-    throw new Error('最大重试次数必须至少为 1');
+  if (!Number.isSafeInteger(maxRetryCount) || maxRetryCount < 1) {
+    throw new RangeError('最大尝试次数必须为正安全整数');
   }
-  if (retryDelayMs < 0) {
-    throw new Error('重试延迟时间必须为非负数');
+  for (const delay of [retryDelayMs, options?.maxDelayMs]) {
+    if (
+      delay !== undefined &&
+      (!Number.isFinite(delay) || delay < 0 || delay > MAX_TIMER_DELAY_MS)
+    ) {
+      throw new RangeError('重试延迟必须为 0~2147483647 毫秒的有限数值');
+    }
   }
 
   const shouldRetry = options?.shouldRetry ?? (() => true);

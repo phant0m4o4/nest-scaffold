@@ -40,16 +40,21 @@ const QUIT_TIMEOUT_MS = 5_000;
  * 永不 resolve，超时后转为强制断开，避免平滑关闭流程永久挂起。
  * @private
  */
-function quitWithTimeout(client: RedisClient): Promise<unknown> {
-  return Promise.race([
-    client.quit(),
-    new Promise((_resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`quit 超过 ${QUIT_TIMEOUT_MS}ms 未完成`));
-      }, QUIT_TIMEOUT_MS);
-      timer.unref();
-    }),
-  ]);
+async function quitWithTimeout(client: RedisClient): Promise<unknown> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      client.quit(),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`quit 超过 ${QUIT_TIMEOUT_MS}ms 未完成`));
+        }, QUIT_TIMEOUT_MS);
+        timer.unref();
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**

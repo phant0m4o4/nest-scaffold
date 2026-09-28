@@ -7,9 +7,11 @@ import {
 import {
   and,
   asc,
+  type Column,
   count,
   desc,
   eq,
+  getTableColumns,
   gt,
   inArray,
   isNull,
@@ -50,9 +52,10 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     this._schema = schema;
     this._db = db;
     this._tableConfig = getTableConfig(schema);
-    const columns = this._tableConfig.columns;
-    this._isSoftDelete = !!columns.find(
-      (column) => column.name === this._softDeleteColumn,
+    // 按 Schema 属性识别；deletedAt 可以映射到 deleted_at 等 SQL 列名。
+    this._isSoftDelete = Object.hasOwn(
+      getTableColumns(schema),
+      this._softDeleteColumn,
     );
     const hasValidIdColumn = this._tableConfig.columns.some(
       (c) => c.name === 'id' && c.primary && c.dataType === 'number',
@@ -536,16 +539,17 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     for (let index = 0; index < cursor.length; index++) {
       const equalities: SQL[] = [];
       for (let prefix = 0; prefix < index; prefix++) {
+        const column = this._schemaColumn(cursor[prefix].column);
         equalities.push(
           eq(
-            this._schemaColumn(cursor[prefix].column),
-            coerceCursorValueForQuery(cursor[prefix].value),
+            column,
+            coerceCursorValueForQuery(cursor[prefix].value, column.dataType),
           ),
         );
       }
       const current = cursor[index];
       const column = this._schemaColumn(current.column);
-      const value = coerceCursorValueForQuery(current.value);
+      const value = coerceCursorValueForQuery(current.value, column.dataType);
       const comparison =
         current.direction === 'desc' ? lt(column, value) : gt(column, value);
       branches.push(
@@ -568,13 +572,13 @@ export abstract class BaseRepository<TSchema extends MySqlTable> {
     }));
   }
 
-  private _schemaColumn(columnName: string): SQL {
+  private _schemaColumn(columnName: string): Column {
     const column = (this._schema as unknown as Record<string, unknown>)[
       columnName
     ];
     if (!column) {
       throw new Error(`${this._tableConfig.name}: 无效的游标列: ${columnName}`);
     }
-    return column as unknown as SQL;
+    return column as Column;
   }
 }
