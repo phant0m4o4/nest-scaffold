@@ -1,6 +1,6 @@
 # QueueModule
 
-[源码](../../src/common/modules/queue/) · [配置](../../src/configs/queue.config.ts) · [基础设施选型](../development/infra-modules.md)
+[源码](../../apps/server/src/common/modules/queue/) · [配置](../../apps/server/src/configs/queue.config.ts) · [基础设施选型](../development/infra-modules.md)
 
 基于 [BullMQ](https://docs.bullmq.io/) 的队列模块，封装了队列注册、Redis 连接管理、并发控制以及开发环境下的 [Bull Board](https://github.com/felixmosh/bull-board) 仪表盘自动集成。
 
@@ -24,13 +24,13 @@
 | `@bull-board/express` | Bull Board Express 适配器 |
 | `@bull-board/nestjs`  | Bull Board NestJS 集成    |
 
-这些包均由 [package.json](../../package.json) 管理；Bull Board 在模块文件中静态导入，因此保留为运行依赖，环境判断控制的是模块与路由注册。
+这些包均由 [API package.json](../../apps/server/package.json) 管理；Bull Board 在模块文件中静态导入，因此保留为运行依赖，环境判断控制的是模块与路由注册。
 
 ## 环境变量
 
 > BullMQ 的 Worker 需要 blocking / subscribe 等专用连接，必须独享 Redis 连接（这也是本项目"每个模块自建 Redis 连接"约定的一部分）；因此 QueueModule 的 Redis 连接参数独立声明。
 >
-> **连接配置自带且必填**：单机模式要求 `QUEUE_REDIS_HOST`/`PORT`，两种模式均要求 `QUEUE_REDIS_DB`，缺失直接启动报错。`.env` 中可用 `${REDIS_HOST}` 等锚点变量引用公共地址（框架启用了 `expandVariables`）；队列走独立 Redis 实例或独立 DB 时改这里的 `QUEUE_REDIS_*` 值即可（[.env.example](../../.env.example) 推荐 `QUEUE_REDIS_DB=2`，与缓存 0、锁 1 互不共用）。
+> **连接配置自带且必填**：单机模式要求 `QUEUE_REDIS_HOST`/`PORT`，两种模式均要求 `QUEUE_REDIS_DB`，缺失直接启动报错。`.env` 中可用 `${REDIS_HOST}` 等锚点变量引用公共地址（框架启用了 `expandVariables`）；队列走独立 Redis 实例或独立 DB 时改这里的 `QUEUE_REDIS_*` 值即可（[.env.example](../../apps/server/.env.example) 推荐 `QUEUE_REDIS_DB=2`，与缓存 0、锁 1 互不共用）。
 >
 > 支持 `single`（单节点）和 `sentinel`（哨兵）两种模式；默认 single，哨兵模式通过 `QUEUE_REDIS_SENTINEL_MASTER_NAME` / `QUEUE_REDIS_SENTINELS` 配置。模块只提供连接选项，连接创建、Worker 平滑停机与连接关闭均由 BullMQ 管理。
 
@@ -105,8 +105,10 @@ export class NotificationModule {}
 
 ```typescript
 import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
+@Injectable()
 export class EmailService {
   constructor(@InjectQueue('email') private readonly _emailQueue: Queue) {}
 
@@ -129,6 +131,8 @@ export class EmailProcessor extends WorkerHost {
   }
 }
 ```
+
+在对应业务模块的 `providers` 中注册 `EmailService` 与 `EmailProcessor`，服务类使用 `@Injectable()`。只注册队列不会自动发现或启动任意处理器文件。默认脚手架只装配队列基础配置，没有预置业务队列、邮件服务或 Worker。
 
 ## 并发控制
 

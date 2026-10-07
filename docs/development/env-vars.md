@@ -1,12 +1,16 @@
 # 环境变量与配置
 
-完整可复制示例只维护在根目录 [.env.example](../../.env.example)。本地 `.env` 不入库，不用示例覆盖已有凭证；部署时由运行环境提供实际值。变量校验与默认值以 [src/configs](../../src/configs) 为准。
+本页描述 `apps/server` 的服务端配置，示例维护在 [apps/server/.env.example](../../apps/server/.env.example)，本地文件为 `apps/server/.env`。根目录的服务端启动与 `db:*` 命令会在该应用目录执行；从旧版单应用结构迁移时，应保留已有配置并移动到这个位置，不要复制到前端，也不用示例覆盖已有凭证。部署时由运行环境提供实际值。变量校验与默认值以 [服务端配置](../../apps/server/src/configs)为准。
+
+管理后台和手机端分别使用自己的 `.env.example` / `.env`，规则见[前端开发](frontends.md#环境变量与联调)。`VITE_*` 与 `EXPO_PUBLIC_*` 会进入客户端产物，不能包含本页的数据库、Storage、主密钥等服务端秘密。
 
 `ConfigModule.forRoot({ expandVariables: true })` 支持在 `.env` 中引用 `${APP_NAME}`、`${REDIS_HOST}` 等变量。
 
+`pnpm dev:server`、`pnpm start:dev` 和 `pnpm start:debug` 已设置 `NODE_ENV=development`；`pnpm start` / `pnpm start:dist` 不设置该值，需由运行环境明确提供。模板未逐项列出所有可选变量，以下表格同时记录代码中的默认值；生产镜像已设置 `NODE_ENV=production`。
+
 ## 新增配置
 
-使用 [registerEnvAsConfig](../../src/common/utils/register-env-as-config.ts) 把环境变量校验与业务配置映射集中到 `src/configs/<name>.config.ts`，不要在业务服务中零散读取 `process.env`。
+使用 [registerEnvAsConfig](../../apps/server/src/common/utils/register-env-as-config.ts) 把环境变量校验与业务配置映射集中到 `apps/server/src/configs/<name>.config.ts`，不要在业务服务中零散读取 `process.env`。
 
 ```ts
 import { registerEnvAsConfig } from '@/common/utils/register-env-as-config';
@@ -31,7 +35,7 @@ export type MyConfigType = ConfigType<typeof myConfig>;
 export default myConfig;
 ```
 
-模块使用 `ConfigModule.forFeature(myConfig)` 加载，注入配置时保留类型。数字、布尔和枚举要显式解析；条件必填用 `.superRefine()` 或配置解析函数校验。空字符串不一定等于未设置，需要按变量语义处理。新增变量同时更新 `.env.example` 和相关测试。
+模块使用 `ConfigModule.forFeature(myConfig)` 加载，注入配置时保留类型。数字、布尔和枚举要显式解析；条件必填用 `.superRefine()` 或配置解析函数校验。空字符串不一定等于未设置，需要按变量语义处理。新增 API 变量同时更新 `apps/server/.env.example` 和相关测试。
 
 ## 应用与安全
 
@@ -58,6 +62,8 @@ export default myConfig;
 - 两种数据库端口均只接受 `1–65535` 的整数；未设置或空白仍使用默认端口，越界值在配置加载时拒绝。
 - 数据库名可用 `${APP_NAME}`；两份 Drizzle Kit 配置也处理这一占位。
 
+以上是 Nest 运行时校验。Drizzle Kit 的 `db:generate:*` / `db:migrate:*` 使用应用目录内的独立配置，通过 `dotenv` 读取 `apps/server/.env`，不会执行 Nest 的 Zod 校验或通用变量展开；数据库名的 `${APP_NAME}` 是配置中特别处理的占位。迁移前仍需核对命令实际使用的连接目标，不能依赖应用启动校验替代检查。
+
 ## Redis：单机或哨兵
 
 `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` 只是示例中的公共锚点，应用不直接读取它们。各模块只读取自己的命名空间，缺失时不会回退到其他模块配置。
@@ -80,7 +86,7 @@ export default myConfig;
 | `<P>_SENTINEL_MASTER_NAME` | sentinel 模式必填，主节点组名                                         |
 | `<P>_SENTINELS`            | sentinel 模式必填，`host:port,host:port`，端口为 1–65535 的十进制整数 |
 
-哨兵切换示例见 [.env.example](../../.env.example)。不支持 Cluster。
+哨兵切换示例见 [.env.example](../../apps/server/.env.example)。不支持 Cluster。
 
 缓存、锁、队列等使用不同 DB，避免误清理互相影响；**DB 编号不能隔离实例级淘汰策略、内存或故障**。锁与队列不能被缓存淘汰，应使用 `noeviction`；缓存确需淘汰策略时使用独立实例。具体安全边界见 [基础设施](infra-modules.md)。
 
@@ -104,7 +110,7 @@ export default myConfig;
 | `STORAGE_MAX_CONCURRENT_UPLOADS`                            | `4`，单个服务实例的 `put` 并发上限，超限直接拒绝；不控制浏览器直传                                         |
 | `STORAGE_PRESIGN_EXPIRES_SECONDS`                           | `300`，预签名链接有效期（秒），只允许 `1–900`；单次 `expiresInSeconds` 只能收紧                            |
 
-大小、超时与并发必须为正安全整数；两个超时不能超过 Node.js 定时器上限 `2147483647` 毫秒。完整可复制示例见 [.env.example](../../.env.example)，不要使用其中的本地开发凭据访问生产 bucket。生产凭据不授予备份仓库或 bucket 管理权限。
+大小、超时与并发必须为正安全整数；两个超时不能超过 Node.js 定时器上限 `2147483647` 毫秒。完整可复制示例见 [.env.example](../../apps/server/.env.example)，不要使用其中的本地开发凭据访问生产 bucket。生产凭据不授予备份仓库或 bucket 管理权限。
 
 public endpoint 必须在签名前配置，不能在生成链接后替换 host。浏览器直传还需要由管理员配置[独立的 bucket CORS](../modules/storage.md#bucket-cors)，不能靠 Nest 的 `APP_CORS_*` 代替。
 
@@ -120,5 +126,7 @@ public endpoint 必须在签名前配置，不能在生成链接后替换 host�
 | `I18N_FALLBACK_LANGUAGE`                     | `en`                                                           |
 | `BOTTLENECK_MODE`                            | `memory`；模块默认未装配，改为 `redis` 才要求 Redis 连接配置   |
 | `BOTTLENECK_REDIS_KEY_PREFIX`                | `bottleneck`                                                   |
+
+`LOG_FILE_DIR=./logs` 相对服务端进程工作目录解析；通过根服务端命令启动时，对应 `apps/server/logs`。关闭文件日志时不会创建该目录，生产沿用 stdout / stderr。
 
 不把真实 `.env`、密码、密钥或连接串写入文档、日志和测试快照。配置错误信息只输出变量名与必要原因。

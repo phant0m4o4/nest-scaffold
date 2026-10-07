@@ -1,67 +1,77 @@
 # 架构与目录结构
 
-项目面向中小型后端应用：默认 MySQL、Redis 单机，按需选择 PostgreSQL 或 Redis 哨兵。不预置分片、多数据源路由等尚无需求的抽象。
+项目面向中小型全栈应用，使用 pnpm workspace 管理 NestJS API、React 管理后台与 Expo 手机前端。后端默认 MySQL、Redis 单机，按需选择 PostgreSQL 或 Redis 哨兵，不预置分片、多数据源路由等尚无需求的抽象。
 
 ## 主要目录与关键文件
 
-以下是开发导航，不是逐文件清单：根目录列出项目级入口，源码按职责展开，API 子业务以 Demo 展示典型结构。除数据库需要区分两种方言外，基础设施模块统一列到模块目录，内部服务、类型和测试不逐一展开。
+以下是开发导航。根目录管理工作区与仓库工具，各应用管理自己的源码、依赖和构建配置；不展示依赖、构建产物、覆盖率、日志、缓存及真实环境文件。
 
-省略依赖、构建产物、覆盖率、日志和缓存目录（如 `node_modules/`、`dist/`、`coverage/`），以及 `.git/`、真实 `.env` 和其他本地私有文件。
-
-### 项目根目录
+### 工作区根目录
 
 ```text
 <project-root>/
-├── README.md                               # GitHub 项目介绍
-├── AGENTS.md                               # 项目入口与简短开发约定
-├── package.json                            # 依赖、环境版本、开发与测试命令
-├── pnpm-lock.yaml                          # 锁定依赖解析结果
-├── pnpm-workspace.yaml                     # pnpm 依赖覆盖与安装脚本许可
-├── nest-cli.json                           # Nest CLI、SWC 构建与资源复制
-├── tsconfig.json                           # TypeScript 类型检查与路径别名
-├── tsconfig.build.json                     # 构建检查范围，排除测试文件
-├── .swcrc                                  # SWC 转译、装饰器与模块格式
-├── eslint.config.mjs                       # ESLint 代码检查
-├── .prettierrc                             # Prettier 格式约定
-├── .gitignore                              # Git 忽略规则
-├── .dockerignore                           # Docker 构建上下文排除规则
-├── .env.example                            # 配置模板；真实 .env 不入库
-├── .vscode/settings.json                   # VS Code 工作区格式化与 ESLint 设置
-├── .github/workflows/
-│   └── ci.yml                              # CI；CD 由实际部署项目按需添加
-├── Dockerfile                              # 生产镜像
-├── docker-compose.yml                      # 本地数据库 / Redis / SeaweedFS 及管理界面
-├── drizzle-mysql.config.ts                 # MySQL 的 Drizzle Kit 配置
-├── drizzle-pgsql.config.ts                 # PostgreSQL 的 Drizzle Kit 配置
-├── drizzle/                                # 迁移 SQL、快照及迁移记录
-│   ├── mysql/                              # MySQL 迁移
-│   └── pgsql/                              # PostgreSQL 迁移
-├── vitest.config.mts                       # unit / integration / e2e 聚合入口
-├── vitest-base.config.mts                  # 共享 SWC、别名和隔离测试环境配置
-├── vitest-unit.config.mts                  # 单元测试及覆盖率门槛
-├── vitest-integration.config.mts           # 隔离依赖的集成测试
-├── vitest-e2e.config.mts                   # 生产镜像端到端测试
-├── test/e2e/                               # E2E 测试文件
-├── docs/
-│   ├── README.md                           # 文档索引
-│   ├── getting-started.md                  # 安装、本地运行与调试
-│   ├── deployment.md                       # Docker 部署与 GitHub CI/CD
-│   ├── backup-and-restore.md               # 备份、恢复与生产数据保护
-│   ├── development/                        # 架构、开发规范与测试说明
-│   └── modules/                            # 基础设施模块 API、配置与示例
-├── scripts/
-│   ├── README.md                           # 脚本用法与执行边界
-│   ├── bootstrap.sh                        # 在新目录初始化项目
-│   ├── new-module.sh                       # 生成 API 子业务骨架
-│   ├── setup-github.sh                     # 经授权配置 GitHub 仓库规则
-│   └── templates/                          # 业务模块与 Schema 模板
-├── reports/                                # 需长期追溯的专项验证记录，不是现行规范
-└── src/                                    # 应用源码，见下方展开
+├── apps/
+│   ├── server/                      # NestJS 后端
+│   │   ├── src/                     # 业务与基础设施，见下方展开
+│   │   ├── test/e2e/                # API 生产镜像端到端测试
+│   │   ├── drizzle/                 # mysql / pgsql 迁移、快照与记录
+│   │   ├── package.json             # API 依赖及本地命令
+│   │   ├── .env.example             # 服务端环境变量模板
+│   │   ├── Dockerfile               # API 生产镜像
+│   │   ├── nest-cli.json            # SWC 构建、类型检查与资源复制
+│   │   ├── tsconfig*.json / .swcrc   # API TypeScript 与 SWC 配置
+│   │   ├── vitest*.config.mts        # API 三层测试配置
+│   │   └── drizzle-*.config.ts      # 两种数据库的迁移配置
+│   ├── admin-frontend/              # React + Vite 管理后台
+│   │   ├── src/
+│   │   │   ├── router.tsx           # TanStack Router 路由与 URL 查询参数
+│   │   │   ├── pages/               # Demo 列表、新增、详情与编辑页面
+│   │   │   ├── components/          # 布局及本地 UI 组件
+│   │   │   ├── lib/                 # API / Query 装配与工具
+│   │   │   └── stores/              # 界面偏好
+│   │   ├── package.json
+│   │   ├── .env.example             # 公开配置与本地开发代理目标
+│   │   ├── vite.config.ts           # 构建、别名与开发代理
+│   │   ├── components.json          # shadcn/ui 本地组件配置
+│   │   ├── nginx.conf               # 静态页面、SPA 回退及 API 代理
+│   │   └── Dockerfile               # 管理后台静态资源镜像
+│   └── mobile-app/                   # Expo + React Native 手机端
+│       ├── src/
+│       │   ├── app/                 # 根 Stack、(tabs) 列表/偏好和 Demo 详情
+│       │   ├── features/            # Demo 功能界面与组件
+│       │   ├── components/          # 原生通用组件
+│       │   ├── lib/                 # API / Query 装配与主题
+│       │   └── stores/              # 当前会话内的展示偏好
+│       ├── app.config.ts            # Expo 应用配置
+│       ├── package.json
+│       └── .env.example             # 仅公开的客户端配置
+├── packages/
+│   ├── contracts/                   # 公开 API schema 与类型
+│   └── api-client/                  # 基于 fetch 的共享调用
+├── deploy/
+│   └── docker-compose.yml           # 仅本地开发基础设施
+├── .github/workflows/ci.yml          # ci / docker 两个检查，未启用 CD
+├── docs/                            # 现行规范与用法
+├── scripts/                         # 初始化、API 模块生成、仓库设置与模板
+├── reports/                         # 需长期追溯的历史验证记录
+├── package.json                     # 工作区命令及仓库工具
+├── pnpm-workspace.yaml              # 工作区成员、依赖覆盖与安装脚本许可
+├── pnpm-lock.yaml                   # 全仓库唯一锁文件
+├── README.md / AGENTS.md            # 项目介绍与协作入口
+└── .gitignore / .dockerignore        # 仓库和 Docker 构建上下文排除
 ```
 
-版本与命令以 [package.json](../../package.json) 为准；文档从 [docs/README.md](../README.md) 查阅，脚本执行条件见 [scripts/README.md](../../scripts/README.md)，历史验证记录的定位见 [reports/README.md](../../reports/README.md)。
+根 [package.json](../../package.json) 定义工具版本和调度命令；依赖放在实际使用它的应用或包内，通过 `workspace:*` 引用共享包。API、Web 和 React Native 的编译目标不同，不强行共用一份完整 TypeScript 或构建配置。
 
-### 应用源码
+`packages/contracts` 只包含公开接口的纯 TypeScript / Zod 契约，`packages/api-client` 只包含客户端请求能力。前端不能直接导入 Nest DTO、数据库 Schema、服务端配置和内部工具。Web 与 Native 组件分别维护，共享包按已有需求扩展，详见[前端开发](frontends.md)。共享包当前导出 TypeScript 源码，由前端 bundler 编译；包内 `build` 仅做类型检查，无需提前构建产物或另开 watch。
+
+当前前端只接入 Demo 分页查询，未实现认证、用户管理或角色权限；服务端只在非生产环境注册 Demo Controller。服务端 DTO / Entity 与共享契约分别维护，通过契约单测核对响应；`contracts` 中管理侧和公开用户侧的字段范围不同，不能互相替代。具体界面、状态归属和接口范围见[前端开发](frontends.md)。
+
+全局脚本保留在 [scripts/](../../scripts/README.md)，定位后端时使用 `apps/server`；初始化脚本不能复制真实环境文件。旧根 `.env` 由使用者手动迁移到 `apps/server/.env`，前端使用各自模板，见[快速开始](../getting-started.md)。
+
+### API 应用源码
+
+下列路径相对 `apps/server/`：
 
 ```text
 src/
@@ -125,17 +135,17 @@ src/
     └── zh-cn/                              # 简体中文文案
 ```
 
-业务模块、基础设施、配置和工具的单元 / 集成测试就近放在各自的 `__tests__/` 中，文件分别使用 `.unit-spec.ts` / `.integration-spec.ts`；目录树只展示代表位置，不表示其他模块没有测试。项目级脚本测试位于 `src/__tests__/`，生产镜像 E2E 位于 `test/e2e/`，完整约定见[测试规范](testing.md)。
+业务模块、基础设施、配置和工具的单元 / 集成测试就近放在各自的 `__tests__/` 中，文件分别使用 `.unit-spec.ts` / `.integration-spec.ts`；目录树只展示代表位置，不表示其他模块没有测试。项目级脚本测试位于 `apps/server/src/__tests__/`，生产镜像 E2E 位于 `apps/server/test/e2e/`，完整约定见[测试规范](testing.md)。
 
-数据库相关位置按职责区分：`src/common/modules/database/` 提供连接与仓储基础设施，`src/database/` 定义业务表和开发 seed，`src/app/repositories/` 实现业务查询，根目录 `drizzle/` 保存迁移 SQL 与元数据。新增业务表或查询不要放错层，具体见[数据库开发](database.md)。
+数据库相关位置按职责区分：`apps/server/src/common/modules/database/` 提供连接与仓储基础设施，`apps/server/src/database/` 定义业务表和开发 seed，`apps/server/src/app/repositories/` 实现业务查询，`apps/server/drizzle/` 保存迁移 SQL 与元数据。新增业务表或查询不要放错层，具体见[数据库开发](database.md)。
 
 ## 分层与装配
 
-`api/` 按 API 业务组织，具体子业务放在其下，由 `ApiModule` 聚合装配；它本身不代表一个独立的业务域。
+`apps/server/src/app/api/` 按 API 业务组织，具体子业务放在其下，由 `ApiModule` 聚合装配；它本身不代表一个独立的工作区应用或业务域。
 
 请求依次经过路由与 DTO 校验、Controller、Service、Repository；Controller 不直接操作数据库，Repository 不决定 HTTP 响应。
 
-[AppModule](../../src/app/app.module.ts) 当前装配应用配置、日志、国际化、缓存、MySQL、分布式锁、队列和业务模块，并用 Nest 的 `APP_INTERCEPTOR` / `APP_PIPE` / `APP_FILTER` 注册全局响应、校验与异常处理。
+[AppModule](../../apps/server/src/app/app.module.ts) 当前装配应用配置、日志、国际化、缓存、MySQL、分布式锁、队列和业务模块，并用 Nest 的 `APP_INTERCEPTOR` / `APP_PIPE` / `APP_FILTER` 注册全局响应、校验与异常处理。
 
 配置依赖通过 `ConfigModule.forFeature(...)` 和 Nest 依赖注入表达，不用 `imports` 的书写先后顺序充当生命周期同步机制。缓存、锁各自管理 Redis 客户端；队列把连接选项交给 BullMQ，由 BullMQ 管理连接。
 
@@ -151,13 +161,13 @@ src/
 
 ## 文件与对象存储边界
 
-应用运行时除日志外不写本地文件；上传、导出和生成文件统一使用 S3 兼容 Storage，以流或受限内存处理，不先落临时文件、不在存储故障时回退本地。数据库保留文件元数据，业务层通过 Storage 能力访问对象；不把本地目录、容器卷或 NAS 作为业务文件存储。
+服务端应用运行时除日志外不写本地文件；上传、导出和生成文件统一使用 S3 兼容 Storage，以流或受限内存处理，不先落临时文件、不在存储故障时回退本地。数据库保留文件元数据，业务层通过 Storage 能力访问对象；不把本地目录、容器卷或 NAS 作为业务文件存储。
 
 已内置按需使用的 [Storage 模块](../modules/storage.md)：`StorageService` 提供单 bucket 的服务端读写与 PUT 预签名；同模块的 [UploaderService](../modules/storage.md#浏览器直传) 生成随机 key、签发短时防覆盖链接并按业务提供的可信记录核对元数据。文件可由浏览器直接发送到 S3，不经过 Nest 或本地文件系统。模块不提供公开 Controller、认证授权或严格一次性票据，业务层负责归属、配额、状态关联及覆盖策略；客户端不创建 bucket 或配置 CORS。SeaweedFS 的开发数据卷属于独立存储服务，不作为应用文件系统使用。日志、只读资源及开发工具的边界统一见[文件写入与 Storage](engineering-conventions.md#文件写入与-storage)。
 
 ## 启动与停机
 
-以 [main.ts](../../src/main.ts) 为准：
+以 [main.ts](../../apps/server/src/main.ts) 为准：
 
 - 缓存启动日志，随后由 Pino 接管并刷新日志。默认不额外保留请求原始正文；确有 Webhook 签名验证等需求时，再启用 `rawBody` 并校验请求大小和签名。
 - CORS 由 `APP_CORS_*` 控制；生产环境未配置来源，或通配来源配合凭证，默认拒绝启动。只有可信上游实际管理跨域时才显式设置 `APP_CORS_MANAGED_BY_PROXY=true`。
@@ -167,11 +177,13 @@ src/
 
 ## 构建与资源文件
 
-构建和启动命令统一使用 [package.json](../../package.json) 中的脚本，无需另加 `start:swc` 一类入口。
+根 [package.json](../../package.json) 统一提供 `dev:server`、`dev:admin`、`dev:mobile` 和 `build:server`、`build:admin`、`build:mobile`；`build` 构建整个工作区，`typecheck` 执行各包类型检查。`start` / `start:dev` / `start:debug` / `start:dist` 保留为 API 转发入口。手机端构建是 Expo bundle / 资源导出，不生成已签名安装包。
 
-- `pnpm build` 通过 [nest-cli.json](../../nest-cli.json) 使用 SWC 编译，并启用 TypeScript 类型检查；SWC 编译成功不代表类型检查通过。
-- [.swcrc](../../.swcrc) 保留 Nest 所需的装饰器与元数据，生产输出为 CommonJS。类型检查配置见 [tsconfig.json](../../tsconfig.json) 和 [tsconfig.build.json](../../tsconfig.build.json)，后者与 SWC 构建一起排除测试文件。
-- 翻译文件从 `src/i18n/` 复制到 `dist/i18n/`；`nest-cli.json` 中的 `assets.include` 相对于 `sourceRoot: "src"`，使用 `i18n/**/*`。调整目录时同步核对 [I18nModule](../../src/common/modules/i18n/i18n.module.ts) 的加载路径。
+后端使用自己的 [package.json](../../apps/server/package.json) 和构建配置，无需另加 `start:swc` 一类入口。以下资源路径相对 `apps/server/`：
+
+- `pnpm build:server` 通过 [nest-cli.json](../../apps/server/nest-cli.json) 使用 SWC 编译，并启用 TypeScript 类型检查；SWC 编译成功不代表类型检查通过。
+- [.swcrc](../../apps/server/.swcrc) 保留 Nest 所需的装饰器与元数据，生产输出为 CommonJS。类型检查配置见 [tsconfig.json](../../apps/server/tsconfig.json) 和 [tsconfig.build.json](../../apps/server/tsconfig.build.json)，后者与 SWC 构建一起排除测试文件。
+- 翻译文件从 `src/i18n/` 复制到 `dist/i18n/`；`nest-cli.json` 中的 `assets.include` 相对于 `sourceRoot: "src"`，使用 `i18n/**/*`。调整目录时同步核对 [I18nModule](../../apps/server/src/common/modules/i18n/i18n.module.ts) 的加载路径。
 - `pnpm start:dev` 已通过 `cross-env` 设置 `NODE_ENV=development`，并启用 `--watch --watchAssets`，监听代码与翻译资源。资源监听仅用于开发，不要给一次性生产构建开启常驻监听。
 - `pnpm start:dist` 直接运行已有 `dist`，不会重新构建或设置 `NODE_ENV`；生产环境由启动命令或部署平台注入环境变量。
 
@@ -179,6 +191,8 @@ src/
 
 ## 路径别名
 
-TypeScript、SWC 和 Vitest 均使用 `@/*` → `src/*`，分别在 `tsconfig.json`、`.swcrc` 和 [vitest-base.config.mts](../../vitest-base.config.mts) 中配置，修改别名时保持一致。跨目录导入优先 `@/...`，同目录可用相对路径；配置和脚本仍按各自运行环境解析路径。
+API 内部的 TypeScript、SWC 和 Vitest 均使用 `@/*` → `src/*`，分别在 `tsconfig.json`、`.swcrc` 和 [vitest-base.config.mts](../../apps/server/vitest-base.config.mts) 中配置，修改别名时保持一致。跨目录导入优先 `@/...`，同目录可用相对路径；配置和脚本仍按各自运行环境解析路径。跨工作区包通过包名导入，不能用 API 的路径别名跨到其他应用。
+
+两个前端也各自使用 `@/*` → 本应用的 `src/*`：管理后台在自己的 `tsconfig.json` 与 `vite.config.ts` 配置，手机端在自己的 `tsconfig.json` 配置并由 Expo 解析。相同别名在三个应用内指向不同目录，不是工作区根目录的共享别名。
 
 相关约定：[业务模块](module-development.md) · [接口](rest-api.md) · [配置](env-vars.md) · [测试](testing.md)

@@ -1,6 +1,6 @@
 # DistributedLockModule
 
-[源码](../../src/common/modules/distributed-lock/) · [配置](../../src/configs/distributed-lock.config.ts) · [基础设施选型](../development/infra-modules.md)
+[源码](../../apps/server/src/common/modules/distributed-lock/) · [配置](../../apps/server/src/configs/distributed-lock.config.ts) · [基础设施选型](../development/infra-modules.md)
 
 基于 [Redlock](https://github.com/mike-marcacci/node-redlock) 算法的分布式锁模块，用于多实例部署下对共享资源的互斥访问（如任务处理、结算、对账等）。
 
@@ -52,7 +52,7 @@
 
 ## 环境变量
 
-锁的连接配置完全自带（`DISTRIBUTED_LOCK_REDIS_*` 命名空间），必填项缺失直接启动报错，不会回退读取其他模块的配置；`.env` 中的 `REDIS_HOST` 等是纯锚点变量，仅供 `${...}` 引用避免重复书写地址。完整模板见 [.env.example](../../.env.example)。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖：
+锁的连接配置完全自带（`DISTRIBUTED_LOCK_REDIS_*` 命名空间），必填项缺失直接启动报错，不会回退读取其他模块的配置；`.env` 中的 `REDIS_HOST` 等是纯锚点变量，仅供 `${...}` 引用避免重复书写地址。完整模板见 [.env.example](../../apps/server/.env.example)。Redlock 行为参数在调用 `using()` 时通过 `options` 按需覆盖：
 
 ```env
 DISTRIBUTED_LOCK_KEY_PREFIX=distributed-lock   # 可选，默认 distributed-lock
@@ -176,10 +176,10 @@ export class OrderService {
 
 **应用内统一定义（推荐）：**
 
-资源键与业务强相关，属于应用层约定，建议在**应用内**（如 `src/app/constants/lock-resource.ts` 或各业务模块）按上述格式自建常量，避免硬编码与冲突。例如：
+资源键与业务强相关，属于应用层约定，建议在**应用内**（如 `apps/server/src/app/constants/lock-resource.ts` 或各业务模块）按上述格式自建常量，避免硬编码与冲突。例如：
 
 ```typescript
-// 应用内示例：src/app/constants/lock-resource.ts（按业务需要定义）
+// apps/server/src/app/constants/lock-resource.ts（按业务需要定义）
 export const LockResource = {
   order: (orderId: string) => `order:${orderId}`,
   orderPay: (orderId: string) => `order:pay:${orderId}`,
@@ -425,4 +425,4 @@ export class CampaignClaimService {
 
 - [Redlock 算法](https://redis.io/docs/manual/patterns/distributed-locks/)
 - [node-redlock](https://github.com/mike-marcacci/node-redlock)
-- [模块内类型声明](../../src/common/modules/distributed-lock/types/redlock.d.ts)
+- [模块内类型声明](../../apps/server/src/common/modules/distributed-lock/types/redlock.d.ts)

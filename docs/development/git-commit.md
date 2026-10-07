@@ -28,7 +28,7 @@ type(scope): subject
 
 - 不直接向 `main` 推送，也不强推 `main`。使用短期工作分支，通过 PR（合并请求）合入。
 - 分支名表达目的，例如 `fix/cache-ttl` 或 `docs/development-guide`；工具有前缀要求时遵循工具约定。
-- 提交前运行相关检查；代码推送前通过 `pnpm lint:check`、`pnpm build` 和 `pnpm test`。完整测试需要 Docker。
+- 提交前运行相关检查；代码推送前在仓库根通过 `pnpm lint:check`、`pnpm typecheck`、`pnpm build` 和 `pnpm test`。完整测试需要 Docker；单测覆盖率另由 `pnpm test:unit:cov` 检查。纯文档变更按[开发流程](workflows.md)核对内容、链接、命令与格式，无需重跑业务测试。
 - 合并前确保 `ci` / `docker` 检查通过，按仓库设置使用 Squash merge（将分支提交压成一条）；PR 标题采用提交格式。
 - 合并后清理已完成的分支；删除分支或改写历史前确认没有未合并工作。
 - 代码审查结论与发布审批由负责人决定，AI 不代批。AI 只有在用户明确要求时才提交；提交授权不等于推送或合并授权。
@@ -52,6 +52,7 @@ pnpm commit
 
 # 本地检查通过后推送
 pnpm lint:check
+pnpm typecheck
 pnpm build
 pnpm test
 git push -u origin feature/user-profile
@@ -112,4 +113,4 @@ git branch -d feature/user-profile
 | 合并方式                    | 仅 Squash merge；提交标题取 PR 标题，正文取 PR 描述    | Settings → General → Pull Requests  |
 | 合并后清理远端分支          | Automatically delete head branches 开启                | 同上                                |
 
-[CI 配置](../../.github/workflows/ci.yml)在 `main` 的 push 或 PR 时运行，其中 PR 不限制目标分支：`ci` 负责只读静态检查、构建、单元覆盖率和集成测试，`docker` 负责构建并验证生产镜像；它不推送镜像或部署应用。检查名可能要等首次 CI 运行后才出现在网页候选列表中，脚本可直接配置这些名称。验证范围见[测试规范](testing.md)。
+[CI 配置](../../.github/workflows/ci.yml)在 `main` 的 push 或 PR 时运行，其中 PR 不限制目标分支：`ci` 负责全工作区只读静态检查、类型检查、构建、共享包单测、API 单元覆盖率和集成测试，`docker` 负责构建并验证 API 与管理后台两个生产镜像；它不推送镜像或部署应用。手机端构建只导出 bundle / 资源，不含原生签名、真机测试或商店发布。检查名可能要等首次 CI 运行后才出现在网页候选列表中，脚本可直接配置这些名称。验证范围见[测试规范](testing.md)。

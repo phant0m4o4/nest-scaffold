@@ -34,7 +34,10 @@ jobs:
       - name: Lint（只读检查）
         run: pnpm lint:check
 
-      - name: 构建（SWC + tsc 类型检查）
+      - name: 三端与共享包类型检查
+        run: pnpm typecheck
+
+      - name: 构建 API、管理后台与手机端 bundle
         run: pnpm build
 
       - name: 单元测试（含覆盖率阈值检查）
@@ -55,11 +58,23 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: apps/server/Dockerfile
           push: false
           load: true
           tags: nest-scaffold:e2e
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: 构建管理后台生产镜像（不推送）
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin-frontend/Dockerfile
+          push: false
+          load: true
+          tags: nest-scaffold-admin:e2e
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
 
       - uses: pnpm/action-setup@v4
 
@@ -74,4 +89,5 @@ jobs:
       - name: 生产镜像 E2E（端到端测试）
         env:
           E2E_APP_IMAGE: nest-scaffold:e2e
+          E2E_ADMIN_IMAGE: nest-scaffold-admin:e2e
         run: pnpm test:e2e

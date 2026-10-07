@@ -1,8 +1,8 @@
 # CacheModule
 
-[源码](../../src/common/modules/cache/) · [配置](../../src/configs/cache.config.ts) · [基础设施选型](../development/infra-modules.md)
+[源码](../../apps/server/src/common/modules/cache/) · [配置](../../apps/server/src/configs/cache.config.ts) · [基础设施选型](../development/infra-modules.md)
 
-提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**：连接配置完全自带（`CACHE_REDIS_*` 命名空间；单机模式要求 `HOST`/`PORT`，两种模式均要求 `DB`，缺失直接启动报错并指明变量名，见 [.env.example](../../.env.example)）。
+提供类型安全缓存读写服务的模块。缓存持有**独立的 Redis 连接与独立 DB**：连接配置完全自带（`CACHE_REDIS_*` 命名空间；单机模式要求 `HOST`/`PORT`，两种模式均要求 `DB`，缺失直接启动报错并指明变量名，见 [.env.example](../../apps/server/.env.example)）。
 
 > ⚠️ 缓存可随时清空/被淘汰，**禁止与锁、队列等不可丢数据的服务共用一个 DB**（`FLUSHDB` 会清掉同 DB 的其他键，内存淘汰策略则作用于整个实例）。`.env.example` 的推荐分配为缓存 `CACHE_REDIS_DB=0`、锁 `DISTRIBUTED_LOCK_REDIS_DB=1`、队列 `QUEUE_REDIS_DB=2`。若使用不同的淘汰策略，再分开部署实例，详见 [DistributedLockModule](distributed-lock.md)「锁与缓存的 Redis 隔离」。
 
@@ -51,29 +51,36 @@ export class AppModule {}
 
 ### 2. 注入使用
 
+下面假设业务已定义 `UserProfile` 和 `UserRepository`，并通过 `RepositoryModule.forFeature` 注册仓储；它们不是脚手架现成的用户系统。
+
 ```typescript
 import { CacheService } from '@/common/modules/cache/cache.service';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly cacheService: CacheService) {}
+  constructor(
+    private readonly _cacheService: CacheService,
+    private readonly _userRepository: UserRepository,
+  ) {}
 
-  async getUserProfile(userId: string): Promise<UserProfile | null> {
+  async getUserProfile(userId: number): Promise<UserProfile | null> {
     const cacheKey = `user:profile:${userId}`;
     // 优先从缓存读取
-    const cached = await this.cacheService.get<UserProfile>(cacheKey);
+    const cached = await this._cacheService.get<UserProfile>(cacheKey);
     if (cached !== null) {
       return cached;
     }
     // 查数据库并写入缓存（TTL 300 秒）
-    const profile = await this.userRepository.findOne(userId);
+    const profile = await this._userRepository.findOne({ id: userId });
     if (profile) {
-      await this.cacheService.set(cacheKey, profile, 300);
+      await this._cacheService.set(cacheKey, profile, 300);
     }
     return profile;
   }
 }
 ```
+
+泛型只提供静态类型提示，不会验证缓存内容；JSON 还会将 `Date` 转为字符串。业务须使用适合 JSON 的缓存形状，需要运行时校验或日期还原时显式处理。
 
 ### 3. 批量操作
 
@@ -150,11 +157,11 @@ await this.cacheService.executeScript(script, ['myKey'], [100]);
 ## 架构设计
 
 ```
-src/common/modules/cache/
+apps/server/src/common/modules/cache/
 ├── cache.module.ts          # @Global 模块，在根模块直接导入
 └── cache.service.ts         # 缓存服务（Redis 封装）
 
-src/configs/
+apps/server/src/configs/
 └── cache.config.ts          # 配置（TTL + 键前缀 + 自带 CACHE_REDIS_* 连接配置）
 ```
 

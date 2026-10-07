@@ -12,7 +12,7 @@
 # 流程：
 #   1. 复制源码与配置，排除依赖、产物、本地凭据和系统缓存；仅保留环境模板
 #   2. 替换 package.json name 为 <APP_NAME>
-#   3. 拷贝 .env.example 为 .env 并替换 APP_NAME
+#   3. 从各应用 .env.example 生成独立 .env，并替换服务端 APP_NAME
 #   4. 沿用源仓库本地身份，重新 git init（不带原 commit）
 #   5. 输出后续手动步骤
 
@@ -50,8 +50,8 @@ fi
 # 找脚手架根
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCAFFOLD_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-if [[ ! -f "$SCAFFOLD_ROOT/package.json" || ! -d "$SCAFFOLD_ROOT/src/app" ]]; then
-  echo "错误: 未在脚手架根目录找到 package.json + src/app（脚本应位于 scripts/）" >&2
+if [[ ! -f "$SCAFFOLD_ROOT/package.json" || ! -d "$SCAFFOLD_ROOT/apps/server/src/app" ]]; then
+  echo "错误: 未在脚手架根目录找到 package.json + apps/server/src/app（脚本应位于 scripts/）" >&2
   exit 1
 fi
 
@@ -95,7 +95,9 @@ mkdir -p "$TARGET_DIR"
 # 两种复制方式共用排除规则，避免把本地配置、凭据和缓存带入新项目。
 COPY_EXCLUDES=(
   'node_modules' '.pnpm-store' 'dist' 'build' 'coverage' '.nyc_output'
-  '.tmp' '.temp' 'logs' '.git' '.env' '.env.*' '.ssh'
+  '.cache' '.vite' '.turbo'
+  '.tmp' '.temp' 'logs' '.git' '.env' '.env.*' '.ssh' '.expo'
+  '/apps/mobile-app/android' '/apps/mobile-app/ios'
   '.claude'
   '.DS_Store' '.DS_STORE' '._*' '.AppleDouble' '.LSOverride'
   'Thumbs.db' 'Desktop.ini' '*.tsbuildinfo' '*.swp' '*.swo' '*~'
@@ -110,7 +112,15 @@ if command -v rsync >/dev/null 2>&1; then
   rsync -a "${COPY_OPTIONS[@]}" "$SCAFFOLD_ROOT/" "$TARGET_DIR/"
 else
   echo "提示: 未检测到 rsync，使用 tar 复制" >&2
-  tar "${COPY_OPTIONS[@]}" -cf - -C "$SCAFFOLD_ROOT" . |
+  # rsync 的前导 / 相对于复制根；tar 的归档路径以 ./ 开头。
+  TAR_COPY_OPTIONS=()
+  for excluded in "${COPY_EXCLUDES[@]}"; do
+    if [[ "$excluded" == /* ]]; then
+      excluded=".$excluded"
+    fi
+    TAR_COPY_OPTIONS+=("--exclude=$excluded")
+  done
+  tar "${TAR_COPY_OPTIONS[@]}" -cf - -C "$SCAFFOLD_ROOT" . |
     tar -xf - -C "$TARGET_DIR"
 fi
 
@@ -131,20 +141,25 @@ PY
   echo "✓ 更新 package.json name=$APP_NAME"
 fi
 
-# 处理 .env：从 .env.example 复制并替换 APP_NAME
-if [[ -f "$SCAFFOLD_ROOT/.env.example" ]]; then
-  cp "$SCAFFOLD_ROOT/.env.example" "$TARGET_DIR/.env.example"
-  cp "$TARGET_DIR/.env.example" "$TARGET_DIR/.env"
-  # macOS / GNU sed 兼容
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s/^APP_NAME=.*/APP_NAME=$APP_NAME/" "$TARGET_DIR/.env"
-    sed -i '' "s/^APP_NAME=.*/APP_NAME=$APP_NAME/" "$TARGET_DIR/.env.example"
-  else
-    sed -i "s/^APP_NAME=.*/APP_NAME=$APP_NAME/" "$TARGET_DIR/.env"
-    sed -i "s/^APP_NAME=.*/APP_NAME=$APP_NAME/" "$TARGET_DIR/.env.example"
-  fi
-  echo "✓ 生成 .env 并设置 APP_NAME=$APP_NAME"
-fi
+# 仅从每个应用公开的模板生成配置，绝不读取或复制真实 .env。
+python3 - "$SCAFFOLD_ROOT" "$TARGET_DIR" "$APP_NAME" <<'PYENV'
+from pathlib import Path
+import sys
+source, target, app_name = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+for name in ('server', 'admin-frontend', 'mobile-app'):
+    template = source / 'apps' / name / '.env.example'
+    if not template.is_file():
+        continue
+    content = template.read_text(encoding='utf-8')
+    if name == 'server':
+        content = '\n'.join('APP_NAME=' + app_name if line.startswith('APP_NAME=') else line
+                            for line in content.split('\n'))
+    app_dir = target / 'apps' / name
+    app_dir.mkdir(parents=True, exist_ok=True)
+    (app_dir / '.env.example').write_text(content, encoding='utf-8')
+    (app_dir / '.env').write_text(content, encoding='utf-8')
+PYENV
+echo "✓ 从各应用 .env.example 生成独立 .env，并设置 API APP_NAME=$APP_NAME"
 
 # 重新 git init
 (
@@ -167,20 +182,22 @@ cat <<EOF
    cd "$TARGET_DIR"
    pnpm install
 
-2. 检查并修改 .env（已基于 .env.example 生成，APP_NAME 已替换）
+2. 检查并修改 apps/server/.env 与两个前端各自的 .env（不能共享服务端密钥）
 
 3. 启动基础设施（数据库 / Redis / SeaweedFS 及管理界面）：
-   docker compose -p $APP_NAME up -d
+   docker compose --env-file apps/server/.env -f deploy/docker-compose.yml -p $APP_NAME up -d
 
 4. 应用迁移（含基础数据）+ 填充演示数据：
    pnpm db:migrate:mysql
    NODE_ENV=development pnpm db:seed:mysql
 
 5. 启动开发服务：
-   pnpm start:dev
+   pnpm dev:server
+   # 其他终端按需运行 pnpm dev:admin / pnpm dev:mobile
 
 6. 访问：
    - API:     http://localhost:3000
+   - 管理后台: http://localhost:5173
    - Bull Board (dev): http://localhost:3000/queues
    - phpMyAdmin:    http://localhost:8081
    - pgAdmin:       http://localhost:8082

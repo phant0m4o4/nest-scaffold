@@ -11,9 +11,9 @@
 #   bash scripts/new-module.sh user-profile user-profiles
 #
 # 生成内容：
-#   src/app/api/<feature>/                  # controller / service / module / dtos / entities / __tests__
-#   src/app/repositories/<feature>.repository.ts
-#   src/database/mysql/schemas/<features>.schema.ts （桩，需补字段）
+#   apps/server/src/app/api/<feature>/                  # controller / service / module / dtos / entities / __tests__
+#   apps/server/src/app/repositories/<feature>.repository.ts
+#   apps/server/src/database/mysql/schemas/<features>.schema.ts （桩，需补字段）
 #
 # 占位符替换：
 #   __feature__   → <feature-kebab-singular>           （文件名、路径、DTO schema name）
@@ -73,13 +73,16 @@ UPPER_SINGULAR=$(to_upper_snake "$FEATURE_SINGULAR")
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_DIR="$SCRIPT_DIR/templates/feature-module"
 
-# 找仓库根：往上找直到看到 package.json 与 src/app
+# 向上定位工作区或 API 应用，允许从仓库根及应用子目录调用
 ROOT="$(pwd)"
-while [[ "$ROOT" != "/" && ! ( -f "$ROOT/package.json" && -d "$ROOT/src/app" ) ]]; do
+while [[ "$ROOT" != "/" && ! ( -f "$ROOT/package.json" && ( -d "$ROOT/src/app" || -d "$ROOT/apps/server/src/app" ) ) ]]; do
   ROOT="$(dirname "$ROOT")"
 done
+if [[ -d "$ROOT/apps/server/src/app" ]]; then
+  ROOT="$ROOT/apps/server"
+fi
 if [[ ! -f "$ROOT/package.json" || ! -d "$ROOT/src/app" ]]; then
-  echo "错误: 未找到仓库根目录（要求当前目录或祖先目录有 package.json + src/app/）" >&2
+  echo "错误: 未找到仓库根目录（要求工作区包含 apps/server/package.json + apps/server/src/app/）" >&2
   exit 1
 fi
 
@@ -147,6 +150,9 @@ cat <<EOF
 ✅ 模块已生成: $API_DIR
 
 后续手动步骤：
+
+先进入后端应用目录，以下文件路径和命令均相对该目录：
+   cd "$ROOT"
 
 1. 在 src/database/mysql/schemas/index.ts 添加：
    export * from './$FEATURE_PLURAL.schema';

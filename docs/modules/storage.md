@@ -1,13 +1,13 @@
 # StorageModule
 
-[模块](../../src/common/modules/storage/storage.module.ts) · [服务](../../src/common/modules/storage/storage.service.ts) · [类型](../../src/common/modules/storage/storage.types.ts) · [配置](../../src/configs/storage.config.ts)
+[模块](../../apps/server/src/common/modules/storage/storage.module.ts) · [服务](../../apps/server/src/common/modules/storage/storage.service.ts) · [类型](../../apps/server/src/common/modules/storage/storage.types.ts) · [配置](../../apps/server/src/configs/storage.config.ts)
 
 基于 AWS SDK for JavaScript v3 的单 bucket S3 兼容存储。`StorageModule` 导出两个服务：`StorageService` 处理服务端写入、流式读取、受限内存读取、元数据查询、删除和 PUT 预签名；[UploaderService](#浏览器直传) 处理浏览器直传签发与结果核验。业务文件默认私有；应用只处理内存或数据流，不创建本地上传目录、临时文件或本地存储降级路径。
 
 ## 配置步骤
 
 1. 准备私有 bucket。本地按[快速开始](../getting-started.md#本地-s3-存储)启动 `seaweedfs`，开发服务会创建示例 bucket；生产由存储管理员预先创建 bucket、配置私有策略和应用专用凭据。Storage 本身不创建 bucket。
-2. 在运行环境补齐 [.env.example](../../.env.example) 的 `STORAGE_*` 段；已有 `.env` 只补缺失项，不覆盖。设置 endpoint、region、bucket、access key、secret key 和寻址模式；本地示例为 `nest-scaffold` bucket、`us-east-1` region、path-style，凭据必须与 SeaweedFS 服务一致。生产使用自己的 HTTPS endpoint 与专用凭据，不能沿用开发示例。
+2. 在运行环境补齐 [.env.example](../../apps/server/.env.example) 的 `STORAGE_*` 段；已有 `.env` 只补缺失项，不覆盖。设置 endpoint、region、bucket、access key、secret key 和寻址模式；本地示例为 `nest-scaffold` bucket、`us-east-1` region、path-style，凭据必须与 SeaweedFS 服务一致。生产使用自己的 HTTPS endpoint 与专用凭据，不能沿用开发示例。
 3. 按实际网络选择下表地址。`STORAGE_S3_ENDPOINT` 用于服务端 S3 请求；`STORAGE_S3_PUBLIC_ENDPOINT` 用于签名，省略时使用前者。二者必须指向同一存储服务的同一个 bucket，并使用一致的 region、凭据和寻址模式。签名后不能替换 URL 的 host。
 4. 业务模块统一导入 `StorageModule`，服务端读写注入 `StorageService`，浏览器直传注入 [UploaderService](#按需装配)，并由管理员配置[存储端 CORS](#bucket-cors)。应用启动会校验配置；创建预签名 URL 不代表已经连接存储或确认 bucket 就绪。
 
@@ -18,9 +18,11 @@
 
 容器内的 `127.0.0.1` 指向容器自身；浏览器中的 `127.0.0.1` 指向运行浏览器的机器。本地 Compose 仅绑定宿主机回环端口，不能把这份地址配置直接给远程用户。完整变量校验与默认值见[配置说明](../development/env-vars.md#storage)。
 
+Expo 真机同样需要能访问签名中的 endpoint：手机的 `127.0.0.1` 指向手机自身，不能直接使用上表的本机地址。当前文档中的直传示例使用浏览器 `File`，尚未提供移动端文件选择与上传适配；接入时须保持签名约束并验证所选平台的请求体行为，规则见[移动端本地数据与业务文件](../development/frontends.md#移动端本地数据与业务文件)。
+
 endpoint 填存储服务根地址，不把 bucket 或对象 key 拼进去。`STORAGE_S3_FORCE_PATH_STYLE=true` 将 bucket 放在路径中（`endpoint/bucket/key`），本地 SeaweedFS 使用这种方式；`false` 通常使用 bucket 子域名（`bucket.host/key`），需服务商的 DNS 与 TLS 支持，按其接入要求选择。
 
-本地变量放在 `.env`，修改后重启应用。生产通过[部署说明](../deployment.md)中的 Compose 环境文件注入，更新变量后重新创建应用容器，不能仅修改宿主机文件而继续运行旧容器。启动成功只代表配置格式有效，不代表网络、bucket 或对象权限已经验证。
+本地变量放在 `apps/server/.env`，修改后重启应用。生产通过[部署说明](../deployment.md)中的 Compose 环境文件注入，更新变量后重新创建应用容器，不能仅修改宿主机文件而继续运行旧容器。启动成功只代表配置格式有效，不代表网络、bucket 或对象权限已经验证。
 
 ## 按需装配
 
@@ -123,7 +125,7 @@ const digest = hash.digest('hex');
 
 ## 配置与资源限制
 
-完整变量、默认值与校验见[配置说明](../development/env-vars.md#storage)，可复制模板只维护在 [.env.example](../../.env.example)。凭据由配置层显式注入，不回退读取 `AWS_*`、本机 AWS 凭据文件或云实例默认身份。临时凭据可提供 `STORAGE_S3_SESSION_TOKEN`，当前客户端不会自动刷新它；[临时凭据提前过期时，已签发链接也会提前失效](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html)。
+完整变量、默认值与校验见[配置说明](../development/env-vars.md#storage)，可复制模板只维护在 [.env.example](../../apps/server/.env.example)。凭据由配置层显式注入，不回退读取 `AWS_*`、本机 AWS 凭据文件或云实例默认身份。临时凭据可提供 `STORAGE_S3_SESSION_TOKEN`，当前客户端不会自动刷新它；[临时凭据提前过期时，已签发链接也会提前失效](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html)。
 
 默认单次上传最多 100 MiB、内存读取最多 5 MiB、上传整体超时 120 秒、读取及普通请求超时 30 秒。同一个 `StorageService` 实例最多同时处理 4 个上传；达到上限直接拒绝，不排队，也不代表跨应用实例的全局配额。HTTP 入口和文件处理链仍需设置自己的请求大小、并发及超时限制。
 
@@ -145,7 +147,7 @@ S3 对象不是 POSIX 文件；模块不支持追加或原地修改内容。对�
 
 ## 浏览器直传
 
-[UploaderService](../../src/common/modules/storage/uploader.service.ts) · [类型](../../src/common/modules/storage/uploader.types.ts)
+[UploaderService](../../apps/server/src/common/modules/storage/uploader.service.ts) · [类型](../../apps/server/src/common/modules/storage/uploader.types.ts)
 
 `UploaderService` 与 `StorageService` 共用前面的配置和模块装配：后端签发短时 PUT 链接，浏览器直接上传原始文件，后端根据可信记录检查对象大小和内容类型。服务不转发文件内容、不落盘，不提供公开 Controller、鉴权实现、数据库表或严格一次性票据。
 
@@ -254,4 +256,4 @@ env -i PATH="$PATH" \
 
 ## 验证
 
-单测隔离配置和外部请求，并使用真实 SDK 离线验证预签名。服务端读写的[协议集成测试](../../src/common/modules/storage/__tests__/storage.integration-spec.ts)与[直传集成测试](../../src/common/modules/storage/__tests__/uploader.integration-spec.ts)使用测试专属的临时 SeaweedFS 容器、随机端口和独立 bucket，覆盖读写、签名约束、并发防覆盖、过期与 CORS；不读取本地 `.env`，不写真实云存储。测试只清理自己创建的资源，执行前遵守[测试安全边界](../development/testing.md#测试安全边界)。
+单测隔离配置和外部请求，并使用真实 SDK 离线验证预签名。服务端读写的[协议集成测试](../../apps/server/src/common/modules/storage/__tests__/storage.integration-spec.ts)与[直传集成测试](../../apps/server/src/common/modules/storage/__tests__/uploader.integration-spec.ts)使用测试专属的临时 SeaweedFS 容器、随机端口和独立 bucket，覆盖读写、签名约束、并发防覆盖、过期与 CORS；不读取本地 `.env`，不写真实云存储。测试只清理自己创建的资源，执行前遵守[测试安全边界](../development/testing.md#测试安全边界)。

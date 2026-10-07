@@ -1,6 +1,6 @@
 # BottleneckModule
 
-[源码](../../src/common/modules/bottleneck/) · [配置](../../src/configs/bottleneck.config.ts) · [基础设施选型](../development/infra-modules.md)
+[源码](../../apps/server/src/common/modules/bottleneck/) · [配置](../../apps/server/src/configs/bottleneck.config.ts) · [基础设施选型](../development/infra-modules.md)
 
 基于 [bottleneck](https://github.com/SGrondin/bottleneck) 库的通用限流模块，支持内存模式（单机）和 Redis 模式（分布式多实例共享）。
 
@@ -129,7 +129,7 @@ Redis 模式将限流状态（当前并发数、令牌桶和配置）存储在 R
 
 ## 环境变量
 
-完整配置模板见 [.env.example](../../.env.example)。`BOTTLENECK_MODE=memory` 时不要求 Redis 连接变量；下表连接必填项仅适用于 `redis` 模式。
+完整配置模板见 [.env.example](../../apps/server/.env.example)。`BOTTLENECK_MODE=memory` 时不要求 Redis 连接变量；下表连接必填项仅适用于 `redis` 模式。
 
 | 变量                                                                   | 类型                    | 默认值       | 说明                                                             |
 | ---------------------------------------------------------------------- | ----------------------- | ------------ | ---------------------------------------------------------------- |
@@ -190,7 +190,7 @@ const result = await this._bottleneckService.schedule(
 
 ### 4. createLimiter — 直接操作限流器
 
-需要复用实例或调用本地接口暴露的方法时使用；返回类型是 [IBottleneckLimiter](../../src/common/modules/bottleneck/interfaces/bottleneck-client.interface.ts)，不代表暴露上游库的全部 API：
+需要复用实例或调用本地接口暴露的方法时使用；返回类型是 [IBottleneckLimiter](../../apps/server/src/common/modules/bottleneck/interfaces/bottleneck-client.interface.ts)，不代表暴露上游库的全部 API：
 
 ```typescript
 const limiter = this._bottleneckService.createLimiter('custom', {
@@ -244,14 +244,14 @@ const remaining =
 ## 架构设计
 
 ```
-src/common/modules/bottleneck/
+apps/server/src/common/modules/bottleneck/
 ├── bottleneck.module.ts                    # 模块定义，forRoot 注册
 ├── bottleneck.service.ts                   # 限流服务核心
 └── interfaces/
     ├── bottleneck-client.interface.ts      # 限流客户端接口
     └── bottleneck-config.interface.ts      # 模块配置接口
 
-src/configs/
+apps/server/src/configs/
 └── bottleneck.config.ts                    # 环境变量配置
 ```
 

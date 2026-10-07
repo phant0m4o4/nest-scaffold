@@ -14,4 +14,5 @@
 
 - 不得包含真实凭据、私钥、个人信息、本机路径或 AI 署名/会话链接，见[工程底线](../docs/development/engineering-conventions.md)。
 - 当前开发与验证要求见[开发流程](../docs/development/workflows.md)。
+- 已有报告中的根 `src/`、`test/`、`drizzle/` 等路径对应迁移前的后端布局；现行位置见[架构说明](../docs/development/architecture.md)，不改写历史正文。
 - 已有报告保留当时的事实与结构，其中旧的“四档验收”或已移除功能仅代表历史状态，不构成现行要求。

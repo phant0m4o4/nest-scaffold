@@ -1,12 +1,12 @@
 # 日志模块
 
-源码入口：[LoggerModule](../../src/common/modules/logger/logger.module.ts)。模块封装 `nestjs-pino`，提供结构化日志、请求 ID、指定字段脱敏和可选文件轮转。
+源码入口：[LoggerModule](../../apps/server/src/common/modules/logger/logger.module.ts)。模块封装 `nestjs-pino`，提供结构化日志、请求 ID、指定字段脱敏和可选文件轮转。
 
-日志是应用运行时唯一允许的本地文件写入，不得把上传内容、导出文件或业务文件缓存写入日志目录。Docker 部署默认输出 stdout / stderr；其他文件统一走 S3 兼容 Storage，详见[文件写入与 Storage](../development/engineering-conventions.md#文件写入与-storage)。
+本模块只负责 Nest 服务端日志，不包含浏览器、Expo 或 Nginx 的日志配置。日志是服务端应用运行时唯一允许的本地文件写入，不得把上传内容、导出文件或业务文件缓存写入日志目录。Docker 部署默认输出 stdout / stderr；其他文件统一走 S3 兼容 Storage，详见[文件写入与 Storage](../development/engineering-conventions.md#文件写入与-storage)。
 
 ## 注册与使用
 
-[AppModule](../../src/app/app.module.ts) 已注册 `LoggerModule.forRoot({ name: 'app' })`。底层 Pino 模块全局提供日志服务，业务模块无需重复导入。
+[AppModule](../../apps/server/src/app/app.module.ts) 已注册 `LoggerModule.forRoot({ name: 'app' })`。底层 Pino 模块全局提供日志服务，业务模块无需重复导入。
 
 ```typescript
 import { Injectable } from '@nestjs/common';
@@ -25,7 +25,7 @@ export class UserService {
 }
 ```
 
-[main.ts](../../src/main.ts) 已用 `bufferLogs: true` 缓存启动日志，并调用 `app.useLogger(app.get(Logger))`、`app.flushLogs()` 接管 Nest 日志；不要另建启动入口重复配置。
+[main.ts](../../apps/server/src/main.ts) 已用 `bufferLogs: true` 缓存启动日志，并调用 `app.useLogger(app.get(Logger))`、`app.flushLogs()` 接管 Nest 日志；不要另建启动入口重复配置。
 
 需要绑定一组固定字段时，通过底层 Pino logger 创建子实例（`PinoLogger` 本身没有 `child()`）：
 
@@ -45,7 +45,7 @@ authLogger.info({ event: 'auth_success' }, '认证成功');
 | `test`        | `debug`  | pino-pretty 彩色输出到 stderr | 是       | 可选     |
 | `production`  | `info`   | 结构化 JSON 输出到 stdout     | 是       | 可选     |
 
-字段定义及校验以 [log.config.ts](../../src/configs/log.config.ts) 为准，示例统一维护在 [.env.example](../../.env.example)。
+字段定义及校验以 [log.config.ts](../../apps/server/src/configs/log.config.ts) 为准，示例统一维护在 [.env.example](../../apps/server/.env.example)。
 
 | 变量              | 默认值                                  | 说明                                                                                 |
 | ----------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -67,24 +67,25 @@ LOG_FILE_ENABLE=false
 
 ### Docker 中查看日志
 
-按[部署说明](../deployment.md#生产-compose)运行的应用，由 Docker 日志驱动负责接收、保存和轮转输出，应用内不再运行文件轮转。仓库根目录的开发 Compose 只提供基础设施，不能用它查看宿主机上 `pnpm start:dev` 的输出。
+按[部署说明](../deployment.md#生产-compose)运行的应用，由 Docker 日志驱动负责接收、保存和轮转输出，应用内不再运行文件轮转。`deploy/docker-compose.yml` 开发 Compose 只提供基础设施，不能用它查看宿主机上 `pnpm start:dev` 的输出。
 
 在生产服务器的 Bash 中，沿用部署文档的目录、项目名和服务名：
 
 ```bash
 cd /srv/nest-app
 export APP_IMAGE="$(<current-image)"
+unset ADMIN_IMAGE
 
 # 查看最近 30 分钟内的最后 200 行
-docker compose --env-file /dev/null -p nest-app -f compose.yaml \
+docker compose --env-file images.env -p nest-app -f compose.yaml \
   logs --since=30m --tail=200 app
 
 # 从最后 100 行开始持续查看，Ctrl+C 只退出查看，不停止容器
-docker compose --env-file /dev/null -p nest-app -f compose.yaml \
+docker compose --env-file images.env -p nest-app -f compose.yaml \
   logs --follow --tail=100 app
 ```
 
-查看日志也需要解析 Compose 的必填 `APP_IMAGE`；首次发布失败、没有 `current-image` 时，改用该次发布的镜像 digest。`--env-file /dev/null` 禁止读取默认插值文件，不会取消服务自身的 `.env.production` 配置。按时间范围和行数限制输出，避免一次拉取全部日志；参数见 [Docker Compose logs](https://docs.docker.com/reference/cli/docker/compose/logs/)。
+查看日志也需要解析 Compose 的必填镜像变量；首次发布失败、没有 `current-image` 时，将 `APP_IMAGE` 改用该次发布的镜像 digest。`images.env` 沿用部署文档中的公开镜像变量文件：启用管理后台时保存 `ADMIN_IMAGE`，只部署服务端时可为空；`unset ADMIN_IMAGE` 避免 shell 中的旧值覆盖文件。该文件不保存应用密钥，也不会替代服务自身的 `.env.production`。按时间范围和行数限制输出，避免一次拉取全部日志；参数见 [Docker Compose logs](https://docs.docker.com/reference/cli/docker/compose/logs/)。
 
 需要按 `event` / `req.id` 检索 JSON 时，可在 `logs` 后加 `--no-color --no-log-prefix`，去掉 Compose 展示前缀后再交给 JSON 解析工具；启动失败等非 Pino 输出不一定是 JSON，应保留原始输出用于排查。
 
@@ -163,4 +164,4 @@ this._logger.info(
 
 每个请求由服务端新生成 UUID v4，日志中的 `req.id` 与响应头 `X-Request-Id` 一致，不信任客户端传入的请求 ID。当前自动请求日志跳过所有 URL 以 `/health` 开头的请求。
 
-若跨域浏览器需要读取 `X-Request-Id`，还需按实际需求配置 CORS `exposedHeaders`；当前 [main.ts](../../src/main.ts) 未暴露此响应头。
+若跨域浏览器需要读取 `X-Request-Id`，还需按实际需求配置 CORS `exposedHeaders`；当前 [main.ts](../../apps/server/src/main.ts) 未暴露此响应头。
