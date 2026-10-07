@@ -1,15 +1,15 @@
 # 依赖
-/node_modules
+node_modules
 /.pnpm-store
 
 # 构建产物
-/dist
-/build
+dist
+build
 *.tsbuildinfo
 
 # 测试
-/coverage
-/.nyc_output
+coverage
+.nyc_output
 
 # 日志
 logs
@@ -63,3 +63,8 @@ pids
 
 # 诊断报告 (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Expo 开发缓存与本地原生工程（由配置生成）
+.expo/
+apps/mobile-app/android/
+apps/mobile-app/ios/

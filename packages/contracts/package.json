@@ -1,0 +1,26 @@
+{
+  "name": "@nest-scaffold/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src vitest.config.mts --fix",
+    "lint:check": "eslint src vitest.config.mts --max-warnings 0",
+    "format": "prettier --write src vitest.config.mts package.json tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "eslint": "^10.8.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  }
+}

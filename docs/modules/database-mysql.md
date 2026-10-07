@@ -1,6 +1,6 @@
 # DatabaseModule（MySQL）
 
-源码：[mysql/](../../src/common/modules/database/mysql/)。业务 Schema、仓储和迁移约定见[数据库开发文档](../development/database.md)。
+源码：[mysql/](../../apps/server/src/common/modules/database/mysql/)。业务 Schema、仓储和迁移约定见[数据库开发文档](../development/database.md)。
 
 基于 Drizzle ORM + MySQL2 的数据库模块，提供连接管理与 Schema 绑定；seed CLI 由 `ToolsModule` 单独组合，不通过本模块注册。
 与 [PostgreSQL](database-pgsql.md) 是平行的两套实现，见[数据库模块概览](database.md)了解共享部分。
@@ -12,7 +12,7 @@
 - 开发环境自动输出参数化 SQL 查询日志
 - `repositories/`：MySQL `BaseRepository`、错误映射和游标分页工具
 - `@Global()` 静态模块：在根模块 `imports: [DatabaseModule]` 一次即可
-- CLI 工具脚本（`ToolsModule`）：`db:seed:mysql`（演示数据）与 `db:reset:mysql`（重置到迁移基线），均仅限开发环境
+- CLI 工具脚本（`ToolsModule`）：`db:seed:mysql`（演示数据）与 `db:reset:mysql`（重置到迁移基线），仅用于隔离开发/测试库；拒绝 `NODE_ENV=production`
 - Seed 专用工具函数：`unique` / `uniqueArray` 确保生成唯一值
 
 ## 依赖
@@ -26,7 +26,7 @@
 
 ## 环境变量
 
-在 `.env` 中配置，完整示例见 [.env.example](../../.env.example)，校验与默认值见 [mysql-database.config.ts](../../src/configs/mysql-database.config.ts)。
+在 `apps/server/.env` 中配置，完整示例见 [.env.example](../../apps/server/.env.example)，校验与默认值见 [mysql-database.config.ts](../../apps/server/src/configs/mysql-database.config.ts)。
 
 | 环境变量         | 要求 / 默认值          |
 | ---------------- | ---------------------- |
@@ -84,8 +84,10 @@ await this._databaseService.db.transaction(async (tx: MySqlTransactionType) => {
 
 ## CLI 工具
 
+以下命令从仓库根执行，根脚本会进入 `apps/server`，使用该应用的 `.env`、Drizzle Kit 配置和迁移目录。`seed` 直接写入演示数据，没有交互确认；先核对目标数据库。
+
 ```bash
-# 种子数据填充（faker 演示数据，仅限开发环境，NODE_ENV=production 会被拒绝）
+# 种子数据填充（faker 演示数据，仅用于隔离开发/测试库）
 NODE_ENV=development pnpm db:seed:mysql
 
 # 表结构维护（Drizzle Kit migration，开发与生产同一套迁移文件）
@@ -95,14 +97,14 @@ pnpm db:migrate:mysql    # 应用迁移
 
 ### 基础数据与 seed 约定
 
-基础数据（初始角色、系统配置等）用**自定义数据迁移**维护：`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移文件后手写 INSERT 等 SQL（示例见 `drizzle/mysql/0001_base-data.sql`），随 `pnpm db:migrate:mysql` 一并应用。
+基础数据（初始角色、系统配置等）用**自定义数据迁移**维护：`pnpm db:generate:mysql --custom --name=<name>` 生成空迁移文件后手写 INSERT 等 SQL（示例见 `apps/server/drizzle/mysql/0001_base-data.sql`），随 `pnpm db:migrate:mysql` 一并应用。
 
 `NODE_ENV=development pnpm db:reset:mysql` 会删除目标库全部表及迁移记录，再重放迁移恢复结构和基础数据，不会自动重新填充演示 seed。只对确认过的本地/测试库执行，交互确认不能代替检查连接目标；详见[数据重置约定](../development/database.md#基础数据seed-与-reset)。
 
 种子器需实现对应接口：
 
 ```typescript
-// src/database/mysql/seed.ts
+// apps/server/src/database/mysql/seed.ts
 import type { ISeeder } from '@/common/modules/database/interfaces/seeder.interface';
 
 @Injectable()
@@ -115,7 +117,7 @@ export class SeedService implements ISeeder {
 
 ## Seed 工具函数
 
-`common/utils/unique.ts` 提供 `unique` 和 `uniqueArray`，用于在 seed 脚本中确保生成唯一值：
+`apps/server/src/common/modules/database/common/utils/unique.ts` 提供 `unique` 和 `uniqueArray`，用于在 seed 脚本中确保生成唯一值：
 
 ```typescript
 import {
@@ -139,11 +141,11 @@ clearUniqueCollections();
 
 ## 类型导出
 
-| 类型                   | 路径                                                                                                        | 用途                   |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `MySqlDatabaseType`    | [mysql-database.type.ts](../../src/common/modules/database/mysql/common/types/mysql-database.type.ts)       | Drizzle 数据库实例类型 |
-| `MySqlTransactionType` | [mysql-transaction.type.ts](../../src/common/modules/database/mysql/common/types/mysql-transaction.type.ts) | 事务回调参数类型       |
-| `NotEmptyArrayType<T>` | [not-empty-array.type.ts](../../src/common/modules/database/common/types/not-empty-array.type.ts)（共享）   | 非空数组约束类型       |
+| 类型                   | 路径                                                                                                                    | 用途                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `MySqlDatabaseType`    | [mysql-database.type.ts](../../apps/server/src/common/modules/database/mysql/common/types/mysql-database.type.ts)       | Drizzle 数据库实例类型 |
+| `MySqlTransactionType` | [mysql-transaction.type.ts](../../apps/server/src/common/modules/database/mysql/common/types/mysql-transaction.type.ts) | 事务回调参数类型       |
+| `NotEmptyArrayType<T>` | [not-empty-array.type.ts](../../apps/server/src/common/modules/database/common/types/not-empty-array.type.ts)（共享）   | 非空数组约束类型       |
 
 ## 架构设计
 

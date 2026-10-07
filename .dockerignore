@@ -33,3 +33,11 @@ scripts
 **/*.swp
 **/*.swo
 **/*~
+
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.expo
+apps/mobile-app/android
+apps/mobile-app/ios

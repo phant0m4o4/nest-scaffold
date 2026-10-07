@@ -1,6 +1,6 @@
 # 基础设施模块
 
-本页帮助选择已有能力和识别安全边界。具体 API、参数及示例统一在 `docs/modules/` 维护，不重复复制。中小项目优先使用当前配置，出现真实需求后再增加依赖或部署复杂度。
+本页帮助选择 `apps/server` 已有能力和识别安全边界。具体 API、参数及示例统一在 `docs/modules/` 维护，不重复复制；其中的 Nest 模块只供服务端使用，管理后台和手机端通过 HTTP 契约调用，不直接导入这些模块。中小项目优先使用当前配置，出现真实需求后再增加依赖或部署复杂度。
 
 ## 使用入口
 
@@ -27,9 +27,9 @@
 - 业务代码不调用 `cache.flush()` / `FLUSHDB`；这会清空该 DB 全部数据。
 - 队列连接由 BullMQ 创建和关闭，Worker 的阻塞连接不能复用普通缓存客户端。
 
-确有原生 Redis 数据结构需求时，可复用 [连接解析](../../src/common/utils/redis/redis-connection.ts) 与 [客户端工厂](../../src/common/utils/redis/redis.factory.ts)，并由所属模块负责初始化与关闭。不要提前创建一个所有模块共享的 Redis 层。
+确有原生 Redis 数据结构需求时，可复用 [连接解析](../../apps/server/src/common/utils/redis/redis-connection.ts) 与 [客户端工厂](../../apps/server/src/common/utils/redis/redis.factory.ts)，并由所属模块负责初始化与关闭。不要提前创建一个所有模块共享的 Redis 层。
 
-连接字段与单机/哨兵示例见 [配置文档](env-vars.md) 和 [.env.example](../../.env.example)。
+连接字段与单机/哨兵示例见 [配置文档](env-vars.md) 和 [.env.example](../../apps/server/.env.example)。
 
 缓存、锁、队列的备份和恢复策略不同，不能直接整体覆盖共享实例；恢复后的任务重放及外部副作用需单独控制，见[备份与恢复](../backup-and-restore.md#redis-与配置恢复的补充约束)。
 
@@ -63,4 +63,4 @@ Bull Board 仅开发环境启用；开发环境也不要直接暴露到不可信
 
 现有脱敏规则只能覆盖已配置路径，不能代替调用处检查；不要记录完整请求体、凭证或连接串。
 
-项目后端已有国际化：`I18nZodValidationPipe` 按请求语言输出 `errors[].message`，同时保留稳定的 `field` / `code` / `params`。新增对外字段和校验文案时同步维护 [翻译资源](../../src/i18n)，不要把这套契约误写成“后端不做 i18n”。
+项目后端已有国际化：`I18nZodValidationPipe` 按请求语言输出 `errors[].message`，同时保留稳定的 `field` / `code` / `params`。新增对外字段和校验文案时同步维护 [翻译资源](../../apps/server/src/i18n)，不要把这套契约误写成“后端不做 i18n”。

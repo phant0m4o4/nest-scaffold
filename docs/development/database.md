@@ -2,15 +2,17 @@
 
 默认装配 MySQL。PostgreSQL 提供平行实现，按项目需要选用，不要求业务同时维护两套库。切换方式与连接说明见[数据库模块](../modules/database.md)。
 
+本页命令在仓库根目录执行，根脚本会转发到 `apps/server`；配置、Schema 和迁移均归该应用所有，前端与共享包不直接依赖数据库。
+
 ## Schema 与迁移
 
-- 表定义放在 `src/database/<dialect>/schemas/<table-name>.schema.ts`，在同目录 `index.ts` 聚合导出；`<dialect>` 为 `mysql` 或 `pgsql`。
+- 表定义放在 `apps/server/src/database/<dialect>/schemas/<table-name>.schema.ts`，在同目录 `index.ts` 聚合导出；`<dialect>` 为 `mysql` 或 `pgsql`。
 - 表名使用复数小写下划线，Schema 变量使用 `<tableName>Schema`，文件名为 kebab-case。
 - 使用 `BaseRepository` 的表必须有名为 `id` 的数值型主键，否则构造时抛错。现有主键工厂使用 bigint、Drizzle `mode: 'number'`；业务输入仍需保证 JS 数字精度安全。
 - Schema 的 `deletedAt` 属性触发基类软删除，可映射为 `timestamp('deleted_at')` 等实际 SQL 列名；识别基于属性名，不会因列名别名退化为物理删除。自定义查询需走 `_buildWhereFilter(...)`，不能只依赖基类替所有查询过滤。
-- 跨表复用枚举放 `src/database/enums/`，仅本表使用的可就地声明。沿用既有枚举值，不为风格修改已存储的数据。
+- 跨表复用枚举放 `apps/server/src/database/enums/`，仅本表使用的可就地声明。沿用既有枚举值，不为风格修改已存储的数据。
 
-参考真实定义：[MySQL Demo](../../src/database/mysql/schemas/demos.schema.ts)、[PostgreSQL Demo](../../src/database/pgsql/schemas/demos.schema.ts)。新表模板见 [schema.ts.tpl](../../scripts/templates/schema.ts.tpl)。
+参考真实定义：[MySQL Demo](../../apps/server/src/database/mysql/schemas/demos.schema.ts)、[PostgreSQL Demo](../../apps/server/src/database/pgsql/schemas/demos.schema.ts)。新表模板见 [schema.ts.tpl](../../scripts/templates/schema.ts.tpl)。
 
 | 工厂                                   | 作用                                             |
 | -------------------------------------- | ------------------------------------------------ |
@@ -26,7 +28,7 @@
 
 ```bash
 pnpm db:generate:mysql --name=add-user-profile
-# 检查 drizzle/mysql/ 新增 SQL
+# 检查 apps/server/drizzle/mysql/ 新增 SQL
 pnpm db:migrate:mysql
 ```
 
@@ -45,20 +47,20 @@ pnpm db:migrate:mysql
 
 列名按业务语义，例如 `accessKey`、`inviteCode`；`publicId` / `shortPublicId` 只是 Demo 示例。列宽与生成长度一致，并分别添加唯一约束。
 
-[DemoRepository](../../src/app/repositories/demo.repository.ts) 的当前策略：短码最多查空 8 次；长码确认碰撞、短码查空耗尽或插入竞态碰撞时转为不透明的 `RepositoryException`，不无限换号重试。名称等业务唯一键冲突仍保留 `RecordAlreadyExistsException`。创建方法不接受调用方提供这两类生成字段，返回内部 ID 与公开标识，再由控制器选择可见字段。
+[DemoRepository](../../apps/server/src/app/repositories/demo.repository.ts) 的当前策略：短码最多查空 8 次；长码确认碰撞、短码查空耗尽或插入竞态碰撞时转为不透明的 `RepositoryException`，不无限换号重试。名称等业务唯一键冲突仍保留 `RecordAlreadyExistsException`。创建方法不接受调用方提供这两类生成字段，返回内部 ID 与公开标识，再由控制器选择可见字段。
 
 ## 仓储
 
-业务仓储放在 `src/app/repositories/`，继承对应方言的 [MySQL BaseRepository](../../src/common/modules/database/mysql/repositories/base.repository.ts) 或 [PostgreSQL BaseRepository](../../src/common/modules/database/pgsql/repositories/base.repository.ts)。
+业务仓储放在 `apps/server/src/app/repositories/`，继承对应方言的 [MySQL BaseRepository](../../apps/server/src/common/modules/database/mysql/repositories/base.repository.ts) 或 [PostgreSQL BaseRepository](../../apps/server/src/common/modules/database/pgsql/repositories/base.repository.ts)。
 
 ### 职责与注册
 
-- 业务仓储了解具体业务表、业务唯一键和表特有查询；通用基类、异常、分页接口、错误映射及游标工具放在 `src/common/modules/database/`。
+- 业务仓储了解具体业务表、业务唯一键和表特有查询；通用基类、异常、分页接口、错误映射及游标工具放在 `apps/server/src/common/modules/database/`。
 - `DatabaseModule` 只提供数据库连接、Drizzle 实例及连接生命周期，不反向依赖或集中注册业务仓储。
 - 业务模块通过 `RepositoryModule.forFeature(...)` 按需注册仓储，避免业务仓储成为全局 Provider。
 - 业务 Service 注入仓储，不直接查询 `databaseService.db`；只有需要协调多个仓储的事务边界时才注入 `DatabaseService`。
 
-示例：假设已经定义并导出 `usersSchema`，业务仓储写在 `src/app/repositories/users.repository.ts`：
+示例：假设已经定义并导出 `usersSchema`，业务仓储写在 `apps/server/src/app/repositories/users.repository.ts`：
 
 ```typescript
 import { DatabaseService } from '@/common/modules/database/mysql/database.service';
@@ -89,7 +91,7 @@ import { UsersService } from './users.service';
 export class UsersModule {}
 ```
 
-PostgreSQL 业务仓储改用对应的 `DatabaseService` 和 `pgsql/repositories/base.repository`；同一个仓储不要混用两种方言。现成示例见 [DemoRepository](../../src/app/repositories/demo.repository.ts)，仓储自身逻辑的单测放在相邻的 [**tests**/](../../src/app/repositories/__tests__/)。
+PostgreSQL 业务仓储改用对应的 `DatabaseService` 和 `pgsql/repositories/base.repository`；同一个仓储不要混用两种方言。现成示例见 [DemoRepository](../../apps/server/src/app/repositories/demo.repository.ts)，仓储自身逻辑的单测放在相邻的 [**tests**/](../../apps/server/src/app/repositories/__tests__/)。
 
 ### 基类接口
 
@@ -132,7 +134,7 @@ await this._databaseService.db.transaction(async (tx) => {
 | 按 ID 更新/删除未命中 | `RecordNotFoundException`                | 404           |
 | 未分类数据访问错误    | `RepositoryException`                    | 500，隐藏细节 |
 
-只在能恢复或需要改变业务语义时捕获。驱动错误代码以 [MySQL mapper](../../src/common/modules/database/mysql/repositories/utils/mysql-error-mapper.util.ts) / [PG mapper](../../src/common/modules/database/pgsql/repositories/utils/pgsql-error-mapper.util.ts) 为准，不复制维护第二份代码表。
+只在能恢复或需要改变业务语义时捕获。驱动错误代码以 [MySQL mapper](../../apps/server/src/common/modules/database/mysql/repositories/utils/mysql-error-mapper.util.ts) / [PG mapper](../../apps/server/src/common/modules/database/pgsql/repositories/utils/pgsql-error-mapper.util.ts) 为准，不复制维护第二份代码表。
 
 ## 基础数据、seed 与 reset
 
@@ -144,7 +146,7 @@ pnpm db:generate:mysql --custom --name=add-base-data
 pnpm db:migrate:mysql
 ```
 
-演示数据由 `src/database/<dialect>/seed.ts` 提供；seed 与 reset CLI 在生产环境拒绝执行，并有交互确认。
+演示数据由 `apps/server/src/database/<dialect>/seed.ts` 提供；seed 与 reset CLI 在 `NODE_ENV=production` 时拒绝执行。`reset` 有交互确认，`seed` 会直接写入，不提供确认提示。两者只用于已核实的隔离开发/测试库，设置 `NODE_ENV=development` 不会自动隔离连接目标。
 
 | 命令                                       | 用途                                               |
 | ------------------------------------------ | -------------------------------------------------- |
@@ -153,10 +155,10 @@ pnpm db:migrate:mysql
 
 `reset` 会破坏目标数据库内容，只用于确认过的本地/测试库；它不会自动重放演示 seed。
 
-[unique 工具](../../src/common/modules/database/common/utils/unique.ts) 用进程内集合辅助 faker seed 去重，只适合一次性 CLI，不能当数据库唯一约束，也不能在长期运行服务中使用。Demo 固定 faker 种子，引用基础数据 ID 的地方需随基础迁移一起核对。
+[unique 工具](../../apps/server/src/common/modules/database/common/utils/unique.ts) 用进程内集合辅助 faker seed 去重，只适合一次性 CLI，不能当数据库唯一约束，也不能在长期运行服务中使用。Demo 固定 faker 种子，引用基础数据 ID 的地方需随基础迁移一起核对。
 
 ## PostgreSQL 与本地依赖
 
-PostgreSQL 命令后缀换成 `:pgsql`，迁移目录换成 `drizzle/pgsql/`。PG 枚举是独立类型，需要声明并导出 `pgEnum`，不要直接套 MySQL 的列枚举写法。
+PostgreSQL 命令后缀换成 `:pgsql`，迁移目录换成 `apps/server/drizzle/pgsql/`。PG 枚举是独立类型，需要声明并导出 `pgEnum`，不要直接套 MySQL 的列枚举写法。
 
-本地数据库、Redis 与管理界面以 [docker-compose.yml](../../docker-compose.yml) 为准，只启用本项目需要的服务。完整环境变量见 [.env.example](../../.env.example) 与 [配置文档](env-vars.md)，不在本页再维护密码示例。
+本地数据库、Redis 与管理界面以 [docker-compose.yml](../../deploy/docker-compose.yml) 为准，只启用本项目需要的服务。完整环境变量见 [.env.example](../../apps/server/.env.example) 与 [配置文档](env-vars.md)，不在本页再维护密码示例。

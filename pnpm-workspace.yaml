@@ -1,3 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
 # pnpm v11 项目配置（原 package.json#pnpm 迁至此）
 #
 # minimumReleaseAge：新发布包需满 N 分钟才可解析进 lockfile（默认 1440=1 天，防供应链投毒）
@@ -19,3 +23,11 @@ allowBuilds:
   cpu-features: true
   # nest/protobuf 链路偶发 postinstall
   protobufjs: true
+  # Expo ESLint 的原生模块解析器
+  unrs-resolver: true
+
+# Nest CLI 的 Angular 工具使用 chokidar 4；SWC 独立监听器需要 5，分别解析。
+packageExtensions:
+  '@swc/cli@0.8.x':
+    optionalDependencies:
+      chokidar: ^5.0.0
