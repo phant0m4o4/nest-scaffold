@@ -34,6 +34,7 @@
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | 新建项目或生成模块             | [工具脚本](../scripts/README.md)                                                                                                          |
 | 选择代码风格、设计或技术方案   | [技术选型与现代实践](development/engineering-conventions.md#技术选型与现代实践)                                                           |
+| 检查复用、维护、扩展与可靠性   | [代码质量要求](development/coding-standards.md#代码质量要求)                                                                              |
 | 设计上传、导出或文件存储       | [Storage（读写与直传）](modules/storage.md)、[文件写入约束](development/engineering-conventions.md#文件写入与-storage)                    |
 | 实现业务模块                   | [模块开发](development/module-development.md)                                                                                             |
 | 设计接口、校验和分页           | [接口规范](development/rest-api.md)                                                                                                       |
@@ -42,6 +43,7 @@
 | 开发管理后台 / 手机端          | [前端开发](development/frontends.md)                                                                                                      |
 | 增加或调整环境变量             | [配置说明](development/env-vars.md)、[API 环境变量模板](../apps/server/.env.example)、[前端变量](development/frontends.md#环境变量与联调) |
 | 编写和运行测试                 | [测试规范](development/testing.md)                                                                                                        |
+| 测试外部调用或人工交互         | [独立测试模式](development/testing.md#外部调用与人工交互的独立测试模式)、[配置要求](development/env-vars.md#独立测试模式配置)             |
 | 整理提交、创建合并请求         | [Git 约定](development/git-commit.md)                                                                                                     |
 
 ## 模块参考
