@@ -57,7 +57,7 @@ Expo、React Native 与 React 的版本以手机应用的兼容组合为准；�
 
 - `packages/contracts`：纯 TypeScript / Zod 的公开请求和响应契约，不依赖 Nest、数据库或服务端配置。
 - `packages/api-client`：基于 fetch 的请求、响应校验和错误处理，供管理后台调用 Demo CRUD、手机端调用公开列表和详情。
-- API 的 DTO、数据库 Schema 和服务端密钥不因“共享”而进入客户端。公开用户端的 `PublicDemo` 使用 `publicId` / `shortPublicId`，不含内部数字主键；管理侧 `AdminDemo` 契约按现有接口另外包含 `id` / `parentId`，不应把管理侧响应直接用于用户页面。
+- API 的 DTO、数据库 Schema 和服务端密钥不因“共享”而进入客户端。公开用户端的 `PublicDemo` 包含 `publicId` / `shortPublicId` 和 FF1 数字编码 `code`，不含内部数字主键；管理侧 `AdminDemo` 契约按现有接口另外包含 `id` / `parentId`，不应把管理侧响应直接用于用户页面。
 - 各端自行装配 Query、路由与状态，不为了复用建立混合 Web / Native 的组件框架。共享包只加入已经存在的共同需求。
 
 共享包当前导出 TypeScript 源码，由 Vite / Metro 编译；共享包的 `build` 只执行类型检查，无需先生成 `dist` 或启动独立 watch。

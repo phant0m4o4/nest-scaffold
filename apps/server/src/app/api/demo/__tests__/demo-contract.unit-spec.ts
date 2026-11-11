@@ -16,6 +16,7 @@ describe('前后端 Demo 契约一致性', () => {
     parentId: null,
     publicId: 'public-demo',
     shortPublicId: 'short-demo',
+    code: '061532',
     name: '示例',
     type: 'TYPE_1',
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -27,12 +28,38 @@ describe('前后端 Demo 契约一致性', () => {
       JSON.stringify(DemoPublicEntity.create(row)),
     );
     expect(publicDemoSchema.parse(json)).toEqual(json);
+    expect(json).toHaveProperty('code', row.code);
     expect(json).not.toHaveProperty('id');
   });
 
   it('实际管理端实体序列化结果符合共享 JSON 契约', () => {
     const json: unknown = JSON.parse(JSON.stringify(DemoEntity.create(row)));
     expect(adminDemoSchema.parse(json)).toEqual(json);
+    expect(json).toHaveProperty('code', row.code);
+  });
+
+  it.each([
+    ...[6, 8, 10, 12, 14, 16].map((size) => ({
+      code: '0'.repeat(size),
+      valid: true,
+    })),
+    ...[5, 7, 17, 18].map((size) => ({
+      code: '0'.repeat(size),
+      valid: false,
+    })),
+    ...['12345a', '123456\n', '123456\r\n', '１２３４５６'].map((code) => ({
+      code,
+      valid: false,
+    })),
+  ])('数字编码格式在实体与共享契约中一致：%j', ({ code, valid }) => {
+    for (const schema of [
+      DemoEntity.schema.shape.code,
+      DemoPublicEntity.schema.shape.code,
+      adminDemoSchema.shape.code,
+      publicDemoSchema.shape.code,
+    ]) {
+      expect(schema.safeParse(code).success).toBe(valid);
+    }
   });
 
   it.each([

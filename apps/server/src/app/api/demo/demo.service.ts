@@ -8,6 +8,7 @@ import {
   isSameOrderDeclaration,
   parseOrderQuery,
 } from '@/common/modules/database/mysql/repositories/utils/cursor/parse-order';
+import { decodePublicId, generatePublicId } from '@/common/utils/public-id';
 import { DemoRepository } from '@/app/repositories/demo.repository';
 import { RecordNotFoundException } from '@/common/modules/database/common/repositories/exceptions/record-not-found-exception';
 import type { AppConfigType } from '@/configs/app.config';
@@ -15,6 +16,7 @@ import appConfig from '@/configs/app.config';
 import { demosSchema } from '@/database/mysql/schemas/demos.schema';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq, gte, like, lte, SQL } from 'drizzle-orm';
+import { hkdfSync } from 'node:crypto';
 import { CreateDemoRequestDto } from './dtos/create-demo-request.dto';
 import {
   DEMO_CURSOR_ORDERABLE_COLUMNS,
@@ -26,6 +28,9 @@ import { UpdateDemoRequestDto } from './dtos/update-demo-request.dto';
 /** Demo 列表 resourceKey（写入 cursor.scope，防用户/管理互串） */
 export const DEMO_LIST_RESOURCE_KEY = 'demo.list';
 export const ADMIN_DEMO_LIST_RESOURCE_KEY = 'admin.demo.list';
+
+/** 同一发号范围固定 tweak，以保持稳定的 id/code 映射。 */
+const DEMO_CODE_TWEAK = 'demos/code';
 
 /**
  * Demo 过滤条件接口
@@ -41,28 +46,44 @@ interface IDemoFilterOptions {
 
 @Injectable()
 export class DemoService {
+  private readonly _codeSecretKey: Buffer;
+
   constructor(
     protected readonly demoRepository: DemoRepository,
     @Inject(appConfig.KEY) private readonly _appConfig: AppConfigType,
-  ) {}
+  ) {
+    // 初始化时派生 FF1 专用密钥，与分页游标密钥分离；主密钥和用途标签须保持稳定。
+    this._codeSecretKey = Buffer.from(
+      hkdfSync(
+        'sha256',
+        _appConfig.masterKey,
+        Buffer.alloc(0),
+        'nest-scaffold/demo-code/ff1/v1',
+        32,
+      ),
+    );
+  }
 
   /**
    * 创建 Demo（仓储 create 自动分配长码 publicId + 短码 shortPublicId）
-   * @returns 内部 id 与两类公开标识，供用户端/admin 端各自挑选响应字段
+   * @returns 内部 id、两类随机公开标识及由 id 计算的 code
    */
   async create(body: CreateDemoRequestDto): Promise<{
     id: number;
     publicId: string;
     shortPublicId: string;
+    code: string;
   }> {
-    return this.demoRepository.create({ data: body });
+    const row = await this.demoRepository.create({ data: body });
+    return this._withCode(row);
   }
 
   /**
    * 查询全部 Demo（无分页）
    */
   async findAll() {
-    return await this.demoRepository.findAll({});
+    const rows = await this.demoRepository.findAll({});
+    return rows.map((row) => this._withCode(row));
   }
 
   /**
@@ -97,7 +118,7 @@ export class DemoService {
     });
 
     return {
-      data: result.data,
+      data: result.data.map((row) => this._withCode(row)),
       meta: {
         nextCursor: result.meta.nextCursor
           ? encodeCursor(
@@ -116,7 +137,7 @@ export class DemoService {
     const { page, pageSize, orderColumn, orderDirection, ...filterOptions } =
       query;
     const filters = this._buildFilters(filterOptions);
-    return await this.demoRepository.findManyWithPagination({
+    const result = await this.demoRepository.findManyWithPagination({
       page: page ?? 1,
       pageSize: pageSize ?? 30,
       filter: filters,
@@ -125,6 +146,7 @@ export class DemoService {
         direction: orderDirection ?? 'desc',
       },
     });
+    return { ...result, data: result.data.map((row) => this._withCode(row)) };
   }
 
   /**
@@ -157,14 +179,24 @@ export class DemoService {
    * 按内部主键查询（admin）
    */
   async findOne(id: number) {
-    return await this.demoRepository.findOne({ id });
+    const row = await this.demoRepository.findOne({ id });
+    return row ? this._withCode(row) : null;
   }
 
   /**
    * 按公开标识查询（用户端）
    */
   async findOneByPublicId(publicId: string) {
-    return await this.demoRepository.findOneByPublicId({ publicId });
+    const row = await this.demoRepository.findOneByPublicId({ publicId });
+    return row ? this._withCode(row) : null;
+  }
+
+  /**
+   * 按 FF1 数字编码查询，解码后复用内部主键查询。
+   * @throws {BadRequestException} 编码格式无效或还原的 id 超出安全整数范围。
+   */
+  async findOneByCode(code: string) {
+    return this.findOne(this._codeToId(code));
   }
 
   /**
@@ -204,5 +236,59 @@ export class DemoService {
       throw new RecordNotFoundException();
     }
     return await this.demoRepository.delete({ id: row.id });
+  }
+
+  /** 为返回数据补充由主键生成的 code。 */
+  private _withCode<T extends { id: number }>(row: T): T & { code: string } {
+    return { ...row, code: this._idToCode(row.id) };
+  }
+
+  /** 将内部主键编码为数字字符串，位数向上取偶数、最少 6 位，保留前导零。 */
+  private _idToCode(id: number): string {
+    return generatePublicId(this._getCodeSize(id), 'ff1', {
+      sequence: id,
+      secretKey: this._codeSecretKey,
+      tweak: DEMO_CODE_TWEAK,
+    });
+  }
+
+  /** 将 code 还原为内部主键，在转换为 number 前校验精度和主键范围。 */
+  private _codeToId(code: string): number {
+    if (
+      typeof code !== 'string' ||
+      code.length < 6 ||
+      code.length > 16 ||
+      code.length % 2 !== 0
+    ) {
+      throw new BadRequestException('无效的 Demo 编码');
+    }
+
+    let id: bigint;
+    try {
+      id = decodePublicId(code, {
+        secretKey: this._codeSecretKey,
+        size: code.length,
+        tweak: DEMO_CODE_TWEAK,
+      });
+    } catch (error) {
+      if (error instanceof RangeError) {
+        throw new BadRequestException('无效的 Demo 编码');
+      }
+      throw error;
+    }
+
+    if (
+      id < 1n ||
+      id > BigInt(Number.MAX_SAFE_INTEGER) ||
+      code.length !== this._getCodeSize(id)
+    ) {
+      throw new BadRequestException('无效的 Demo 编码');
+    }
+    return Number(id);
+  }
+
+  /** 1～6 位使用 6 位，7～8 位使用 8 位，9～10 位使用 10 位，依此类推。 */
+  private _getCodeSize(id: number | bigint): number {
+    return Math.max(6, Math.ceil(id.toString().length / 2) * 2);
   }
 }

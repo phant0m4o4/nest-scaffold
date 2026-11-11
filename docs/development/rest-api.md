@@ -121,6 +121,8 @@ Demo 名称筛选的真正空串与未传等价；非空的空白字符串仍是
 
 用户端使用长码资源标识，字段名按业务语义定义；Demo 的 `publicId` 只是示例。短码用于邀请码等便于抄写的场景，不用作普通资源路径标识。管理端可使用内部 `id`，但必须有真实鉴权；详见 [公开标识策略](database.md)。
 
+Demo 的详情和列表还返回 `code`：由 Service 将内部 `id` 通过 FF1 编码为数字字符串，按 `id` 的十进制位数向上取偶数、最少 6 位。1–6 位主键生成 6 位编码，7–8 位生成 8 位，以此类推；当前安全整数主键最多生成 16 位编码。`code` 保留前导零，不额外存储数据库列。`findOneByCode(code)` 在服务内部解码后按主键查询。编码使用从 `APP_MASTER_KEY` 派生的专用密钥，固定 `tweak: 'demos/code'`；更换主密钥、派生用途标签、tweak 或位数规则都会改变编号映射，应与既有编号一并管理。
+
 常用方法名沿用现有模块：`create`、`findOne`、`findAll`、`findManyByCursorPagination`、`findManyByPagination`、`update`、控制器 `remove` / 仓储 `delete`。自定义查找用 `findOneByEmail` 等表达业务含义，不为凑齐固定方法而增加无用接口。
 
 脚手架没有内置完整认证授权系统；Demo 仅在开发/测试环境暴露，不能将管理端路径或长码视为安全屏障。接入要求见 [业务模块开发](module-development.md)。

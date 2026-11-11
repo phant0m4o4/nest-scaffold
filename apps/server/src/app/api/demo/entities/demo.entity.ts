@@ -13,6 +13,12 @@ export class DemoEntity extends createZodDto(
     publicId: z.string(),
     /** 短码公开标识（推荐码等），例如 'xY7_k2Qm' */
     shortPublicId: z.string(),
+    /** FF1 数字编码：按主键位数向上取偶数，最少 6 位，保留前导零。 */
+    code: z
+      .string()
+      .min(6)
+      .max(16)
+      .refine((code) => code.length % 2 === 0 && !/[^0-9]/.test(code)),
     /** 名称，例如 'demo name' */
     name: z.string(),
     /** 类型，例如 'TYPE_1' */

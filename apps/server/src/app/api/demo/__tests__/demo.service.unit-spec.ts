@@ -7,15 +7,34 @@ import { DemoRepository } from '@/app/repositories/demo.repository';
 import { RecordNotFoundException } from '@/common/modules/database/common/repositories/exceptions/record-not-found-exception';
 import { buildCursorScope } from '@/common/modules/database/mysql/repositories/utils/cursor/build-cursor-scope';
 import { encodeCursor } from '@/common/modules/database/mysql/repositories/utils/cursor/encode-cursor';
+import { generatePublicId } from '@/common/utils/public-id';
 import appConfig from '@/configs/app.config';
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { hkdfSync } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 const TEST_MASTER_KEY = Buffer.from(
   '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   'hex',
 );
+const TEST_CODE_SECRET_KEY = Buffer.from(
+  hkdfSync(
+    'sha256',
+    TEST_MASTER_KEY,
+    Buffer.alloc(0),
+    'nest-scaffold/demo-code/ff1/v1',
+    32,
+  ),
+);
+
+function codeForId(sequence: number | bigint, size = 6): string {
+  return generatePublicId(size, 'ff1', {
+    sequence,
+    secretKey: TEST_CODE_SECRET_KEY,
+    tweak: 'demos/code',
+  });
+}
 
 describe('DemoService', () => {
   let demoService: DemoService;
@@ -23,6 +42,9 @@ describe('DemoService', () => {
 
   beforeEach(async () => {
     mockDemoRepository = {
+      create: vi.fn(),
+      findAll: vi.fn(),
+      findOne: vi.fn(),
       findManyWithCursorPagination: vi.fn(),
       findManyWithPagination: vi.fn(),
       findOneByPublicId: vi.fn(),
@@ -48,6 +70,172 @@ describe('DemoService', () => {
       .compile();
 
     demoService = moduleRef.get(DemoService);
+  });
+
+  it('创建和详情查询应为同一主键返回一致的 code，且不修改仓储对象', async () => {
+    const row = Object.freeze({
+      id: 42,
+      publicId: 'public-demo',
+      shortPublicId: 'short-demo',
+    });
+    const expected = { ...row, code: codeForId(row.id) };
+    const body = { name: '示例', type: 'TYPE_1' };
+    (mockDemoRepository.create as Mock).mockResolvedValue(row);
+    (mockDemoRepository.findOne as Mock).mockResolvedValue(row);
+    (mockDemoRepository.findOneByPublicId as Mock).mockResolvedValue(row);
+
+    await expect(demoService.create(body)).resolves.toEqual(expected);
+    await expect(demoService.findOne(row.id)).resolves.toEqual(expected);
+    await expect(demoService.findOneByPublicId(row.publicId)).resolves.toEqual(
+      expected,
+    );
+
+    expect(expected.code).toMatch(/^\d{6}$/);
+    expect(mockDemoRepository.create).toHaveBeenCalledWith({ data: body });
+    expect(row).not.toHaveProperty('code');
+  });
+
+  it('列表和两类分页应为每条记录补充 code，并保留分页信息', async () => {
+    const rows = Object.freeze([
+      Object.freeze({ id: 1, name: '第一条' }),
+      Object.freeze({ id: 1_000_000, name: '第二条' }),
+    ]);
+    const expected = [
+      { ...rows[0], code: codeForId(1, 6) },
+      { ...rows[1], code: codeForId(1_000_000, 8) },
+    ];
+    const meta = { page: 1, pageSize: 30, total: 2, pageCount: 1 };
+    (mockDemoRepository.findAll as Mock).mockResolvedValue(rows);
+    (mockDemoRepository.findManyWithPagination as Mock).mockResolvedValue({
+      data: rows,
+      meta,
+    });
+    (mockDemoRepository.findManyWithCursorPagination as Mock).mockResolvedValue(
+      { data: rows, meta: { nextCursor: null } },
+    );
+
+    await expect(demoService.findAll()).resolves.toEqual(expected);
+    await expect(demoService.findManyByPagination({})).resolves.toEqual({
+      data: expected,
+      meta,
+    });
+    await expect(
+      demoService.findManyByCursorPagination({}, DEMO_LIST_RESOURCE_KEY),
+    ).resolves.toEqual({ data: expected, meta: { nextCursor: null } });
+    expect(rows[0]).not.toHaveProperty('code');
+    expect(rows[1]).not.toHaveProperty('code');
+  });
+
+  it.each([
+    { id: 1, size: 6 },
+    { id: 999_999, size: 6 },
+    { id: 1_000_000, size: 8 },
+    { id: 99_999_999, size: 8 },
+    { id: 100_000_000, size: 10 },
+    { id: 9_999_999_999, size: 10 },
+    { id: 10_000_000_000, size: 12 },
+    { id: 999_999_999_999, size: 12 },
+    { id: 1_000_000_000_000, size: 14 },
+    { id: 99_999_999_999_999, size: 14 },
+    { id: 100_000_000_000_000, size: 16 },
+    { id: Number.MAX_SAFE_INTEGER, size: 16 },
+  ])(
+    '主键 $id 应生成 $size 位 code，并能无损还原查询',
+    async ({ id, size }) => {
+      const row = { id, name: '示例' };
+      const code = codeForId(id, size);
+      (mockDemoRepository.findOne as Mock).mockResolvedValue(row);
+
+      const result = await demoService.findOne(id);
+      expect(result).toEqual({ ...row, code });
+      expect(result!.code).toHaveLength(size);
+      await expect(demoService.findOneByCode(code)).resolves.toEqual({
+        ...row,
+        code,
+      });
+
+      expect(mockDemoRepository.findOne).toHaveBeenCalledWith({ id });
+      expect(mockDemoRepository.findOneByPublicId).not.toHaveBeenCalled();
+    },
+  );
+
+  it('详情查询查无记录时应保留 null', async () => {
+    (mockDemoRepository.findOne as Mock).mockResolvedValue(null);
+    (mockDemoRepository.findOneByPublicId as Mock).mockResolvedValue(null);
+
+    await expect(demoService.findOne(42)).resolves.toBeNull();
+    await expect(demoService.findOneByPublicId('missing')).resolves.toBeNull();
+    await expect(demoService.findOneByCode(codeForId(42))).resolves.toBeNull();
+  });
+
+  it.each([
+    '',
+    '12345',
+    '1234567',
+    '123456789',
+    '12345678901',
+    '1234567890123',
+    '123456789012345',
+    '12345678901234567',
+    '12345a',
+    '12345\n',
+    '123456789012345a',
+    '123456789012345\n',
+  ])('无效 code %j 应在查询仓储前拒绝', async (code) => {
+    await expect(demoService.findOneByCode(code)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(mockDemoRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { id: 0n, size: 6 },
+    { id: BigInt(Number.MAX_SAFE_INTEGER) + 1n, size: 16 },
+  ])(
+    'code 解码为无效主键 $id 时应拒绝，避免主键精度丢失',
+    async ({ id, size }) => {
+      await expect(
+        demoService.findOneByCode(codeForId(id, size)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDemoRepository.findOne).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { id: 1, size: 8 },
+    { id: 42, size: 16 },
+    { id: 1_000_000, size: 10 },
+  ])(
+    '主键 $id 被编码为非规范的 $size 位 code 时应拒绝',
+    async ({ id, size }) => {
+      await expect(
+        demoService.findOneByCode(codeForId(id, size)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDemoRepository.findOne).not.toHaveBeenCalled();
+    },
+  );
+
+  it('相同配置下重新创建服务应生成相同 code 并能查询原记录', async () => {
+    const row = { id: 42, name: '示例' };
+    (mockDemoRepository.findOne as Mock).mockResolvedValue(row);
+    const first = await demoService.findOne(row.id);
+    const restartedModule = await Test.createTestingModule({
+      providers: [
+        DemoService,
+        { provide: DemoRepository, useValue: mockDemoRepository },
+        { provide: appConfig.KEY, useValue: { masterKey: TEST_MASTER_KEY } },
+      ],
+    }).compile();
+    const restartedService = restartedModule.get(DemoService);
+
+    try {
+      await expect(restartedService.findOne(row.id)).resolves.toEqual(first);
+      await expect(
+        restartedService.findOneByCode(first!.code),
+      ).resolves.toEqual(first);
+    } finally {
+      await restartedModule.close();
+    }
   });
 
   it('第一页应将仓储 keyset 加密为 nextCursor', async () => {

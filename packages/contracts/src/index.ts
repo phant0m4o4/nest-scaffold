@@ -44,6 +44,11 @@ export type DemoListQuery = z.infer<typeof demoListQuerySchema>;
 export const publicDemoSchema = z.object({
   publicId: z.string(),
   shortPublicId: z.string(),
+  code: z
+    .string()
+    .min(6)
+    .max(16)
+    .refine((code) => code.length % 2 === 0 && !/[^0-9]/.test(code)),
   name: z.string(),
   type: demoTypeSchema,
   createdAt: z.iso.datetime(),

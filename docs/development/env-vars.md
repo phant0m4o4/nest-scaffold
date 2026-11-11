@@ -90,6 +90,8 @@ MANUAL_CONFIRM_TEST_MODE=true
 
 `APP_MASTER_KEY` 解码为 32 字节后直接用于 AES-256-GCM，不是口令派生。生产环境会拒绝 `.env.example` 中公开的示例主密钥（忽略 hex 大小写）；开发和测试仍可使用。该检查不代表能够判断其他密钥的熵，部署时仍须独立随机生成。更换密钥会使旧加密游标无法解码，部署时需考虑客户端重新分页。
 
+Demo 的 `code` 使用 HKDF 从 `APP_MASTER_KEY` 派生 FF1 专用密钥；主密钥变化也会改变 `id` 与 `code` 的映射。编号使用及参数约定见 [标识与命名](rest-api.md#标识与命名)。
+
 ## 数据库
 
 默认装配 MySQL；PostgreSQL 按实际项目需要切换或显式装配，见 [数据库](database.md)。
