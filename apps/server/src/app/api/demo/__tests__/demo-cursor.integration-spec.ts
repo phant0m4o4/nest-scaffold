@@ -224,6 +224,55 @@ describe('Demo CRUD 与分页集成测试', () => {
     expect(body.data[0]).toHaveProperty('publicId');
   });
 
+  it('用户端与管理端的详情、列表应返回一致的 code，并能还原查询同一记录', async () => {
+    const server = app.getHttpServer() as Server;
+    const adminList = await request(server)
+      .get('/admin/demo')
+      .query({ limit: 1, order: 'id:asc' })
+      .expect(200);
+    const row = adminDemoSchema.parse(asCursorBody(adminList).data[0]);
+    // beforeAll 创建的首条记录使用一位主键，按规则应生成六位 code。
+    expect(row.id).toBe(1);
+    expect(row.code).toMatch(/^[0-9]{6}$/);
+
+    for (const path of [
+      '/demo',
+      '/demo/all',
+      '/demo/by-page',
+      '/admin/demo/all',
+      '/admin/demo/by-page',
+    ]) {
+      const response = await request(server).get(path).expect(200);
+      const responseSchema = path.startsWith('/admin/')
+        ? adminDemoSchema
+        : publicDemoSchema;
+      const rows = (response.body as { data: unknown[] }).data.map((item) =>
+        responseSchema.parse(item),
+      );
+      expect(rows.find((item) => item.publicId === row.publicId)).toMatchObject(
+        {
+          code: row.code,
+        },
+      );
+    }
+
+    for (const path of [`/demo/${row.publicId}`, `/admin/demo/${row.id}`]) {
+      const response = await request(server).get(path).expect(200);
+      expect((response.body as { data: unknown }).data).toMatchObject({
+        publicId: row.publicId,
+        code: row.code,
+      });
+    }
+
+    await expect(
+      app.get(DemoService).findOneByCode(row.code),
+    ).resolves.toMatchObject({
+      id: row.id,
+      publicId: row.publicId,
+      code: row.code,
+    });
+  });
+
   it('携带 nextCursor 应能翻到下一页且不重复', async () => {
     const server = app.getHttpServer() as Server;
     const first = asCursorBody(

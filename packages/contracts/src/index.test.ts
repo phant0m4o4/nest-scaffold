@@ -14,6 +14,7 @@ const demo = {
   parentId: null,
   publicId: 'public-demo',
   shortPublicId: 'short-demo',
+  code: '061532',
   name: '示例',
   type: 'TYPE_1',
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -24,6 +25,7 @@ describe('公开 HTTP 契约', () => {
   it('用户模型不包含内部主键，管理端保留内部主键', () => {
     expect(publicDemoSchema.parse(demo)).not.toHaveProperty('id');
     expect(publicDemoSchema.parse(demo)).not.toHaveProperty('parentId');
+    expect(publicDemoSchema.parse(demo).code).toBe(demo.code);
     expect(adminDemoSchema.parse(demo)).toEqual(demo);
   });
 
